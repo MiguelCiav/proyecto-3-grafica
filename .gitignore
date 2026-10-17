@@ -1,0 +1,32 @@
+# Build artifacts
+build/
+bin/
+lib/
+*.out
+*.exe
+*.o
+*.a
+*.so
+
+# CMake artifacts
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+CTestTestfile.cmake
+Makefile
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.directory
+.DS_Store
+
+# Temporary and packaging artifacts
+scripts/output/
+PROY3_*.zip
+*.log
+.cache/
