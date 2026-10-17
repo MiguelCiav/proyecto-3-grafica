@@ -59,6 +59,9 @@ add_library(glad STATIC
 target_include_directories(glad PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/glad/include
 )
+if(NOT MSVC)
+    target_compile_options(glad PRIVATE -w)
+endif()
 
 # ==============================================================================
 # 3. Estructura de Inclusiones del Proyecto
