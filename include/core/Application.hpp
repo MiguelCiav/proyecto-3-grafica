@@ -6,14 +6,14 @@
 #include "camera/ChaseCamera.hpp"
 #include "physics/CollisionSystem.hpp"
 #include "physics/KartPhysics.hpp"
+#include "animation/WheelAnimator.hpp"
+#include "vehicle/KartEntity.hpp"
 #include "renderer/Shader.hpp"
 #include "renderer/Texture.hpp"
-#include "renderer/MeshGL.hpp"
 #include "renderer/TrackRenderer.hpp"
 #include "world/TrackGrid.hpp"
 #include "world/PropSpawner.hpp"
 #include "world/ZoneTrigger.hpp"
-#include "geometry/KartPreprocessor.hpp"
 #include <memory>
 #include <string>
 #include <vector>
@@ -50,7 +50,9 @@ public:
     const Time& getTime() const { return m_time; }
     camera::Camera& getFPSCamera() { return m_camera; }
     camera::ChaseCamera& getChaseCamera() { return m_chaseCamera; }
-    Engine::Physics::KartPhysics& getKart() { return m_kartPhysics; }
+    Engine::Physics::KartPhysics& getKartPhysics() { return m_kartPhysics; }
+    vehicle::KartEntity& getKartEntity() { return m_kartEntity; }
+    animation::WheelAnimator& getWheelAnimator() { return m_wheelAnimator; }
 
 private:
     void processInput();
@@ -74,7 +76,7 @@ private:
     renderer::Shader m_basicShader;
     renderer::Texture m_paletteTexture;
 
-    // Mundo y Circuito Modular
+    // Mundo y Circuito Modular (12x12)
     world::TrackGrid m_trackGrid;
     renderer::TrackRenderer m_trackRenderer;
     world::PropSpawner m_propSpawner;
@@ -84,26 +86,15 @@ private:
     Engine::Physics::CollisionSystem m_collisionSystem;
     Engine::Physics::KartPhysics m_kartPhysics;
 
-    // Mallas y Geometria del Kart articulado
-    renderer::MeshGL m_chassisMesh;
-    renderer::MeshGL m_driverMesh;
-    renderer::MeshGL m_wheelFLMesh;
-    renderer::MeshGL m_wheelFRMesh;
-    renderer::MeshGL m_wheelBLMesh;
-    renderer::MeshGL m_wheelBRMesh;
+    // Entidad jerarquica del Kart articulado (Fase 6 - Issues #21, #22, #23, #24)
+    vehicle::KartEntity m_kartEntity;
+    animation::WheelAnimator m_wheelAnimator;
 
-    // Offsets de pivote de ruedas (calculados en C++ en Fase 2)
-    glm::vec3 m_wheelFLOffset{0.0f};
-    glm::vec3 m_wheelFROffset{0.0f};
-    glm::vec3 m_wheelBLOffset{0.0f};
-    glm::vec3 m_wheelBROffset{0.0f};
-
-    float m_wheelRollAngle{0.0f};
     glm::vec3 m_kartInitialPos{0.0f};
     float m_kartInitialYaw{90.0f};
 
     // Telemetria y cooldowns
-    float m_finishLineCooldown{0.0f};
+    float m_finishLineCooldown{8.0f};
     float m_titleUpdateTimer{0.0f};
     int m_lapsCompleted{0};
 };

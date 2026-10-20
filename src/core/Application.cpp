@@ -1,6 +1,7 @@
 #include "core/Application.hpp"
 #include "core/Input.hpp"
 #include "world/LevelLoader.hpp"
+#include "geometry/KartPreprocessor.hpp"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
@@ -104,25 +105,11 @@ bool Application::init() {
     // 3. Configurar el motor de colisiones
     setupColliders();
 
-    // 4. Cargar y ensamblar el Kart (kart-oobi.obj) con pivotes recentrados
+    // 4. Cargar y ensamblar el Kart (kart-oobi.obj) con grafo de escena jerarquico (Fase 6)
     geometry::KartAssembly kartOobi;
     if (geometry::KartPreprocessor::processKart("assets/models/karts/kart-oobi.obj", kartOobi)) {
         geometry::KartPreprocessor::validateAndReport(kartOobi, "kart-oobi (Verde)");
-
-        m_chassisMesh.setup(kartOobi.chassis);
-        m_wheelFLMesh.setup(kartOobi.wheelFrontLeft);
-        m_wheelFRMesh.setup(kartOobi.wheelFrontRight);
-        m_wheelBLMesh.setup(kartOobi.wheelBackLeft);
-        m_wheelBRMesh.setup(kartOobi.wheelBackRight);
-
-        m_wheelFLOffset = kartOobi.wheelFrontLeft.pivotOffset;
-        m_wheelFROffset = kartOobi.wheelFrontRight.pivotOffset;
-        m_wheelBLOffset = kartOobi.wheelBackLeft.pivotOffset;
-        m_wheelBROffset = kartOobi.wheelBackRight.pivotOffset;
-
-        if (!kartOobi.driver.vertices.empty()) {
-            m_driverMesh.setup(kartOobi.driver);
-        }
+        m_kartEntity.setup(kartOobi);
     }
 
     // 5. Posicionar kart en casilla START_FINISH
@@ -150,7 +137,7 @@ bool Application::init() {
 
     std::cout << "\n=====================================================" << std::endl;
     std::cout << "  Prototipo Mario Kart - CGI Proyecto #3 (UCV)      " << std::endl;
-    std::cout << "  Fase 5 - Fisicas Arcade y Colisiones Integradas    " << std::endl;
+    std::cout << "  Fase 6 - Grafo de Escena y Kart Articulado        " << std::endl;
     std::cout << "  [Controles]:                                      " << std::endl;
     std::cout << "    W / S             : Acelerar / Frenar y Reversa " << std::endl;
     std::cout << "    A / D             : Girar volante               " << std::endl;
@@ -198,6 +185,7 @@ void Application::processInput() {
     if (Input::isKeyJustPressed(GLFW_KEY_R)) {
         m_kartPhysics.setPosition(m_kartInitialPos);
         m_kartPhysics.setYaw(m_kartInitialYaw);
+        m_wheelAnimator.reset();
         m_chaseCamera.reset(m_kartInitialPos, m_kartPhysics.getForwardVector());
         std::cout << "[Kart] Posicion reiniciada a la linea de salida." << std::endl;
     }
@@ -269,10 +257,10 @@ void Application::update(float deltaTime) {
     // 3. Actualizar modelo de dinamica de vehiculo
     m_kartPhysics.update(deltaTime, accel, brake, steer);
 
-    // 4. Resolucion de colisiones del kart contra barreras/conos
+    // 4. Resolucion de colisiones del kart contra barreras/conos con esfera suave
     glm::vec3 mtv(0.0f);
     if (m_collisionSystem.checkCollision(m_kartPhysics.getBoundingSphere(), mtv)) {
-        m_kartPhysics.onCollision(mtv, 0.3f);
+        m_kartPhysics.onCollision(mtv, 0.25f);
     }
 
     // 5. Evaluacion de zonas de boost y meta
@@ -287,12 +275,9 @@ void Application::update(float deltaTime) {
         }
     }
 
-    // 6. Animacion de rotacion de ruedas (roll en eje X segun distancia recorrida)
-    float wheelRadius = 0.22f;
-    float deltaRoll = glm::degrees((m_kartPhysics.getSpeed() * deltaTime) / wheelRadius);
-    m_wheelRollAngle += deltaRoll;
-    if (m_wheelRollAngle > 360.0f) m_wheelRollAngle -= 360.0f;
-    if (m_wheelRollAngle < -360.0f) m_wheelRollAngle += 360.0f;
+    // 6. Actualizar cinemática de ruedas (Fase 6 - Issue #22) y Grafo de Escena (Issue #23)
+    m_wheelAnimator.update(deltaTime, m_kartPhysics.getSpeed(), steer);
+    m_kartEntity.update(m_kartPhysics.getPosition(), m_kartPhysics.getYaw(), m_wheelAnimator);
 
     // 7. Actualizar camaras
     m_chaseCamera.update(deltaTime, m_kartPhysics.getPosition(), m_kartPhysics.getForwardVector());
@@ -327,6 +312,7 @@ void Application::render() {
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
+    // Fondo cielo azul luminoso
     m_window->clear(0.42f, 0.70f, 0.95f, 1.0f);
 
     if (!m_basicShader.isValid()) return;
@@ -353,48 +339,10 @@ void Application::render() {
     // 2. Renderizar props y obstaculos
     m_propSpawner.render(m_basicShader);
 
-    // 3. Renderizar el Kart articulado jerarquicamente
-    glm::mat4 kartRoot = glm::translate(glm::mat4(1.0f), m_kartPhysics.getPosition());
-    kartRoot = glm::rotate(kartRoot, glm::radians(m_kartPhysics.getYaw()), glm::vec3(0.0f, 1.0f, 0.0f));
-
+    // 3. Renderizar el Kart articulado jerarquicamente via Grafo de Escena (Fase 6)
+    m_basicShader.setBool("u_UseTexture", true);
     m_basicShader.setVec4("u_Color", glm::vec4(1.0f));
-
-    // Chasis
-    m_basicShader.setMat4("u_Model", kartRoot);
-    m_chassisMesh.draw();
-
-    // Piloto
-    m_basicShader.setMat4("u_Model", kartRoot);
-    m_driverMesh.draw();
-
-    // Ruedas Delanteras (Rotacion en Y por direccion del volante + Roll en X por rodamiento)
-    float steerAngle = m_kartPhysics.getSteeringAngle();
-
-    // Rueda Delantera Izquierda (FL)
-    glm::mat4 flTransform = kartRoot * glm::translate(glm::mat4(1.0f), m_wheelFLOffset);
-    flTransform = glm::rotate(flTransform, glm::radians(steerAngle), glm::vec3(0.0f, 1.0f, 0.0f));
-    flTransform = glm::rotate(flTransform, glm::radians(m_wheelRollAngle), glm::vec3(1.0f, 0.0f, 0.0f));
-    m_basicShader.setMat4("u_Model", flTransform);
-    m_wheelFLMesh.draw();
-
-    // Rueda Delantera Derecha (FR)
-    glm::mat4 frTransform = kartRoot * glm::translate(glm::mat4(1.0f), m_wheelFROffset);
-    frTransform = glm::rotate(frTransform, glm::radians(steerAngle), glm::vec3(0.0f, 1.0f, 0.0f));
-    frTransform = glm::rotate(frTransform, glm::radians(m_wheelRollAngle), glm::vec3(1.0f, 0.0f, 0.0f));
-    m_basicShader.setMat4("u_Model", frTransform);
-    m_wheelFRMesh.draw();
-
-    // Rueda Trasera Izquierda (BL)
-    glm::mat4 blTransform = kartRoot * glm::translate(glm::mat4(1.0f), m_wheelBLOffset);
-    blTransform = glm::rotate(blTransform, glm::radians(m_wheelRollAngle), glm::vec3(1.0f, 0.0f, 0.0f));
-    m_basicShader.setMat4("u_Model", blTransform);
-    m_wheelBLMesh.draw();
-
-    // Rueda Trasera Derecha (BR)
-    glm::mat4 brTransform = kartRoot * glm::translate(glm::mat4(1.0f), m_wheelBROffset);
-    brTransform = glm::rotate(brTransform, glm::radians(m_wheelRollAngle), glm::vec3(1.0f, 0.0f, 0.0f));
-    m_basicShader.setMat4("u_Model", brTransform);
-    m_wheelBRMesh.draw();
+    m_kartEntity.draw(m_basicShader);
 }
 
 void Application::run() {
