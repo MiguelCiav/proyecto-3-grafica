@@ -16,14 +16,14 @@ void LevelLoader::buildDefaultCircuit(TrackGrid& grid) {
         grid.setTile(c, 2, TileType::ROAD_STRAIGHT, 90.0f, SurfaceType::ASPHALT);
     }
     // Esquina Superior Derecha (col 9, fila 2) -> ROAD_CORNER_SMALL (rotación 0°)
-    grid.setTile(9, 2, TileType::ROAD_CORNER_SMALL, 0.0f, SurfaceType::ASPHALT);
+    grid.setTile(9, 2, TileType::ROAD_CORNER_SMALL, 90.0f, SurfaceType::ASPHALT);
 
     // Recta Derecha (col 9, filas 3 a 8) -> ROAD_STRAIGHT vertical (0°)
     for (int r = 3; r <= 8; ++r) {
         grid.setTile(9, r, TileType::ROAD_STRAIGHT, 0.0f, SurfaceType::ASPHALT);
     }
     // Esquina Inferior Derecha (col 9, fila 9) -> ROAD_CORNER_SMALL (rotación 90°)
-    grid.setTile(9, 9, TileType::ROAD_CORNER_SMALL, 90.0f, SurfaceType::ASPHALT);
+    grid.setTile(9, 9, TileType::ROAD_CORNER_SMALL, 0.0f, SurfaceType::ASPHALT);
 
     // Recta Inferior (fila 9, cols 8 hacia 3) -> ROAD_STRAIGHT horizontal (90°)
     for (int c = 8; c >= 4; --c) {
@@ -33,14 +33,14 @@ void LevelLoader::buildDefaultCircuit(TrackGrid& grid) {
     grid.setTile(3, 9, TileType::START_FINISH, 90.0f, SurfaceType::ASPHALT);
 
     // Esquina Inferior Izquierda (col 2, fila 9) -> ROAD_CORNER_SMALL (rotación 180°)
-    grid.setTile(2, 9, TileType::ROAD_CORNER_SMALL, 180.0f, SurfaceType::ASPHALT);
+    grid.setTile(2, 9, TileType::ROAD_CORNER_SMALL, 270.0f, SurfaceType::ASPHALT);
 
     // Recta Izquierda (col 2, filas 8 hacia 3) -> ROAD_STRAIGHT vertical (0°)
     for (int r = 8; r >= 3; --r) {
         grid.setTile(2, r, TileType::ROAD_STRAIGHT, 0.0f, SurfaceType::ASPHALT);
     }
     // Esquina Superior Izquierda (col 2, fila 2) -> ROAD_CORNER_SMALL (rotación 270°)
-    grid.setTile(2, 2, TileType::ROAD_CORNER_SMALL, 270.0f, SurfaceType::ASPHALT);
+    grid.setTile(2, 2, TileType::ROAD_CORNER_SMALL, 180.0f, SurfaceType::ASPHALT);
 
     grid.updateModelMatrices();
     std::cout << "[OK] [LevelLoader] Circuito cerrado por defecto construido exitosamente (12x12)." << std::endl;
