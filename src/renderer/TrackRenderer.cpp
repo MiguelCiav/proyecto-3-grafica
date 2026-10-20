@@ -72,10 +72,15 @@ void TrackRenderer::render(const world::TrackGrid& grid, const Shader& shader) c
 
     m_renderedTileCount = 0;
 
-    // 1. Dibujar el plano base de terreno
+    // 1. Dibujar el plano de césped verde sólido (sin aplicar la paleta de texturas del atlas)
+    shader.setBool("u_UseTexture", false);
     shader.setMat4("u_Model", glm::mat4(1.0f));
-    shader.setVec4("u_Color", glm::vec4(0.25f, 0.55f, 0.25f, 1.0f)); // Tinte verdoso de césped
+    shader.setVec4("u_Color", glm::vec4(0.28f, 0.62f, 0.28f, 1.0f));
     m_meshGround.draw();
+
+    // 2. Activar texturizado para las piezas de asfalto
+    shader.setBool("u_UseTexture", true);
+    shader.setVec4("u_Color", glm::vec4(1.0f));
 
     // 2. Dibujar las piezas de asfalto del circuito
     shader.setVec4("u_Color", glm::vec4(1.0f)); // Color original de textura

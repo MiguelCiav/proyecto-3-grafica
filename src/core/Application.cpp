@@ -18,7 +18,7 @@ Application& Application::getInstance() {
 Application::Application(const AppConfig& config)
     : m_config(config),
       m_camera(glm::vec3(0.0f, 4.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, -15.0f),
-      m_chaseCamera(5.2f, 2.3f, 1.2f) {
+      m_chaseCamera(4.2f, 1.8f, 1.5f) {
     s_instance = this;
 }
 
@@ -106,7 +106,7 @@ bool Application::init() {
 
     // 4. Cargar y ensamblar el Kart (kart-oobi.obj) con pivotes recentrados
     geometry::KartAssembly kartOobi;
-    if (geometry::KartPreprocessor::processKart("assets/models/kart-oobi.obj", kartOobi)) {
+    if (geometry::KartPreprocessor::processKart("assets/models/karts/kart-oobi.obj", kartOobi)) {
         geometry::KartPreprocessor::validateAndReport(kartOobi, "kart-oobi (Verde)");
 
         m_chassisMesh.setup(kartOobi.chassis);
@@ -271,7 +271,7 @@ void Application::update(float deltaTime) {
 
     // 4. Resolucion de colisiones del kart contra barreras/conos
     glm::vec3 mtv(0.0f);
-    if (m_collisionSystem.checkCollision(m_kartPhysics.getBoundingBox(), mtv)) {
+    if (m_collisionSystem.checkCollision(m_kartPhysics.getBoundingSphere(), mtv)) {
         m_kartPhysics.onCollision(mtv, 0.3f);
     }
 
@@ -280,7 +280,7 @@ void Application::update(float deltaTime) {
     if (hitZone != nullptr) {
         if (hitZone->type == world::ZoneType::BOOST) {
             m_kartPhysics.applyBoost(hitZone->durationSeconds);
-        } else if (hitZone->type == world::ZoneType::FINISH_LINE && m_finishLineCooldown <= 0.0f) {
+        } else if (hitZone->type == world::ZoneType::FINISH_LINE && m_finishLineCooldown <= 0.0f && m_kartPhysics.getSpeed() > 1.5f) {
             m_lapsCompleted++;
             m_finishLineCooldown = 5.0f;
             std::cout << ">>> [META!] Vuelta " << m_lapsCompleted << " completada! <<<" << std::endl;
@@ -327,7 +327,7 @@ void Application::render() {
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
-    m_window->clear(0.12f, 0.14f, 0.20f, 1.0f);
+    m_window->clear(0.42f, 0.70f, 0.95f, 1.0f);
 
     if (!m_basicShader.isValid()) return;
 

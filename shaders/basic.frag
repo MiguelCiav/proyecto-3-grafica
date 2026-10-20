@@ -12,10 +12,10 @@ uniform vec4 u_Color;
 void main() {
     vec4 baseColor = u_UseTexture ? texture(u_Texture, v_TexCoords) : u_Color;
 
-    // Iluminación direccional suave por defecto
-    vec3 lightDir = normalize(vec3(0.5, 1.0, 0.4));
+    // Iluminación direccional suave estilo sol diurno
+    vec3 lightDir = normalize(vec3(0.4, 0.85, 0.35));
     vec3 norm = normalize(v_Normal);
-    float diff = max(dot(norm, lightDir), 0.25); // Componente ambiental mínima 0.25
+    float diff = max(dot(norm, lightDir), 0.38); // Luz ambiente clara 0.38 para evitar sombras negras
 
     FragColor = vec4(baseColor.rgb * diff, baseColor.a);
 }

@@ -99,12 +99,12 @@ void KartPhysics::onCollision(const glm::vec3& mtv, float reboundFactor) {
     glm::vec3 mtvDir = glm::normalize(mtv);
     float dot = glm::dot(forward, mtvDir);
 
-    if (dot < -0.2f) {
-        // Impacto frontal contra el obstaculo
+    if (dot < -0.38f) {
+        // Impacto frontal directo contra el obstaculo
         m_currentSpeed = -m_currentSpeed * reboundFactor;
     } else {
-        // Impacto lateral o deslizante
-        m_currentSpeed *= 0.85f;
+        // Roce lateral o deslizamiento suave junto a conos y barreras
+        m_currentSpeed *= 0.94f;
     }
 }
 

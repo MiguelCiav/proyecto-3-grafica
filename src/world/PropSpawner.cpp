@@ -46,8 +46,15 @@ void PropSpawner::addProp(const std::string& type, const glm::vec3& pos, float r
     mat = glm::scale(mat, scale);
     inst.modelMatrix = mat;
 
-    // AABB envolvente estimada para colisiones posteriores
+    // AABB ajustado con precisión a la geometría real de cada prop
     glm::vec3 halfSize = scale * 0.5f;
+    if (type == "cone") {
+        halfSize = glm::vec3(0.20f, 0.30f, 0.20f); // Cono real: radio 0.20m, altura 0.60m
+    } else if (type == "barrierWall") {
+        halfSize = glm::vec3(0.55f, 0.35f, 0.15f);
+    } else if (type == "barrierRed" || type == "barrierWhite") {
+        halfSize = glm::vec3(0.45f, 0.35f, 0.25f);
+    }
     inst.aabbMin = pos - halfSize;
     inst.aabbMax = pos + halfSize;
 
@@ -84,8 +91,13 @@ void PropSpawner::generateForGrid(const TrackGrid& grid) {
         }
 
         // Colocar conos alternados en algunas rectas para crear obstáculos de chicane
+                // Colocar conos alternados a los lados de la pista (dejando carril libre para rebasar)
         if (tile.type == TileType::ROAD_STRAIGHT && (tile.col % 3 == 0 || tile.row % 3 == 0)) {
-            addProp("cone", tile.worldPos + glm::vec3(0.6f, 0.0f, 0.0f), 0.0f, glm::vec3(1.0f));
+            float sideOffset = (tile.col % 2 == 0) ? 0.9f : -0.9f;
+            glm::vec3 localOffset = (tile.rotationDegrees == 90.0f || tile.rotationDegrees == 270.0f)
+                ? glm::vec3(0.0f, 0.0f, sideOffset)
+                : glm::vec3(sideOffset, 0.0f, 0.0f);
+            addProp("cone", tile.worldPos + localOffset, 0.0f, glm::vec3(1.0f));
         }
     }
 
