@@ -1,3 +1,4 @@
+#include "geometry/KartPreprocessor.hpp"
 #include "core/Application.hpp"
 #include "core/Input.hpp"
 #include <GLFW/glfw3.h>
@@ -45,6 +46,17 @@ bool Application::init() {
     std::cout << "=====================================================" << std::endl;
     std::cout << "  Prototipo Mario Kart - CGI Proyecto #3 (UCV)      " << std::endl;
     std::cout << "  Fase 1 - Game Loop y Pipeline Inicial Activo      " << std::endl;
+    // Validar Pipeline de Preprocesamiento de Karts (Fase 2 - Issue #8)
+    geometry::KartAssembly kartOobi;
+    if (geometry::KartPreprocessor::processKart("assets/models/karts/kart-oobi.obj", kartOobi)) {
+        geometry::KartPreprocessor::validateAndReport(kartOobi, "kart-oobi (Verde)");
+    }
+
+    geometry::KartAssembly kartOodi;
+    if (geometry::KartPreprocessor::processKart("assets/models/karts/kart-oodi.obj", kartOodi)) {
+        geometry::KartPreprocessor::validateAndReport(kartOodi, "kart-oodi (Azul)");
+    }
+
     std::cout << "=====================================================" << std::endl;
 
     return true;

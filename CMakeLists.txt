@@ -107,3 +107,28 @@ add_custom_command(TARGET mario_kart POST_BUILD
         $<TARGET_FILE_DIR:mario_kart>/assets
     COMMENT "Copiando shaders y assets al directorio de salida binaria..."
 )
+
+# ==============================================================================
+# 6. Ejecutable de Pruebas Unitarias / Preprocesamiento (Fase 2 - Issue #8)
+# ==============================================================================
+add_executable(test_mesh_preprocessing
+    tests/test_mesh_preprocessing.cpp
+    src/geometry/MeshProcessor.cpp
+    src/geometry/KartMeshExtractor.cpp
+    src/geometry/KartPreprocessor.cpp
+)
+
+target_include_directories(test_mesh_preprocessing PUBLIC
+    ${PROJECT_INCLUDE_DIRS}
+)
+
+target_link_libraries(test_mesh_preprocessing PRIVATE
+    glm::glm
+)
+
+add_custom_command(TARGET test_mesh_preprocessing POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/assets
+        $<TARGET_FILE_DIR:test_mesh_preprocessing>/assets
+    COMMENT "Copiando assets al directorio de salida de tests..."
+)
