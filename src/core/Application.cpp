@@ -1,12 +1,12 @@
 #include "core/Application.hpp"
 #include "core/Input.hpp"
 #include "world/LevelLoader.hpp"
-#include "geometry/KartPreprocessor.hpp"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <iomanip>
 #include <sstream>
+#include <cmath>
 
 namespace core {
 
@@ -27,6 +27,164 @@ Application::~Application() {
     s_instance = nullptr;
 }
 
+void Application::createPedestalMesh() {
+    geometry::SubMesh pedestal;
+    pedestal.name = "Showroom_Pedestal";
+
+    const int segments = 36;
+    const float radius = 1.35f;
+    const float height = 0.12f;
+    const float topY = 0.0f;
+    const float botY = -height;
+
+    // Vertice central superior
+    pedestal.vertices.push_back({ {0.0f, topY, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.5f, 0.5f} });
+    // Vertice central inferior
+    pedestal.vertices.push_back({ {0.0f, botY, 0.0f}, {0.0f, -1.0f, 0.0f}, {0.5f, 0.5f} });
+
+    // Anillo de vertices
+    for (int i = 0; i <= segments; ++i) {
+        float angle = glm::two_pi<float>() * static_cast<float>(i) / static_cast<float>(segments);
+        float x = std::cos(angle) * radius;
+        float z = std::sin(angle) * radius;
+
+        // Borde superior
+        pedestal.vertices.push_back({ {x, topY, z}, {0.0f, 1.0f, 0.0f}, {0.5f + 0.5f * std::cos(angle), 0.5f + 0.5f * std::sin(angle)} });
+        // Borde lateral
+        pedestal.vertices.push_back({ {x, botY, z}, {std::cos(angle), 0.0f, std::sin(angle)}, {0.5f, 0.5f} });
+    }
+
+    // Indices tapa superior
+    for (int i = 0; i < segments; ++i) {
+        unsigned int curr = 2 + i * 2;
+        unsigned int next = 2 + (i + 1) * 2;
+        pedestal.indices.push_back(0);
+        pedestal.indices.push_back(curr);
+        pedestal.indices.push_back(next);
+
+        // Lateral
+        unsigned int currBot = curr + 1;
+        unsigned int nextBot = next + 1;
+        pedestal.indices.push_back(curr);
+        pedestal.indices.push_back(currBot);
+        pedestal.indices.push_back(next);
+
+        pedestal.indices.push_back(next);
+        pedestal.indices.push_back(currBot);
+        pedestal.indices.push_back(nextBot);
+    }
+
+    m_pedestalMesh.setup(pedestal);
+}
+
+void Application::loadKartProfiles() {
+    m_kartProfiles = {
+        {
+            "kart-oobi",
+            "Oobi (Verde Clasico)",
+            "Equilibrado | Ideal para todo tipo de pistas",
+            "assets/models/karts/kart-oobi.obj",
+            22.0f, 18.0f, 100.0f, 0.45f,
+            glm::vec4(0.2f, 0.85f, 0.3f, 1.0f)
+        },
+        {
+            "kart-oodi",
+            "Oodi (Azul Turbo)",
+            "Alta Velocidad Punta | Bólido aerodinámico",
+            "assets/models/karts/kart-oodi.obj",
+            25.5f, 16.0f, 85.0f, 0.38f,
+            glm::vec4(0.2f, 0.5f, 0.95f, 1.0f)
+        },
+        {
+            "kart-ooli",
+            "Ooli (Naranja Rally)",
+            "Tracción Total | Máximo agarre en césped y curvas",
+            "assets/models/karts/kart-ooli.obj",
+            21.0f, 20.0f, 105.0f, 0.65f,
+            glm::vec4(0.95f, 0.55f, 0.15f, 1.0f)
+        },
+        {
+            "kart-oopi",
+            "Oopi (Rojo Furia)",
+            "Aceleración Explosiva | Salida rápida y turbo potente",
+            "assets/models/karts/kart-oopi.obj",
+            23.5f, 22.0f, 95.0f, 0.40f,
+            glm::vec4(0.9f, 0.2f, 0.2f, 1.0f)
+        },
+        {
+            "kart-oozi",
+            "Oozi (Negro Nocturno)",
+            "Derrape Ultra Ágil | Máxima maniobrabilidad técnica",
+            "assets/models/karts/kart-oozi.obj",
+            22.5f, 19.0f, 120.0f, 0.44f,
+            glm::vec4(0.25f, 0.25f, 0.3f, 1.0f)
+        }
+    };
+
+    // Preprocesar y cargar las 5 geometrias con pivotes en (0,0,0) a la memoria
+    std::cout << "\n========================================================" << std::endl;
+    std::cout << "  Cargando Catálogo de Vehículos para el Showroom...    " << std::endl;
+    std::cout << "========================================================" << std::endl;
+
+    for (size_t i = 0; i < m_kartProfiles.size(); ++i) {
+        auto& profile = m_kartProfiles[i];
+        if (geometry::KartPreprocessor::processKart(profile.filePath, profile.assembly)) {
+            profile.loaded = true;
+            std::cout << "  [" << (i + 1) << "/5] " << profile.name << " -> [CARGADO]" << std::endl;
+        } else {
+            std::cerr << "  [ERROR] Fallo al cargar: " << profile.filePath << std::endl;
+        }
+    }
+    std::cout << "========================================================\n" << std::endl;
+}
+
+void Application::selectKart(int index) {
+    if (m_kartProfiles.empty()) return;
+
+    if (index < 0) index = static_cast<int>(m_kartProfiles.size()) - 1;
+    if (index >= static_cast<int>(m_kartProfiles.size())) index = 0;
+
+    m_selectedKartIndex = index;
+    const auto& profile = m_kartProfiles[m_selectedKartIndex];
+
+    if (profile.loaded) {
+        m_kartEntity.setup(profile.assembly);
+
+        // Aplicar personalidad física del vehículo
+        m_kartPhysics.m_maxSpeed = profile.maxSpeed;
+        m_kartPhysics.m_acceleration = profile.acceleration;
+        m_kartPhysics.m_turnSpeed = profile.turnSpeed;
+
+        std::cout << "\n>>> [SHOWROOM] Vehículo seleccionado: " << profile.name << " <<<" << std::endl;
+        std::cout << "    Características: " << profile.subtitle << std::endl;
+        std::cout << "    Velocidad Punta: " << (profile.maxSpeed * 3.6f) << " km/h"
+                  << " | Aceleración: " << profile.acceleration
+                  << " | Maniobrabilidad: " << profile.turnSpeed << "\n" << std::endl;
+    }
+}
+
+void Application::setGameState(GameState state) {
+    m_gameState = state;
+
+    if (m_gameState == GameState::RACING) {
+        m_cursorLocked = false;
+        Input::setCursorVisible(true);
+        m_cameraMode = CameraMode::CHASE;
+        m_kartPhysics.setPosition(m_kartInitialPos);
+        m_kartPhysics.setYaw(m_kartInitialYaw);
+        m_wheelAnimator.reset();
+        m_chaseCamera.reset(m_kartInitialPos, m_kartPhysics.getForwardVector());
+        std::cout << "\n>>> [CARRERA INICIADA] Conduce con W/S/A/D | [M: Cambiar Kart] [ESC: Menú] <<<\n" << std::endl;
+    } else if (m_gameState == GameState::VEHICLE_SELECT) {
+        m_cursorLocked = false;
+        Input::setCursorVisible(true);
+        selectKart(m_selectedKartIndex);
+    } else if (m_gameState == GameState::MAIN_MENU) {
+        m_cursorLocked = false;
+        Input::setCursorVisible(true);
+    }
+}
+
 void Application::setupColliders() {
     m_collisionSystem.clear();
 
@@ -38,22 +196,18 @@ void Application::setupColliders() {
     // 2. Registrar limites perimetrales exteriores del circuito para evitar caidas al vacio
     float halfSize = 25.0f;
     float wallHeight = 6.0f;
-    // Norte (+Z)
     m_collisionSystem.addStaticBox(Engine::Physics::BoundingBox(
         glm::vec3(-halfSize, 0.0f, halfSize),
         glm::vec3(halfSize, wallHeight, halfSize + 2.0f)
     ));
-    // Sur (-Z)
     m_collisionSystem.addStaticBox(Engine::Physics::BoundingBox(
         glm::vec3(-halfSize, 0.0f, -halfSize - 2.0f),
         glm::vec3(halfSize, wallHeight, -halfSize)
     ));
-    // Este (+X)
     m_collisionSystem.addStaticBox(Engine::Physics::BoundingBox(
         glm::vec3(halfSize, 0.0f, -halfSize),
         glm::vec3(halfSize + 2.0f, wallHeight, halfSize)
     ));
-    // Oeste (-X)
     m_collisionSystem.addStaticBox(Engine::Physics::BoundingBox(
         glm::vec3(-halfSize - 2.0f, 0.0f, -halfSize),
         glm::vec3(-halfSize, wallHeight, halfSize)
@@ -105,12 +259,9 @@ bool Application::init() {
     // 3. Configurar el motor de colisiones
     setupColliders();
 
-    // 4. Cargar y ensamblar el Kart (kart-oobi.obj) con grafo de escena jerarquico (Fase 6)
-    geometry::KartAssembly kartOobi;
-    if (geometry::KartPreprocessor::processKart("assets/models/karts/kart-oobi.obj", kartOobi)) {
-        geometry::KartPreprocessor::validateAndReport(kartOobi, "kart-oobi (Verde)");
-        m_kartEntity.setup(kartOobi);
-    }
+    // 4. Crear pedestal para el showroom 3D y cargar catálogo de karts
+    createPedestalMesh();
+    loadKartProfiles();
 
     // 5. Posicionar kart en casilla START_FINISH
     m_kartInitialPos = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -124,27 +275,19 @@ bool Application::init() {
         }
     }
 
-    m_kartPhysics.setPosition(m_kartInitialPos);
-    m_kartPhysics.setYaw(m_kartInitialYaw);
+    // Seleccionar el primer kart por defecto
+    selectKart(0);
 
-    // Inicializar camara Chase
-    m_chaseCamera.reset(m_kartPhysics.getPosition(), m_kartPhysics.getForwardVector());
+    // Iniciar en el Menu Principal con opciones
+    setGameState(GameState::MAIN_MENU);
 
-    // Inicializar camara FPS panoramica detras del kart
-    glm::vec3 camPos = m_kartInitialPos + glm::vec3(-6.0f, 4.0f, 0.0f);
-    m_camera.setPosition(camPos);
-    m_camera.lookAtTarget(m_kartInitialPos + glm::vec3(6.0f, 1.0f, 0.0f));
-
-    std::cout << "\n=====================================================" << std::endl;
-    std::cout << "  Prototipo Mario Kart - CGI Proyecto #3 (UCV)      " << std::endl;
-    std::cout << "  Fase 6 - Grafo de Escena y Kart Articulado        " << std::endl;
-    std::cout << "  [Controles]:                                      " << std::endl;
-    std::cout << "    W / S             : Acelerar / Frenar y Reversa " << std::endl;
-    std::cout << "    A / D             : Girar volante               " << std::endl;
-    std::cout << "    C                 : Conmutar Camara (Chase/FPS) " << std::endl;
-    std::cout << "    R                 : Reiniciar Kart a la Salida  " << std::endl;
-    std::cout << "    ESC               : Liberar cursor / Salir      " << std::endl;
-    std::cout << "=====================================================\n" << std::endl;
+    std::cout << "\n========================================================" << std::endl;
+    std::cout << "  PROTOTIPO MARIO KART - CGI PROYECTO #3 (UCV)          " << std::endl;
+    std::cout << "  [MENU DEL JUEGO Y SHOWROOM ACTIVOS]:                  " << std::endl;
+    std::cout << "    [1] o ENTER : Seleccionar Vehículo y Piloto         " << std::endl;
+    std::cout << "    [2] o ESPACIO: Iniciar Carrera Inmediata             " << std::endl;
+    std::cout << "    [ESC]        : Salir                                " << std::endl;
+    std::cout << "========================================================\n" << std::endl;
 
     m_time.reset();
     m_running = true;
@@ -152,77 +295,174 @@ bool Application::init() {
 }
 
 void Application::processInput() {
-    // ESC: Liberar cursor si esta capturado en modo FPS, o salir si ya esta libre
-    if (Input::isKeyJustPressed(GLFW_KEY_ESCAPE)) {
-        if (m_cameraMode == CameraMode::FPS && m_cursorLocked) {
-            m_cursorLocked = false;
-            Input::setCursorVisible(true);
-        } else {
+    // -------------------------------------------------------------
+    // Control en MAIN_MENU
+    // -------------------------------------------------------------
+    if (m_gameState == GameState::MAIN_MENU) {
+        if (Input::isKeyJustPressed(GLFW_KEY_ESCAPE)) {
             close();
             return;
         }
-    }
-
-    // Conmutador de modo de camara (Tecla C)
-    if (Input::isKeyJustPressed(GLFW_KEY_C)) {
-        if (m_cameraMode == CameraMode::CHASE) {
-            m_cameraMode = CameraMode::FPS;
-            m_cursorLocked = true;
-            Input::setCursorVisible(false);
-            m_camera.setPosition(m_chaseCamera.getPosition());
-            m_camera.lookAtTarget(m_kartPhysics.getPosition() + glm::vec3(0.0f, 1.0f, 0.0f));
-            std::cout << "[Camara] Modo: INSPECCION LIBRE FPS (Restriccion de Colision ON)" << std::endl;
-        } else {
-            m_cameraMode = CameraMode::CHASE;
-            m_cursorLocked = false;
-            Input::setCursorVisible(true);
-            m_chaseCamera.reset(m_kartPhysics.getPosition(), m_kartPhysics.getForwardVector());
-            std::cout << "[Camara] Modo: CONDUCCION TERCERA PERSONA (Chase Cam)" << std::endl;
+        if (Input::isKeyJustPressed(GLFW_KEY_1) || Input::isKeyJustPressed(GLFW_KEY_ENTER)) {
+            setGameState(GameState::VEHICLE_SELECT);
+            return;
         }
+        if (Input::isKeyJustPressed(GLFW_KEY_2) || Input::isKeyJustPressed(GLFW_KEY_SPACE)) {
+            setGameState(GameState::RACING);
+            return;
+        }
+        return;
     }
 
-    // Reinicio de kart (Tecla R)
-    if (Input::isKeyJustPressed(GLFW_KEY_R)) {
-        m_kartPhysics.setPosition(m_kartInitialPos);
-        m_kartPhysics.setYaw(m_kartInitialYaw);
-        m_wheelAnimator.reset();
-        m_chaseCamera.reset(m_kartInitialPos, m_kartPhysics.getForwardVector());
-        std::cout << "[Kart] Posicion reiniciada a la linea de salida." << std::endl;
+    // -------------------------------------------------------------
+    // Control en VEHICLE_SELECT (Showroom)
+    // -------------------------------------------------------------
+    if (m_gameState == GameState::VEHICLE_SELECT) {
+        if (Input::isKeyJustPressed(GLFW_KEY_ESCAPE) || Input::isKeyJustPressed(GLFW_KEY_BACKSPACE)) {
+            setGameState(GameState::MAIN_MENU);
+            return;
+        }
+        // Navegacion entre karts: A / D o Flechas Izquierda / Derecha
+        if (Input::isKeyJustPressed(GLFW_KEY_A) || Input::isKeyJustPressed(GLFW_KEY_LEFT)) {
+            selectKart(m_selectedKartIndex - 1);
+        }
+        if (Input::isKeyJustPressed(GLFW_KEY_D) || Input::isKeyJustPressed(GLFW_KEY_RIGHT)) {
+            selectKart(m_selectedKartIndex + 1);
+        }
+        // Confirmar seleccion y comenzar la carrera
+        if (Input::isKeyJustPressed(GLFW_KEY_ENTER) || Input::isKeyJustPressed(GLFW_KEY_SPACE)) {
+            setGameState(GameState::RACING);
+        }
+        return;
     }
 
-    // En modo FPS: alternar captura de mouse con clic o TAB
-    if (m_cameraMode == CameraMode::FPS) {
-        if (Input::isKeyJustPressed(GLFW_KEY_TAB) || (!m_cursorLocked && Input::isMouseButtonJustPressed(GLFW_MOUSE_BUTTON_LEFT))) {
-            m_cursorLocked = !m_cursorLocked;
-            Input::setCursorVisible(!m_cursorLocked);
+    // -------------------------------------------------------------
+    // Control en RACING (Carrera activa)
+    // -------------------------------------------------------------
+    if (m_gameState == GameState::RACING) {
+        // Tecla M: Volver al Showroom a cambiar de auto
+        if (Input::isKeyJustPressed(GLFW_KEY_M)) {
+            setGameState(GameState::VEHICLE_SELECT);
+            return;
         }
 
-        if (m_cursorLocked) {
-            float dt = m_time.getDeltaTime();
-            if (Input::isKeyPressed(GLFW_KEY_W)) m_camera.processKeyboardWithCollision(camera::CameraMovement::FORWARD, dt, m_collisionSystem);
-            if (Input::isKeyPressed(GLFW_KEY_S)) m_camera.processKeyboardWithCollision(camera::CameraMovement::BACKWARD, dt, m_collisionSystem);
-            if (Input::isKeyPressed(GLFW_KEY_A)) m_camera.processKeyboardWithCollision(camera::CameraMovement::LEFT, dt, m_collisionSystem);
-            if (Input::isKeyPressed(GLFW_KEY_D)) m_camera.processKeyboardWithCollision(camera::CameraMovement::RIGHT, dt, m_collisionSystem);
-            if (Input::isKeyPressed(GLFW_KEY_SPACE) || Input::isKeyPressed(GLFW_KEY_E))
-                m_camera.processKeyboardWithCollision(camera::CameraMovement::UP, dt, m_collisionSystem);
-            if (Input::isKeyPressed(GLFW_KEY_LEFT_SHIFT) || Input::isKeyPressed(GLFW_KEY_Q))
-                m_camera.processKeyboardWithCollision(camera::CameraMovement::DOWN, dt, m_collisionSystem);
+        // ESC: Liberar cursor en modo FPS o volver al menu principal
+        if (Input::isKeyJustPressed(GLFW_KEY_ESCAPE)) {
+            if (m_cameraMode == CameraMode::FPS && m_cursorLocked) {
+                m_cursorLocked = false;
+                Input::setCursorVisible(true);
+            } else {
+                setGameState(GameState::MAIN_MENU);
+                return;
+            }
+        }
 
-            float dx = Input::getMouseDeltaX();
-            float dy = Input::getMouseDeltaY();
-            if (dx != 0.0f || dy != 0.0f) {
-                m_camera.processMouseMovement(dx, dy);
+        // Conmutador de camara (Tecla C)
+        if (Input::isKeyJustPressed(GLFW_KEY_C)) {
+            if (m_cameraMode == CameraMode::CHASE) {
+                m_cameraMode = CameraMode::FPS;
+                m_cursorLocked = true;
+                Input::setCursorVisible(false);
+                m_camera.setPosition(m_chaseCamera.getPosition());
+                m_camera.lookAtTarget(m_kartPhysics.getPosition() + glm::vec3(0.0f, 1.0f, 0.0f));
+                std::cout << "[Camara] Modo: INSPECCION LIBRE FPS (Restriccion de Colision ON)" << std::endl;
+            } else {
+                m_cameraMode = CameraMode::CHASE;
+                m_cursorLocked = false;
+                Input::setCursorVisible(true);
+                m_chaseCamera.reset(m_kartPhysics.getPosition(), m_kartPhysics.getForwardVector());
+                std::cout << "[Camara] Modo: CONDUCCION TERCERA PERSONA (Chase Cam)" << std::endl;
+            }
+        }
+
+        // Reinicio de kart (Tecla R)
+        if (Input::isKeyJustPressed(GLFW_KEY_R)) {
+            m_kartPhysics.setPosition(m_kartInitialPos);
+            m_kartPhysics.setYaw(m_kartInitialYaw);
+            m_wheelAnimator.reset();
+            m_chaseCamera.reset(m_kartInitialPos, m_kartPhysics.getForwardVector());
+            std::cout << "[Kart] Posicion reiniciada a la linea de salida." << std::endl;
+        }
+
+        // En modo FPS: alternar captura de mouse con clic o TAB
+        if (m_cameraMode == CameraMode::FPS) {
+            if (Input::isKeyJustPressed(GLFW_KEY_TAB) || (!m_cursorLocked && Input::isMouseButtonJustPressed(GLFW_MOUSE_BUTTON_LEFT))) {
+                m_cursorLocked = !m_cursorLocked;
+                Input::setCursorVisible(!m_cursorLocked);
             }
 
-            float scroll = Input::getScrollDeltaY();
-            if (scroll != 0.0f) {
-                m_camera.processMouseScroll(scroll);
+            if (m_cursorLocked) {
+                float dt = m_time.getDeltaTime();
+                if (Input::isKeyPressed(GLFW_KEY_W)) m_camera.processKeyboardWithCollision(camera::CameraMovement::FORWARD, dt, m_collisionSystem);
+                if (Input::isKeyPressed(GLFW_KEY_S)) m_camera.processKeyboardWithCollision(camera::CameraMovement::BACKWARD, dt, m_collisionSystem);
+                if (Input::isKeyPressed(GLFW_KEY_A)) m_camera.processKeyboardWithCollision(camera::CameraMovement::LEFT, dt, m_collisionSystem);
+                if (Input::isKeyPressed(GLFW_KEY_D)) m_camera.processKeyboardWithCollision(camera::CameraMovement::RIGHT, dt, m_collisionSystem);
+                if (Input::isKeyPressed(GLFW_KEY_SPACE) || Input::isKeyPressed(GLFW_KEY_E))
+                    m_camera.processKeyboardWithCollision(camera::CameraMovement::UP, dt, m_collisionSystem);
+                if (Input::isKeyPressed(GLFW_KEY_LEFT_SHIFT) || Input::isKeyPressed(GLFW_KEY_Q))
+                    m_camera.processKeyboardWithCollision(camera::CameraMovement::DOWN, dt, m_collisionSystem);
+
+                float dx = Input::getMouseDeltaX();
+                float dy = Input::getMouseDeltaY();
+                if (dx != 0.0f || dy != 0.0f) {
+                    m_camera.processMouseMovement(dx, dy);
+                }
+
+                float scroll = Input::getScrollDeltaY();
+                if (scroll != 0.0f) {
+                    m_camera.processMouseScroll(scroll);
+                }
             }
         }
     }
 }
 
 void Application::update(float deltaTime) {
+    // -------------------------------------------------------------
+    // Actualizacion en MAIN_MENU: Camara orbital cinematografica
+    // -------------------------------------------------------------
+    if (m_gameState == GameState::MAIN_MENU) {
+        m_menuOrbitAngle += deltaTime * 12.0f;
+        if (m_menuOrbitAngle > 360.0f) m_menuOrbitAngle -= 360.0f;
+
+        // Actualizar titulo con opciones de menu
+        m_titleUpdateTimer += deltaTime;
+        if (m_titleUpdateTimer >= 0.25f) {
+            m_titleUpdateTimer = 0.0f;
+            std::stringstream ss;
+            ss << m_config.title << " | [MENU PRINCIPAL] [1 o ENTER: Seleccionar Vehiculo] [2 o ESPACIO: Correr] [ESC: Salir]";
+            m_window->setTitle(ss.str());
+        }
+        return;
+    }
+
+    // -------------------------------------------------------------
+    // Actualizacion en VEHICLE_SELECT: Rotacion en Showroom
+    // -------------------------------------------------------------
+    if (m_gameState == GameState::VEHICLE_SELECT) {
+        m_showcaseAngle += deltaTime * 35.0f;
+        if (m_showcaseAngle > 360.0f) m_showcaseAngle -= 360.0f;
+
+        // Rotar el kart en el pedestal del showroom
+        m_wheelAnimator.update(deltaTime, 0.0f, 0.0f);
+        m_kartEntity.update(glm::vec3(0.0f, 0.05f, 0.0f), m_showcaseAngle, m_wheelAnimator);
+
+        m_titleUpdateTimer += deltaTime;
+        if (m_titleUpdateTimer >= 0.20f) {
+            m_titleUpdateTimer = 0.0f;
+            const auto& p = m_kartProfiles[m_selectedKartIndex];
+            std::stringstream ss;
+            ss << m_config.title << " | SHOWROOM [" << (m_selectedKartIndex + 1) << "/5]: < " << p.name << " > "
+               << "| Vel: " << static_cast<int>(p.maxSpeed * 3.6f) << " km/h "
+               << "| [A/D: Cambiar] [ENTER: Confirmar y Correr] [ESC: Menu]";
+            m_window->setTitle(ss.str());
+        }
+        return;
+    }
+
+    // -------------------------------------------------------------
+    // Actualizacion en RACING
+    // -------------------------------------------------------------
     if (m_finishLineCooldown > 0.0f) {
         m_finishLineCooldown -= deltaTime;
     }
@@ -249,9 +489,9 @@ void Application::update(float deltaTime) {
     glm::vec3 kartPos = m_kartPhysics.getPosition();
     const auto* currentTile = m_trackGrid.getTileAtWorldPos(kartPos.x, kartPos.z);
     if (currentTile == nullptr || currentTile->type == world::TileType::EMPTY) {
-        m_kartPhysics.setSurfaceFriction(0.42f); // Desaceleracion fuera de pista
+        m_kartPhysics.setSurfaceFriction(m_kartProfiles[m_selectedKartIndex].offRoadFriction);
     } else {
-        m_kartPhysics.setSurfaceFriction(1.0f);  // Adherencia normal
+        m_kartPhysics.setSurfaceFriction(1.0f);
     }
 
     // 3. Actualizar modelo de dinamica de vehiculo
@@ -271,11 +511,12 @@ void Application::update(float deltaTime) {
         } else if (hitZone->type == world::ZoneType::FINISH_LINE && m_finishLineCooldown <= 0.0f && m_kartPhysics.getSpeed() > 1.5f) {
             m_lapsCompleted++;
             m_finishLineCooldown = 5.0f;
-            std::cout << ">>> [META!] Vuelta " << m_lapsCompleted << " completada! <<<" << std::endl;
+            std::cout << ">>> [META!] Vuelta " << m_lapsCompleted << " completada con "
+                      << m_kartProfiles[m_selectedKartIndex].name << "! <<<" << std::endl;
         }
     }
 
-    // 6. Actualizar cinemática de ruedas (Fase 6 - Issue #22) y Grafo de Escena (Issue #23)
+    // 6. Actualizar cinemática de ruedas y Grafo de Escena
     m_wheelAnimator.update(deltaTime, m_kartPhysics.getSpeed(), steer);
     m_kartEntity.update(m_kartPhysics.getPosition(), m_kartPhysics.getYaw(), m_wheelAnimator);
 
@@ -292,10 +533,10 @@ void Application::update(float deltaTime) {
         std::stringstream ss;
         ss << m_config.title << " | " << static_cast<int>(m_time.getFPS()) << " FPS | ";
         if (m_cameraMode == CameraMode::CHASE) {
-            ss << "[Modo Conduccion 3ra Persona] ";
+            ss << "[" << m_kartProfiles[m_selectedKartIndex].name << "] ";
             ss << "| Vel: " << std::fixed << std::setprecision(1) << (m_kartPhysics.getSpeed() * 3.6f) << " km/h";
             if (m_kartPhysics.isBoosting()) ss << " [TURBO BOOST!]";
-            if (m_kartPhysics.getSurfaceFriction() < 0.9f) ss << " [CESPED/OFF-ROAD]";
+            if (m_kartPhysics.getSurfaceFriction() < 0.9f) ss << " [OFF-ROAD]";
             ss << " | Vueltas: " << m_lapsCompleted;
         } else {
             ss << "[Modo Inspeccion FPS (Colisiones ON)] | Pos: ("
@@ -303,7 +544,7 @@ void Application::update(float deltaTime) {
                << m_camera.getPosition().y << ", "
                << m_camera.getPosition().z << ")";
         }
-        ss << " | [C: Camara] [R: Reset]";
+        ss << " | [M: Cambiar Kart] [C: Camara] [R: Reset] [ESC: Menu]";
         m_window->setTitle(ss.str());
     }
 }
@@ -312,14 +553,83 @@ void Application::render() {
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
-    // Fondo cielo azul luminoso
-    m_window->clear(0.42f, 0.70f, 0.95f, 1.0f);
+    float aspect = m_window->getAspectRatio();
 
+    // -------------------------------------------------------------
+    // RENDERIZADO: MAIN_MENU (Vista panoramica orbital)
+    // -------------------------------------------------------------
+    if (m_gameState == GameState::MAIN_MENU) {
+        m_window->clear(0.40f, 0.68f, 0.95f, 1.0f);
+        if (!m_basicShader.isValid()) return;
+
+        m_basicShader.use();
+
+        float rad = glm::radians(m_menuOrbitAngle);
+        float orbitDist = 28.0f;
+        glm::vec3 camPos(std::sin(rad) * orbitDist, 14.0f, std::cos(rad) * orbitDist);
+        glm::mat4 view = glm::lookAt(camPos, glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 proj = glm::perspective(glm::radians(55.0f), aspect, 0.1f, 1000.0f);
+
+        m_basicShader.setMat4("u_View", view);
+        m_basicShader.setMat4("u_Projection", proj);
+        m_basicShader.setInt("u_Texture", 0);
+
+        if (m_paletteTexture.isLoaded()) m_paletteTexture.bind(0);
+
+        // Circuito y props en el menu
+        m_trackRenderer.render(m_trackGrid, m_basicShader);
+        m_propSpawner.render(m_basicShader);
+
+        // Kart inicial colocado en la pista
+        m_basicShader.setBool("u_UseTexture", true);
+        m_basicShader.setVec4("u_Color", glm::vec4(1.0f));
+        m_kartEntity.draw(m_basicShader);
+        return;
+    }
+
+    // -------------------------------------------------------------
+    // RENDERIZADO: VEHICLE_SELECT (Showroom 3D con pedestal)
+    // -------------------------------------------------------------
+    if (m_gameState == GameState::VEHICLE_SELECT) {
+        // Fondo showroom azul marino degradado suave
+        m_window->clear(0.14f, 0.18f, 0.28f, 1.0f);
+        if (!m_basicShader.isValid()) return;
+
+        m_basicShader.use();
+
+        // Camara enfocada al vehiculo en exhibicion
+        glm::vec3 camPos(0.0f, 1.35f, 3.4f);
+        glm::mat4 view = glm::lookAt(camPos, glm::vec3(0.0f, 0.40f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 proj = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
+
+        m_basicShader.setMat4("u_View", view);
+        m_basicShader.setMat4("u_Projection", proj);
+        m_basicShader.setInt("u_Texture", 0);
+
+        if (m_paletteTexture.isLoaded()) m_paletteTexture.bind(0);
+
+        // 1. Dibujar el Pedestal giratorio bajo el kart
+        m_basicShader.setBool("u_UseTexture", false);
+        glm::mat4 pedMat = glm::rotate(glm::mat4(1.0f), glm::radians(m_showcaseAngle), glm::vec3(0.0f, 1.0f, 0.0f));
+        m_basicShader.setMat4("u_Model", pedMat);
+        m_basicShader.setVec4("u_Color", glm::vec4(0.20f, 0.22f, 0.28f, 1.0f)); // Plataforma metalica
+        m_pedestalMesh.draw();
+
+        // 2. Dibujar el Kart girando con sus texturas
+        m_basicShader.setBool("u_UseTexture", true);
+        m_basicShader.setVec4("u_Color", glm::vec4(1.0f));
+        m_kartEntity.draw(m_basicShader);
+        return;
+    }
+
+    // -------------------------------------------------------------
+    // RENDERIZADO: RACING (Modo Carrera activo)
+    // -------------------------------------------------------------
+    m_window->clear(0.42f, 0.70f, 0.95f, 1.0f);
     if (!m_basicShader.isValid()) return;
 
     m_basicShader.use();
 
-    float aspect = m_window->getAspectRatio();
     glm::mat4 view = (m_cameraMode == CameraMode::CHASE) ? m_chaseCamera.getViewMatrix() : m_camera.getViewMatrix();
     glm::mat4 proj = (m_cameraMode == CameraMode::CHASE) ? m_chaseCamera.getProjectionMatrix(aspect) : m_camera.getProjectionMatrix(aspect);
 
@@ -339,7 +649,7 @@ void Application::render() {
     // 2. Renderizar props y obstaculos
     m_propSpawner.render(m_basicShader);
 
-    // 3. Renderizar el Kart articulado jerarquicamente via Grafo de Escena (Fase 6)
+    // 3. Renderizar el Kart articulado jerarquicamente via Grafo de Escena
     m_basicShader.setBool("u_UseTexture", true);
     m_basicShader.setVec4("u_Color", glm::vec4(1.0f));
     m_kartEntity.draw(m_basicShader);

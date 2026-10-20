@@ -30,3 +30,7 @@ scripts/output/
 PROY3_*.zip
 *.log
 .cache/
+
+# Source pack unzipped folders
+kenney_car-kit/
+*.zip

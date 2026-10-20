@@ -11,18 +11,40 @@
 #include "renderer/Shader.hpp"
 #include "renderer/Texture.hpp"
 #include "renderer/TrackRenderer.hpp"
+#include "renderer/MeshGL.hpp"
 #include "world/TrackGrid.hpp"
 #include "world/PropSpawner.hpp"
 #include "world/ZoneTrigger.hpp"
+#include "geometry/KartPreprocessor.hpp"
 #include <memory>
 #include <string>
 #include <vector>
 
 namespace core {
 
+enum class GameState {
+    MAIN_MENU,       // Pantalla de inicio con camara orbital cinematografica
+    VEHICLE_SELECT,  // Showroom 3D con pedestal giratorio y seleccion de karts
+    RACING           // Modo de juego de carreras activo
+};
+
 enum class CameraMode {
     CHASE, // Conduccion en tercera persona siguiendo al kart
     FPS    // Inspeccion libre en primera persona restringida por colision
+};
+
+struct KartProfile {
+    std::string id;
+    std::string name;
+    std::string subtitle;
+    std::string filePath;
+    float maxSpeed{22.0f};
+    float acceleration{18.0f};
+    float turnSpeed{100.0f};
+    float offRoadFriction{0.45f};
+    glm::vec4 accentColor{1.0f};
+    geometry::KartAssembly assembly;
+    bool loaded{false};
 };
 
 struct AppConfig {
@@ -48,21 +70,24 @@ public:
 
     Window& getWindow() { return *m_window; }
     const Time& getTime() const { return m_time; }
-    camera::Camera& getFPSCamera() { return m_camera; }
-    camera::ChaseCamera& getChaseCamera() { return m_chaseCamera; }
-    Engine::Physics::KartPhysics& getKartPhysics() { return m_kartPhysics; }
-    vehicle::KartEntity& getKartEntity() { return m_kartEntity; }
-    animation::WheelAnimator& getWheelAnimator() { return m_wheelAnimator; }
+    GameState getGameState() const { return m_gameState; }
+    void setGameState(GameState state);
 
 private:
     void processInput();
     void update(float deltaTime);
     void render();
     void setupColliders();
+    void loadKartProfiles();
+    void selectKart(int index);
+    void createPedestalMesh();
 
     AppConfig m_config;
     std::unique_ptr<Window> m_window;
     Time m_time;
+
+    // Estado del juego
+    GameState m_gameState{GameState::MAIN_MENU};
 
     // Camaras
     CameraMode m_cameraMode{CameraMode::CHASE};
@@ -86,9 +111,16 @@ private:
     Engine::Physics::CollisionSystem m_collisionSystem;
     Engine::Physics::KartPhysics m_kartPhysics;
 
-    // Entidad jerarquica del Kart articulado (Fase 6 - Issues #21, #22, #23, #24)
+    // Entidad jerarquica del Kart articulado
     vehicle::KartEntity m_kartEntity;
     animation::WheelAnimator m_wheelAnimator;
+
+    // Catalogo de Karts y Showroom
+    std::vector<KartProfile> m_kartProfiles;
+    int m_selectedKartIndex{0};
+    float m_showcaseAngle{0.0f};
+    float m_menuOrbitAngle{0.0f};
+    renderer::MeshGL m_pedestalMesh;
 
     glm::vec3 m_kartInitialPos{0.0f};
     float m_kartInitialYaw{90.0f};
