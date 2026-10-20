@@ -1,15 +1,14 @@
 #include "camera/Camera.hpp"
+#include "physics/CollisionSystem.hpp"
 #include <algorithm>
-#include <cmath>
 
 namespace camera {
 
 Camera::Camera(glm::vec3 position, glm::vec3 worldUp, float yaw, float pitch)
-    : m_position(position)
-    , m_worldUp(worldUp)
-    , m_yaw(yaw)
-    , m_pitch(pitch)
-{
+    : m_position(position),
+      m_worldUp(worldUp),
+      m_yaw(yaw),
+      m_pitch(pitch) {
     updateCameraVectors();
 }
 
@@ -21,46 +20,29 @@ glm::mat4 Camera::getProjectionMatrix(float aspectRatio) const {
     return glm::perspective(glm::radians(m_fov), aspectRatio, m_nearPlane, m_farPlane);
 }
 
-void Camera::updateCameraVectors() {
-    float yawRad = glm::radians(m_yaw);
-    float pitchRad = glm::radians(m_pitch);
-
-    glm::vec3 newFront;
-    newFront.x = std::cos(yawRad) * std::cos(pitchRad);
-    newFront.y = std::sin(pitchRad);
-    newFront.z = std::sin(yawRad) * std::cos(pitchRad);
-
-    m_front = glm::normalize(newFront);
-    m_right = glm::normalize(glm::cross(m_front, m_worldUp));
-    m_up    = glm::normalize(glm::cross(m_right, m_front));
-}
-
 void Camera::processKeyboard(CameraMovement direction, float deltaTime) {
     float velocity = m_movementSpeed * deltaTime;
 
-    // Movimiento en plano XZ para navegación FPS clásica
-    glm::vec3 flatFront = glm::normalize(glm::vec3(m_front.x, 0.0f, m_front.z));
-    if (glm::length(flatFront) < 0.001f) {
-        flatFront = m_front;
-    }
+    if (direction == CameraMovement::FORWARD)  m_position += m_front * velocity;
+    if (direction == CameraMovement::BACKWARD) m_position -= m_front * velocity;
+    if (direction == CameraMovement::LEFT)     m_position -= m_right * velocity;
+    if (direction == CameraMovement::RIGHT)    m_position += m_right * velocity;
+    if (direction == CameraMovement::UP)       m_position += m_worldUp * velocity;
+    if (direction == CameraMovement::DOWN)     m_position -= m_worldUp * velocity;
+}
 
-    if (direction == CameraMovement::FORWARD) {
-        m_position += flatFront * velocity;
+void Camera::processKeyboardWithCollision(CameraMovement direction, float deltaTime, const Engine::Physics::CollisionSystem& collisionSystem) {
+    processKeyboard(direction, deltaTime);
+    if (m_collisionEnabled) {
+        resolveCollision(collisionSystem);
     }
-    if (direction == CameraMovement::BACKWARD) {
-        m_position -= flatFront * velocity;
-    }
-    if (direction == CameraMovement::LEFT) {
-        m_position -= m_right * velocity;
-    }
-    if (direction == CameraMovement::RIGHT) {
-        m_position += m_right * velocity;
-    }
-    if (direction == CameraMovement::UP) {
-        m_position += m_worldUp * velocity;
-    }
-    if (direction == CameraMovement::DOWN) {
-        m_position -= m_worldUp * velocity;
+}
+
+void Camera::resolveCollision(const Engine::Physics::CollisionSystem& collisionSystem) {
+    m_position = collisionSystem.resolveSpherePosition(m_position, m_collisionRadius, 3);
+    // Evitar que la camara atraviese el suelo (plano Y = 0.2f minimo)
+    if (m_position.y < m_collisionRadius + 0.1f) {
+        m_position.y = m_collisionRadius + 0.1f;
     }
 }
 
@@ -79,15 +61,26 @@ void Camera::processMouseMovement(float xoffset, float yoffset, bool constrainPi
 }
 
 void Camera::processMouseScroll(float yoffset) {
-    m_fov -= yoffset * 2.0f;
-    m_fov = std::clamp(m_fov, 20.0f, 90.0f);
+    m_fov -= yoffset;
+    m_fov = std::clamp(m_fov, 15.0f, 90.0f);
 }
 
 void Camera::lookAtTarget(const glm::vec3& target) {
     m_front = glm::normalize(target - m_position);
-    m_pitch = glm::degrees(std::asin(m_front.y));
+    m_pitch = glm::degrees(std::asin(std::clamp(m_front.y, -1.0f, 1.0f)));
     m_yaw = glm::degrees(std::atan2(m_front.z, m_front.x));
     updateCameraVectors();
+}
+
+void Camera::updateCameraVectors() {
+    glm::vec3 front;
+    front.x = std::cos(glm::radians(m_yaw)) * std::cos(glm::radians(m_pitch));
+    front.y = std::sin(glm::radians(m_pitch));
+    front.z = std::sin(glm::radians(m_yaw)) * std::cos(glm::radians(m_pitch));
+    m_front = glm::normalize(front);
+
+    m_right = glm::normalize(glm::cross(m_front, m_worldUp));
+    m_up    = glm::normalize(glm::cross(m_right, m_front));
 }
 
 } // namespace camera

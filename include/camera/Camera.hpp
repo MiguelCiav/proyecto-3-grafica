@@ -3,6 +3,10 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+namespace Engine::Physics {
+    class CollisionSystem;
+}
+
 namespace camera {
 
 enum class CameraMovement {
@@ -21,14 +25,18 @@ public:
                     float yaw = -90.0f,
                     float pitch = -15.0f);
 
-    // Matrices de transformación
+    // Matrices de transformacion
     glm::mat4 getViewMatrix() const;
     glm::mat4 getProjectionMatrix(float aspectRatio) const;
 
     // Control de movimiento interactivo FPS
     void processKeyboard(CameraMovement direction, float deltaTime);
+    void processKeyboardWithCollision(CameraMovement direction, float deltaTime, const Engine::Physics::CollisionSystem& collisionSystem);
     void processMouseMovement(float xoffset, float yoffset, bool constrainPitch = true);
     void processMouseScroll(float yoffset);
+
+    // Resolucion de colision contra obstaculos (PDF Requisito Minimo)
+    void resolveCollision(const Engine::Physics::CollisionSystem& collisionSystem);
 
     // Getters y Setters
     const glm::vec3& getPosition() const { return m_position; }
@@ -41,11 +49,16 @@ public:
     float getFOV() const { return m_fov; }
     float getSpeed() const { return m_movementSpeed; }
     float getSensitivity() const { return m_mouseSensitivity; }
+    float getCollisionRadius() const { return m_collisionRadius; }
 
     void setPosition(const glm::vec3& pos) { m_position = pos; }
     void setSpeed(float speed) { m_movementSpeed = speed; }
     void setSensitivity(float sens) { m_mouseSensitivity = sens; }
     void setFOV(float fov) { m_fov = fov; }
+    void setCollisionRadius(float radius) { m_collisionRadius = radius; }
+    void setCollisionEnabled(bool enabled) { m_collisionEnabled = enabled; }
+    bool isCollisionEnabled() const { return m_collisionEnabled; }
+
     void lookAtTarget(const glm::vec3& target);
 
 private:
@@ -57,16 +70,20 @@ private:
     glm::vec3 m_right{1.0f, 0.0f, 0.0f};
     glm::vec3 m_worldUp{0.0f, 1.0f, 0.0f};
 
-    // Ángulos de Euler
+    // Angulos de Euler
     float m_yaw{-90.0f};
     float m_pitch{-15.0f};
 
-    // Parámetros de cámara
+    // Parametros de camara
     float m_movementSpeed{12.0f};
     float m_mouseSensitivity{0.12f};
     float m_fov{60.0f};
     float m_nearPlane{0.1f};
     float m_farPlane{1000.0f};
+
+    // Restriccion de colision (Requisito UCV)
+    float m_collisionRadius{0.45f};
+    bool m_collisionEnabled{true};
 };
 
 } // namespace camera
