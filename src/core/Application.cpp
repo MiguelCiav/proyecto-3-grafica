@@ -1,7 +1,6 @@
 #include "core/Application.hpp"
 #include "core/Input.hpp"
-#include "geometry/KartPreprocessor.hpp"
-#include "geometry/OBJLoader.hpp"
+#include "world/LevelLoader.hpp"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
@@ -18,7 +17,7 @@ Application& Application::getInstance() {
 
 Application::Application(const AppConfig& config)
     : m_config(config)
-    , m_camera(glm::vec3(0.0f, 2.5f, 5.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, -15.0f)
+    , m_camera(glm::vec3(0.0f, 4.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, -15.0f)
 {
     s_instance = this;
 }
@@ -55,47 +54,71 @@ bool Application::init() {
         std::cerr << "[AVISO] [Application] No se pudo cargar colormap.png" << std::endl;
     }
 
-    // 3. Cargar y ensamblar el Kart (kart-oobi.obj) con pivotes en (0,0,0)
+    // 3. Inicializar y Cargar el Circuito Modular Completo (Fase 4 - Issue #16)
+    world::LevelLoader::loadFromFile("assets/levels/main_track.txt", m_trackGrid);
+
+    if (!m_trackRenderer.init("assets/models/track")) {
+        std::cerr << "[ERROR] [Application] Fallo al inicializar TrackRenderer." << std::endl;
+        return false;
+    }
+
+    if (!m_propSpawner.init("assets/models/obstacles")) {
+        std::cerr << "[AVISO] [Application] Fallo al inicializar PropSpawner." << std::endl;
+    }
+    m_propSpawner.generateForGrid(m_trackGrid);
+    m_zoneManager.autoGenerateFromGrid(m_trackGrid);
+
+    // 4. Buscar posición de salida (START_FINISH) para posicionar el kart
+    m_kartPosition = glm::vec3(0.0f, 0.0f, 0.0f);
+    m_kartRotationY = 90.0f; // Mirando hacia adelante en la recta de salida
+
+    for (const auto& tile : m_trackGrid.getAllTiles()) {
+        if (tile.type == world::TileType::START_FINISH) {
+            m_kartPosition = tile.worldPos;
+            m_kartRotationY = tile.rotationDegrees;
+            break;
+        }
+    }
+
+    // 5. Cargar y ensamblar el Kart (kart-oobi.obj) con pivotes en (0,0,0)
     geometry::KartAssembly kartOobi;
     if (geometry::KartPreprocessor::processKart("assets/models/karts/kart-oobi.obj", kartOobi)) {
         geometry::KartPreprocessor::validateAndReport(kartOobi, "kart-oobi (Verde)");
 
-        glm::mat4 kartRoot = glm::mat4(1.0f);
+        glm::mat4 kartRoot = glm::translate(glm::mat4(1.0f), m_kartPosition);
+        kartRoot = glm::rotate(kartRoot, glm::radians(m_kartRotationY), glm::vec3(0.0f, 1.0f, 0.0f));
 
         // Chasis
         RenderItem chasisItem;
         chasisItem.name = "Kart_Chassis";
         chasisItem.mesh.setup(kartOobi.chassis);
         chasisItem.transform = kartRoot;
-        m_renderItems.push_back(std::move(chasisItem));
+        m_kartRenderItems.push_back(std::move(chasisItem));
 
-        // Rueda Delantera Izquierda (FL)
+        // Ruedas en sus pivotes relativos
         RenderItem flWheel;
         flWheel.name = "Kart_Wheel_FL";
         flWheel.mesh.setup(kartOobi.wheelFrontLeft);
         flWheel.transform = kartRoot * glm::translate(glm::mat4(1.0f), kartOobi.wheelFrontLeft.pivotOffset);
-        m_renderItems.push_back(std::move(flWheel));
+        m_kartRenderItems.push_back(std::move(flWheel));
 
-        // Rueda Delantera Derecha (FR)
         RenderItem frWheel;
         frWheel.name = "Kart_Wheel_FR";
         frWheel.mesh.setup(kartOobi.wheelFrontRight);
         frWheel.transform = kartRoot * glm::translate(glm::mat4(1.0f), kartOobi.wheelFrontRight.pivotOffset);
-        m_renderItems.push_back(std::move(frWheel));
+        m_kartRenderItems.push_back(std::move(frWheel));
 
-        // Rueda Trasera Izquierda (BL)
         RenderItem blWheel;
         blWheel.name = "Kart_Wheel_BL";
         blWheel.mesh.setup(kartOobi.wheelBackLeft);
         blWheel.transform = kartRoot * glm::translate(glm::mat4(1.0f), kartOobi.wheelBackLeft.pivotOffset);
-        m_renderItems.push_back(std::move(blWheel));
+        m_kartRenderItems.push_back(std::move(blWheel));
 
-        // Rueda Trasera Derecha (BR)
         RenderItem brWheel;
         brWheel.name = "Kart_Wheel_BR";
         brWheel.mesh.setup(kartOobi.wheelBackRight);
         brWheel.transform = kartRoot * glm::translate(glm::mat4(1.0f), kartOobi.wheelBackRight.pivotOffset);
-        m_renderItems.push_back(std::move(brWheel));
+        m_kartRenderItems.push_back(std::move(brWheel));
 
         // Piloto
         if (!kartOobi.driver.vertices.empty()) {
@@ -103,58 +126,33 @@ bool Application::init() {
             driverItem.name = "Kart_Driver";
             driverItem.mesh.setup(kartOobi.driver);
             driverItem.transform = kartRoot;
-            m_renderItems.push_back(std::move(driverItem));
+            m_kartRenderItems.push_back(std::move(driverItem));
         }
     }
 
-    // 4. Cargar tramo de pista (roadStraight.obj) debajo del kart
-    geometry::ModelData roadData;
-    if (geometry::OBJLoader::load("assets/models/track/roadStraight.obj", roadData)) {
-        for (const auto& sm : roadData.submeshes) {
-            RenderItem roadItem;
-            roadItem.name = "Track_Road";
-            roadItem.mesh.setup(sm);
-            // Centrar y posicionar en Y = 0
-            roadItem.transform = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
-            m_renderItems.push_back(std::move(roadItem));
-        }
-    }
+    // 6. Configurar cámara FPS ubicada detrás del kart con vista panorámica del circuito
+    glm::vec3 camPos = m_kartPosition + glm::vec3(-6.0f, 4.0f, 0.0f);
+    m_camera.setPosition(camPos);
+    m_camera.lookAtTarget(m_kartPosition + glm::vec3(10.0f, 1.0f, 0.0f));
 
-    // 5. Cargar conos u obstáculos decorativos
-    geometry::ModelData coneData;
-    if (geometry::OBJLoader::load("assets/models/obstacles/cone.obj", coneData)) {
-        for (const auto& sm : coneData.submeshes) {
-            RenderItem cone1;
-            cone1.name = "Obstacle_Cone_1";
-            cone1.mesh.setup(sm);
-            cone1.transform = glm::translate(glm::mat4(1.0f), glm::vec3(1.4f, 0.0f, 0.8f));
-            m_renderItems.push_back(std::move(cone1));
-
-            RenderItem cone2;
-            cone2.name = "Obstacle_Cone_2";
-            cone2.mesh.setup(sm);
-            cone2.transform = glm::translate(glm::mat4(1.0f), glm::vec3(-1.4f, 0.0f, -0.8f));
-            m_renderItems.push_back(std::move(cone2));
-        }
-    }
-
-    std::cout << "[OK] [Application] Total de elementos 3D listos para renderizar: "
-              << m_renderItems.size() << std::endl;
-
-    m_time.reset();
-    m_running = true;
-
-    std::cout << "=====================================================" << std::endl;
+    std::cout << "\n=====================================================" << std::endl;
     std::cout << "  Prototipo Mario Kart - CGI Proyecto #3 (UCV)      " << std::endl;
-    std::cout << "  Fase 3 - Renderizado 3D y Cámara FPS Activa       " << std::endl;
+    std::cout << "  Fase 4 - Circuito Cerrado y Obstáculos Activos    " << std::endl;
+    std::cout << "  [Resumen del Mundo 3D]:                           " << std::endl;
+    std::cout << "    - Celdas de Pista: " << m_trackGrid.getCols() << "x" << m_trackGrid.getRows() << std::endl;
+    std::cout << "    - Piezas de Asfalto: " << m_trackRenderer.getRenderedTileCount() << std::endl;
+    std::cout << "    - Obstáculos / Barreras: " << m_propSpawner.getPropCount() << std::endl;
+    std::cout << "    - Zonas Especiales (Meta/Turbo): " << m_zoneManager.getZones().size() << std::endl;
     std::cout << "  [Instrucciones de Control]:                       " << std::endl;
     std::cout << "    - Clic o TAB: Bloquear/Liberar cursor del mouse " << std::endl;
-    std::cout << "    - WASD: Desplazar cámara libre                  " << std::endl;
+    std::cout << "    - WASD: Desplazar cámara libre FPS              " << std::endl;
     std::cout << "    - Espacio / Shift: Subir y Bajar                " << std::endl;
     std::cout << "    - Rueda del mouse: Zoom (FOV)                   " << std::endl;
     std::cout << "    - ESC: Liberar cursor / Salir                   " << std::endl;
-    std::cout << "=====================================================" << std::endl;
+    std::cout << "=====================================================\n" << std::endl;
 
+    m_time.reset();
+    m_running = true;
     return true;
 }
 
@@ -250,7 +248,7 @@ void Application::processInput() {
 }
 
 void Application::update(float /*deltaTime*/) {
-    // Espacio para futuras físicas y animaciones
+    // Espacio para futuras físicas y animaciones de ruedas
 }
 
 void Application::render() {
@@ -258,7 +256,7 @@ void Application::render() {
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
-    // Limpiar color y profundidad (Cielo azul crepúsculo: #1E2230)
+    // Limpiar color y profundidad (Cielo azul crepúsculo)
     m_window->clear(0.12f, 0.14f, 0.20f, 1.0f);
 
     if (!m_basicShader.isValid()) return;
@@ -276,10 +274,16 @@ void Application::render() {
         m_paletteTexture.bind(0);
     }
 
-    // Dibujar todos los objetos cargados
-    for (const auto& item : m_renderItems) {
+    // 1. Dibujar el circuito modular completo y terreno verde
+    m_trackRenderer.render(m_trackGrid, m_basicShader);
+
+    // 2. Dibujar las barreras y conos perimetrales
+    m_propSpawner.render(m_basicShader);
+
+    // 3. Dibujar el Kart articulado con sus 4 ruedas en pivotes
+    m_basicShader.setVec4("u_Color", glm::vec4(1.0f));
+    for (const auto& item : m_kartRenderItems) {
         m_basicShader.setMat4("u_Model", item.transform);
-        m_basicShader.setVec4("u_Color", item.color);
         item.mesh.draw();
     }
 }
