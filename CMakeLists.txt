@@ -136,17 +136,17 @@ add_custom_command(TARGET test_mesh_preprocessing POST_BUILD
 # ==============================================================================
 # 7. Ejecutable de Pruebas Unitarias - Sistema de Iluminación (Fase 7 - Issue #25)
 # ==============================================================================
-add_executable(test_lighting_system
-    tests/test_lighting_system.cpp
+add_executable(test_light_manager
+    tests/test_light_manager.cpp
     src/lighting/LightManager.cpp
     src/renderer/Shader.cpp
 )
 
-target_include_directories(test_lighting_system PUBLIC
+target_include_directories(test_light_manager PUBLIC
     ${PROJECT_INCLUDE_DIRS}
 )
 
-target_link_libraries(test_lighting_system PRIVATE
+target_link_libraries(test_light_manager PRIVATE
     OpenGL::GL
     glad
     glfw

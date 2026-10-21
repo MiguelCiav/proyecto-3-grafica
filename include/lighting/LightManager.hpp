@@ -88,7 +88,5 @@ private:
     bool m_pointLightsEnabled{true};
 };
 
-// Alias para retrocompatibilidad
-using LightingSystem = LightManager;
-
 } // namespace lighting
+
