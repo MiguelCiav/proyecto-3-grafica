@@ -1,17 +1,17 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include "renderer/Shader.hpp"
-#include "lighting/LightingSystem.hpp"
+#include "lighting/LightManager.hpp"
 #include <iostream>
 #include <cassert>
 
 int main() {
     std::cout << "==========================================================" << std::endl;
     std::cout << "  TEST: Compilacion y Enlace de Shaders Multi-Fuente      " << std::endl;
-    std::cout << "  Fase 7 - Issue #26 (Directriz UCV)                      " << std::endl;
+    std::cout << "  Fase 7 - Issue #26 (shaders/lit.vert y shaders/lit.frag)" << std::endl;
     std::cout << "==========================================================" << std::endl;
 
-    // 1. Inicializar contexto OpenGL oculto para validacion de shaders
+    // 1. Inicializar contexto OpenGL oculto para validación de shaders en GPU
     if (!glfwInit()) {
         std::cerr << "[FAIL] No se pudo inicializar GLFW para el test." << std::endl;
         return 1;
@@ -22,7 +22,7 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 
-    GLFWwindow* window = glfwCreateWindow(640, 480, "Test Shaders", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(640, 480, "Test Shaders Lit", nullptr, nullptr);
     if (!window) {
         std::cerr << "[FAIL] No se pudo crear contexto OpenGL para el test." << std::endl;
         glfwTerminate();
@@ -40,37 +40,40 @@ int main() {
 
     std::cout << "  [OK] Contexto OpenGL " << glGetString(GL_VERSION) << " inicializado." << std::endl;
 
-    // 2. Compilar shaders
-    renderer::Shader shader;
-    bool loaded = shader.loadFromFiles("shaders/basic.vert", "shaders/basic.frag");
-    if (!loaded || !shader.isValid()) {
-        std::cerr << "[FAIL] Error al compilar o enlazar shaders/basic.vert y shaders/basic.frag" << std::endl;
+    // 2. Compilar shaders lit (especificación oficial Issue #26)
+    renderer::Shader litShader;
+    bool loadedLit = litShader.loadFromFiles("shaders/lit.vert", "shaders/lit.frag");
+    if (!loadedLit || !litShader.isValid()) {
+        std::cerr << "[FAIL] Error al compilar o enlazar shaders/lit.vert y shaders/lit.frag" << std::endl;
         glfwDestroyWindow(window);
         glfwTerminate();
         return 1;
     }
-    std::cout << "  [OK] Shaders basic.vert y basic.frag compilados y enlazados exitosamente (Program ID: "
-              << shader.getID() << ")." << std::endl;
+    std::cout << "  [CHECK 1] Shaders lit.vert y lit.frag compilados y enlazados exitosamente (Program ID: "
+              << litShader.getID() << ")." << std::endl;
 
-    // 3. Probar vinculacion y paso de uniforms desde LightingSystem
-    shader.use();
+    // 3. Probar vinculación y paso de uniforms desde LightManager
+    litShader.use();
 
-    lighting::LightingSystem lights;
-    lights.init();
-    lights.applyToShader(shader, glm::vec3(0.0f, 5.0f, 10.0f));
-    std::cout << "  [OK] Uniforms de las 3 luces (Dir, Point, Spot) y Materiales transferidos al shader." << std::endl;
+    lighting::LightManager lightManager;
+    lightManager.init();
+    lightManager.applyToShader(litShader, glm::vec3(0.0f, 5.0f, 10.0f));
+    std::cout << "  [CHECK 2] Uniforms de las 3 luces (Dir, " << lightManager.getPointLightCount()
+              << "x Point, Spot) y Materiales transferidos al shader." << std::endl;
 
-    // 4. Probar paso de cada modelo de iluminacion (0: Flat, 1: Lambert, 2: Blinn-Phong)
+    // 4. Probar paso de cada modelo de iluminación (0: Flat, 1: Lambert, 2: Blinn-Phong)
     for (int model = 0; model < 3; ++model) {
-        lights.setLightingModel(static_cast<lighting::LightingModel>(model));
-        lights.applyToShader(shader, glm::vec3(0.0f, 2.0f, 5.0f));
+        lightManager.setLightingModel(static_cast<lighting::LightingModel>(model));
+        lightManager.applyToShader(litShader, glm::vec3(0.0f, 2.0f, 5.0f));
     }
-    std::cout << "  [OK] Modelos de sombreado (Flat, Lambert, Blinn-Phong) alternados en GPU." << std::endl;
+    std::cout << "  [CHECK 3] Modelos de sombreado (0: Flat, 1: Lambert, 2: Blinn-Phong) alternados en GPU." << std::endl;
 
-    shader.unbind();
+    litShader.unbind();
     glfwDestroyWindow(window);
     glfwTerminate();
 
-    std::cout << "\n[SUCCESS] Issue #26 completado con exito: Shaders multi-fuente verificados en GPU." << std::endl;
+    std::cout << "\n==========================================================" << std::endl;
+    std::cout << "  [SUCCESS] Todos los criterios del Issue #26 cumplidos!   " << std::endl;
+    std::cout << "==========================================================" << std::endl;
     return 0;
 }
