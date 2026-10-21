@@ -360,6 +360,9 @@ void Application::selectTrack(int index) {
     // Actualizar colisionadores
     setupColliders();
 
+    // Configurar iluminacion adaptada al circuito
+    setupTrackLighting();
+
     // Actualizar posicion y rumbo de salida
     m_kartInitialPos = glm::vec3(0.0f, 0.0f, 0.0f);
     m_kartInitialYaw = 90.0f;
@@ -476,6 +479,61 @@ void Application::setupColliders() {
               << "x" << m_trackGrid.getRows() << ")." << std::endl;
 }
 
+void Application::setupTrackLighting() {
+    m_lightManager.clearPointLights();
+
+    // 1. Luz Direccional (Sol cenital con tono calido)
+    lighting::DirectionalLight sun;
+    sun.direction = glm::normalize(glm::vec3(-0.35f, -0.85f, -0.40f));
+    sun.ambient   = glm::vec3(0.35f, 0.35f, 0.38f);
+    sun.diffuse   = glm::vec3(0.92f, 0.88f, 0.82f);
+    sun.specular  = glm::vec3(0.55f, 0.55f, 0.55f);
+    sun.enabled   = true;
+    m_lightManager.setDirectionalLight(sun);
+
+    // 2. Extraer posiciones de losas de asfalto de la pista
+    std::vector<glm::vec3> roadPositions;
+    for (const auto& tile : m_trackGrid.getAllTiles()) {
+        if (tile.type != world::TileType::EMPTY && tile.type != world::TileType::OFFROAD_GRASS) {
+            roadPositions.push_back(tile.worldPos);
+        }
+    }
+
+    // 3. Ubicar fuentes de luz puntuales a lo largo del trazado
+    if (roadPositions.size() >= 4) {
+        size_t n = roadPositions.size();
+        size_t count = (n >= 6) ? 6 : 4;
+
+        for (size_t i = 0; i < count; ++i) {
+            size_t idx = (i * n) / count;
+            lighting::PointLight lamp;
+            lamp.position = roadPositions[idx] + glm::vec3(0.0f, 4.2f, 0.0f);
+            lamp.ambient  = glm::vec3(0.08f, 0.06f, 0.03f);
+            lamp.diffuse  = glm::vec3(1.0f, 0.85f, 0.45f);
+            lamp.specular = glm::vec3(1.0f, 0.90f, 0.60f);
+            lamp.constant = 1.0f;
+            lamp.linear   = 0.07f;
+            lamp.quadratic = 0.017f;
+            lamp.enabled  = true;
+            m_lightManager.addPointLight(lamp);
+        }
+    } else {
+        lighting::PointLight lamp1, lamp2, lamp3, lamp4;
+        lamp1.position = glm::vec3(0.0f, 4.2f, 0.0f);
+        lamp2.position = glm::vec3(30.0f, 4.2f, 15.0f);
+        lamp3.position = glm::vec3(45.0f, 4.2f, 45.0f);
+        lamp4.position = glm::vec3(15.0f, 4.2f, 45.0f);
+        m_lightManager.addPointLight(lamp1);
+        m_lightManager.addPointLight(lamp2);
+        m_lightManager.addPointLight(lamp3);
+        m_lightManager.addPointLight(lamp4);
+    }
+
+    std::cout << "[OK] [Lighting] Circuito configurado con "
+              << m_lightManager.getPointLightCount()
+              << " farolas puntuales, sol direccional y faros frontales." << std::endl;
+}
+
 bool Application::init() {
     WindowProps props;
     props.title = m_config.title;
@@ -497,6 +555,11 @@ bool Application::init() {
         return false;
     }
 
+    if (!m_litShader.loadFromFiles("shaders/lit.vert", "shaders/lit.frag")) {
+        std::cerr << "[ERROR] [Application] Fallo al cargar shaders de iluminacion (shaders/lit)." << std::endl;
+        return false;
+    }
+
     if (!m_paletteTexture.loadFromFile("assets/textures/colormap.png")) {
         std::cerr << "[AVISO] [Application] No se pudo cargar colormap.png" << std::endl;
     }
@@ -515,7 +578,7 @@ bool Application::init() {
     createPedestalMesh();
     loadCatalog();
 
-    // 4. Inicializar sistema y controlador de iluminacion (Fase 7 - Issues #25, #27)
+    // Inicializar sistema y controlador de iluminacion
     m_lightManager.init();
     m_lightingController.init(&m_lightManager);
 
@@ -697,8 +760,7 @@ void Application::processInput() {
                       << m_tracks[m_selectedTrackIndex].name << "." << std::endl;
         }
 
-        // Controlador de Iluminacion y Faros (Fase 7 - Issue #27)
-        // [1]: Flat Shading | [2]: Lambert | [3]: Blinn-Phong | [L]: Toggle Faros Kart
+        // Controlador de Iluminacion y Faros: [1] Flat | [2] Lambert | [3] Blinn-Phong | [L] Faros
         m_lightingController.handleInput();
 
         // En modo FPS: alternar captura de mouse con clic o TAB
@@ -741,6 +803,7 @@ void Application::update(float deltaTime) {
     if (m_gameState == GameState::MAIN_MENU) {
         m_menuOrbitAngle += deltaTime * 12.0f;
         if (m_menuOrbitAngle > 360.0f) m_menuOrbitAngle -= 360.0f;
+        m_lightingController.update(m_kartInitialPos, glm::vec3(0.0f, 0.0f, 1.0f), deltaTime);
 
         // Actualizar titulo con opciones de menu
         m_titleUpdateTimer += deltaTime;
@@ -764,6 +827,7 @@ void Application::update(float deltaTime) {
         // Kart en el pedestal del showroom mirando de frente
         m_wheelAnimator.update(deltaTime, 0.0f, 0.0f);
         m_kartEntity.update(glm::vec3(0.0f, 0.05f, 0.0f), m_showcaseAngle, m_wheelAnimator);
+        m_lightingController.update(glm::vec3(0.0f, 0.05f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f), deltaTime);
 
         m_titleUpdateTimer += deltaTime;
         if (m_titleUpdateTimer >= 0.20f) {
@@ -844,7 +908,7 @@ void Application::update(float deltaTime) {
     m_wheelAnimator.update(deltaTime, m_kartPhysics.getSpeed(), steer);
     m_kartEntity.update(m_kartPhysics.getPosition(), m_kartPhysics.getYaw(), m_wheelAnimator);
 
-    // 6.b Sincronizar faros moviles del kart (SpotLight) con la posicion y giro del morro (Fase 7 - Issue #27)
+    // Sincronizar faros moviles del kart (SpotLight) con la posicion y giro del morro
     m_lightingController.update(m_kartPhysics.getPosition(), m_kartPhysics.getForwardVector(), deltaTime);
 
     // 7. Actualizar camaras
@@ -853,7 +917,7 @@ void Application::update(float deltaTime) {
         m_camera.resolveCollision(m_collisionSystem);
     }
 
-    // 8. Titulo con telemetria en tiempo real y estado de iluminacion (Issue #27)
+    // Titulo con telemetria en tiempo real y estado de iluminacion
     m_titleUpdateTimer += deltaTime;
     if (m_titleUpdateTimer >= 0.20f) {
         m_titleUpdateTimer = 0.0f;
@@ -889,9 +953,10 @@ void Application::render() {
     // -------------------------------------------------------------
     if (m_gameState == GameState::MAIN_MENU) {
         m_window->clear(0.40f, 0.68f, 0.95f, 1.0f);
-        if (!m_basicShader.isValid()) return;
+        renderer::Shader& shader = m_litShader.isValid() ? m_litShader : m_basicShader;
+        if (!shader.isValid()) return;
 
-        m_basicShader.use();
+        shader.use();
 
         float rad = glm::radians(m_menuOrbitAngle);
         float orbitDist = (m_trackGrid.getCols() * world::TrackGrid::TILE_SIZE) * 0.65f;
@@ -899,20 +964,24 @@ void Application::render() {
         glm::mat4 view = glm::lookAt(camPos, glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         glm::mat4 proj = glm::perspective(glm::radians(55.0f), aspect, 0.1f, 1000.0f);
 
-        m_basicShader.setMat4("u_View", view);
-        m_basicShader.setMat4("u_Projection", proj);
-        m_basicShader.setInt("u_Texture", 0);
+        if (m_litShader.isValid()) {
+            m_lightManager.applyToShader(m_litShader, camPos);
+        }
+
+        shader.setMat4("u_View", view);
+        shader.setMat4("u_Projection", proj);
+        shader.setInt("u_Texture", 0);
 
         if (m_paletteTexture.isLoaded()) m_paletteTexture.bind(0);
 
         // Circuito y props en el menu
-        m_trackRenderer.render(m_trackGrid, m_basicShader);
-        m_propSpawner.render(m_basicShader);
+        m_trackRenderer.render(m_trackGrid, shader);
+        m_propSpawner.render(shader);
 
         // Kart inicial colocado en la pista
-        m_basicShader.setBool("u_UseTexture", true);
-        m_basicShader.setVec4("u_Color", glm::vec4(1.0f));
-        m_kartEntity.draw(m_basicShader);
+        shader.setBool("u_UseTexture", true);
+        shader.setVec4("u_Color", glm::vec4(1.0f));
+        m_kartEntity.draw(shader);
         return;
     }
 
@@ -922,32 +991,37 @@ void Application::render() {
     if (m_gameState == GameState::VEHICLE_SELECT) {
         // Fondo showroom azul marino suave
         m_window->clear(0.14f, 0.18f, 0.28f, 1.0f);
-        if (!m_basicShader.isValid()) return;
+        renderer::Shader& shader = m_litShader.isValid() ? m_litShader : m_basicShader;
+        if (!shader.isValid()) return;
 
-        m_basicShader.use();
+        shader.use();
 
         // Camara enfocada al vehiculo de frente
         glm::vec3 camPos(0.0f, 1.35f, 3.4f);
         glm::mat4 view = glm::lookAt(camPos, glm::vec3(0.0f, 0.40f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         glm::mat4 proj = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
 
-        m_basicShader.setMat4("u_View", view);
-        m_basicShader.setMat4("u_Projection", proj);
-        m_basicShader.setInt("u_Texture", 0);
+        if (m_litShader.isValid()) {
+            m_lightManager.applyToShader(m_litShader, camPos);
+        }
+
+        shader.setMat4("u_View", view);
+        shader.setMat4("u_Projection", proj);
+        shader.setInt("u_Texture", 0);
 
         if (m_paletteTexture.isLoaded()) m_paletteTexture.bind(0);
 
         // 1. Dibujar el Pedestal bajo el kart
-        m_basicShader.setBool("u_UseTexture", false);
+        shader.setBool("u_UseTexture", false);
         glm::mat4 pedMat = glm::rotate(glm::mat4(1.0f), glm::radians(m_showcaseAngle), glm::vec3(0.0f, 1.0f, 0.0f));
-        m_basicShader.setMat4("u_Model", pedMat);
-        m_basicShader.setVec4("u_Color", glm::vec4(0.20f, 0.22f, 0.28f, 1.0f)); // Plataforma metalica
+        shader.setMat4("u_Model", pedMat);
+        shader.setVec4("u_Color", glm::vec4(0.20f, 0.22f, 0.28f, 1.0f)); // Plataforma metalica
         m_pedestalMesh.draw();
 
         // 2. Dibujar el Kart y Piloto DE FRENTE con sus texturas
-        m_basicShader.setBool("u_UseTexture", true);
-        m_basicShader.setVec4("u_Color", glm::vec4(1.0f));
-        m_kartEntity.draw(m_basicShader);
+        shader.setBool("u_UseTexture", true);
+        shader.setVec4("u_Color", glm::vec4(1.0f));
+        m_kartEntity.draw(shader);
         return;
     }
 
@@ -955,32 +1029,40 @@ void Application::render() {
     // RENDERIZADO: RACING (Modo Carrera activo)
     // -------------------------------------------------------------
     m_window->clear(0.42f, 0.70f, 0.95f, 1.0f);
-    if (!m_basicShader.isValid()) return;
+    renderer::Shader& shader = m_litShader.isValid() ? m_litShader : m_basicShader;
+    if (!shader.isValid()) return;
 
-    m_basicShader.use();
+    shader.use();
 
     glm::mat4 view = (m_cameraMode == CameraMode::CHASE) ? m_chaseCamera.getViewMatrix() : m_camera.getViewMatrix();
     glm::mat4 proj = (m_cameraMode == CameraMode::CHASE) ? m_chaseCamera.getProjectionMatrix(aspect) : m_camera.getProjectionMatrix(aspect);
+    glm::vec3 camPos = (m_cameraMode == CameraMode::CHASE) ? m_chaseCamera.getPosition() : m_camera.getPosition();
 
-    m_basicShader.setMat4("u_View", view);
-    m_basicShader.setMat4("u_Projection", proj);
+    if (m_litShader.isValid()) {
+        m_lightManager.applyToShader(m_litShader, camPos);
+    }
 
-    m_basicShader.setInt("u_Texture", 0);
-    m_basicShader.setBool("u_UseTexture", m_paletteTexture.isLoaded());
+    shader.setMat4("u_View", view);
+    shader.setMat4("u_Projection", proj);
+
+    shader.setInt("u_Texture", 0);
+    shader.setBool("u_UseTexture", m_paletteTexture.isLoaded());
 
     if (m_paletteTexture.isLoaded()) {
         m_paletteTexture.bind(0);
     }
 
     // 1. Renderizar pista modular
-    m_trackRenderer.render(m_trackGrid, m_basicShader);
+    m_trackRenderer.render(m_trackGrid, shader);
 
     // 2. Renderizar props y obstaculos
-    m_propSpawner.render(m_basicShader);
+    shader.setBool("u_UseTexture", true);
+    m_propSpawner.render(shader);
 
     // 3. Renderizar entidad jerarquica del kart
-    m_basicShader.setVec4("u_Color", glm::vec4(1.0f));
-    m_kartEntity.draw(m_basicShader);
+    shader.setBool("u_UseTexture", true);
+    shader.setVec4("u_Color", glm::vec4(1.0f));
+    m_kartEntity.draw(shader);
 }
 
 void Application::run() {

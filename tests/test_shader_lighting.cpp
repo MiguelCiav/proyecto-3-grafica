@@ -8,7 +8,7 @@
 int main() {
     std::cout << "==========================================================" << std::endl;
     std::cout << "  TEST: Compilacion y Enlace de Shaders Multi-Fuente      " << std::endl;
-    std::cout << "  Fase 7 - Issue #26 (shaders/lit.vert y shaders/lit.frag)" << std::endl;
+    std::cout << "  Shaders de iluminacion (shaders/lit.vert y lit.frag)    " << std::endl;
     std::cout << "==========================================================" << std::endl;
 
     // 1. Inicializar contexto OpenGL oculto para validación de shaders en GPU
@@ -40,7 +40,7 @@ int main() {
 
     std::cout << "  [OK] Contexto OpenGL " << glGetString(GL_VERSION) << " inicializado." << std::endl;
 
-    // 2. Compilar shaders lit (especificación oficial Issue #26)
+    // 2. Compilar shaders de iluminacion (lit.vert y lit.frag)
     renderer::Shader litShader;
     bool loadedLit = litShader.loadFromFiles("shaders/lit.vert", "shaders/lit.frag");
     if (!loadedLit || !litShader.isValid()) {
@@ -73,7 +73,7 @@ int main() {
     glfwTerminate();
 
     std::cout << "\n==========================================================" << std::endl;
-    std::cout << "  [SUCCESS] Todos los criterios del Issue #26 cumplidos!   " << std::endl;
+    std::cout << "  [SUCCESS] Compilacion y uniforms de shaders lit verificados exitosamente! " << std::endl;
     std::cout << "==========================================================" << std::endl;
     return 0;
 }

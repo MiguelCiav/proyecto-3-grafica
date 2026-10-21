@@ -6,7 +6,7 @@
 int main() {
     std::cout << "==========================================================" << std::endl;
     std::cout << "  TEST: LightingController y Faros Dinamicos del Kart     " << std::endl;
-    std::cout << "  Fase 7 - Issue #27 (Criterios Oficiales de Aceptacion)  " << std::endl;
+    std::cout << "  Seguimiento de faros y conmutacion de modelos           " << std::endl;
     std::cout << "==========================================================" << std::endl;
 
     lighting::LightManager lightManager;
@@ -16,7 +16,7 @@ int main() {
     controller.init(&lightManager);
 
     // -------------------------------------------------------------
-    // Criterio 1: Faros del kart (Spotlight) siguen la trayectoria y giros
+    // Faros del kart (Spotlight): seguimiento de trayectoria y giros
     // -------------------------------------------------------------
     glm::vec3 kartPos(15.0f, 0.0f, 25.0f);
     glm::vec3 kartForward(0.0f, 0.0f, 1.0f); // Mirando al norte
@@ -39,7 +39,7 @@ int main() {
     std::cout << "  [CHECK 1.2] Faros del kart giran reactivamente con la orientacion del vehiculo." << std::endl;
 
     // -------------------------------------------------------------
-    // Criterio 2: Conmutación de modelos de sombreado (1: Flat, 2: Lambert, 3: Blinn-Phong)
+    // Conmutacion de modelos de sombreado (Flat, Lambert, Blinn-Phong)
     // -------------------------------------------------------------
     controller.setLightingModel(lighting::LightingModel::FLAT);
     assert(lightManager.getLightingModel() == lighting::LightingModel::FLAT);
@@ -52,7 +52,7 @@ int main() {
     std::cout << "  [CHECK 2] Conmutacion instantanea entre Flat (0), Lambert (1) y Blinn-Phong (2) verificada." << std::endl;
 
     // -------------------------------------------------------------
-    // Criterio 3: Alternancia de faros encendidos/apagados (Tecla L)
+    // Alternancia de faros encendidos y apagados (Tecla L)
     // -------------------------------------------------------------
     assert(controller.areHeadlightsOn() == true);
     assert(lightManager.getSpotLight().enabled == true);
@@ -67,7 +67,7 @@ int main() {
     std::cout << "  [CHECK 3] Alternancia de faros encendidos/apagados (Tecla L) verificada." << std::endl;
 
     std::cout << "\n==========================================================" << std::endl;
-    std::cout << "  [SUCCESS] Todos los criterios del Issue #27 cumplidos!   " << std::endl;
+    std::cout << "  [SUCCESS] Pruebas de LightingController superadas exitosamente! " << std::endl;
     std::cout << "==========================================================" << std::endl;
     return 0;
 }

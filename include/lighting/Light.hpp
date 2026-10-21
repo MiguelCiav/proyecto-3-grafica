@@ -6,8 +6,7 @@
 namespace lighting {
 
 /**
- * @brief Modelos de iluminación
- * Se permite alternar en tiempo real entre ellos mediante un controlador de escena.
+ * @brief Modelos de iluminacion soportados en el pipeline de renderizado.
  */
 enum class LightingModel : int {
     FLAT = 0,         // Sombreado plano facetado (normal constante por polígono)

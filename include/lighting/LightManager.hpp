@@ -12,10 +12,10 @@ namespace renderer {
 namespace lighting {
 
 /**
- * @brief Gestor central de iluminación para la escena (Fase 7 - Issue #25).
+ * @brief Gestor central de iluminacion para la escena.
  * Administra:
  * - 1 Luz Direccional (sol de la pista).
- * - Múltiples Luces Puntuales dinámicas (farolas del circuito con atenuación calculada).
+ * - Multiples Luces Puntuales dinamicas (farolas del circuito con atenuacion calculada).
  * - 1 Luz Focal / Spotlight (faros delanteros del kart).
  * - Propiedades de material y conmutador de modelo de sombreado (Flat, Lambert, Blinn-Phong).
  */
@@ -60,7 +60,7 @@ public:
     void updateKartHeadlights(const glm::vec3& kartPos, const glm::vec3& forwardDir);
 
     // -------------------------------------------------------------
-    // Conmutador del Modelo de Iluminación (Requisito Cátedra UCV)
+    // Conmutador del Modelo de Iluminacion
     // -------------------------------------------------------------
     void setLightingModel(LightingModel model);
     void cycleNextModel();

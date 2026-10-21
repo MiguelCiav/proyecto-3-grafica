@@ -134,7 +134,7 @@ add_custom_command(TARGET test_mesh_preprocessing POST_BUILD
 )
 
 # ==============================================================================
-# 7. Ejecutable de Pruebas Unitarias - Sistema de Iluminación (Fase 7 - Issue #25)
+# 7. Ejecutable de Pruebas Unitarias - Sistema de Iluminación
 # ==============================================================================
 add_executable(test_light_manager
     tests/test_light_manager.cpp
@@ -155,7 +155,7 @@ target_link_libraries(test_light_manager PRIVATE
 )
 
 # ==============================================================================
-# 8. Ejecutable de Pruebas Unitarias - Compilación de Shaders (Fase 7 - Issue #26)
+# 8. Ejecutable de Pruebas Unitarias - Compilación de Shaders de Iluminación
 # ==============================================================================
 add_executable(test_shader_lighting
     tests/test_shader_lighting.cpp
@@ -183,7 +183,7 @@ add_custom_command(TARGET test_shader_lighting POST_BUILD
 )
 
 # ==============================================================================
-# 9. Ejecutable de Pruebas Unitarias - Controlador de Iluminación (Fase 7 - Issue #27)
+# 9. Ejecutable de Pruebas Unitarias - Controlador de Iluminación
 # ==============================================================================
 add_executable(test_lighting_controller
     tests/test_lighting_controller.cpp
@@ -203,6 +203,41 @@ target_link_libraries(test_lighting_controller PRIVATE
     glfw
     glm::glm
     ${CMAKE_DL_LIBS}
+)
+
+# ==============================================================================
+# 10. Ejecutable de Pruebas Unitarias - Integración de Iluminación en Escena
+# ==============================================================================
+add_executable(test_scene_lighting_integration
+    tests/test_scene_lighting_integration.cpp
+    src/lighting/LightManager.cpp
+    src/lighting/LightingController.cpp
+    src/renderer/Shader.cpp
+    src/world/TrackGrid.cpp
+    src/world/LevelLoader.cpp
+    src/core/Input.cpp
+)
+
+target_include_directories(test_scene_lighting_integration PUBLIC
+    ${PROJECT_INCLUDE_DIRS}
+)
+
+target_link_libraries(test_scene_lighting_integration PRIVATE
+    OpenGL::GL
+    glad
+    glfw
+    glm::glm
+    ${CMAKE_DL_LIBS}
+)
+
+add_custom_command(TARGET test_scene_lighting_integration POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
+        $<TARGET_FILE_DIR:test_scene_lighting_integration>/shaders
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/assets
+        $<TARGET_FILE_DIR:test_scene_lighting_integration>/assets
+    COMMENT "Copiando shaders y assets al directorio de salida de test_scene_lighting_integration..."
 )
 
 

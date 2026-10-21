@@ -38,7 +38,7 @@ void LightingController::update(const glm::vec3& kartPosition, const glm::vec3& 
         forward = glm::normalize(forward);
     }
 
-    // Fórmula del Issue #27:
+    // Posicionamiento de faros frontales:
     // spotLight.position = kart.getPosition() + kart.getForward() * frontOffset + glm::vec3(0.0f, 0.4f, 0.0f)
     // spotLight.direction = kart.getForward()
     SpotLight& spot = m_lightManager->getSpotLight();

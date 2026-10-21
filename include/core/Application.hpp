@@ -107,6 +107,7 @@ private:
     void update(float deltaTime);
     void render();
     void setupColliders();
+    void setupTrackLighting();
     void loadCatalog();
     void selectDriver(int index);
     void selectVehicle(int index);
@@ -132,6 +133,7 @@ private:
 
     // Shaders y Texturas
     renderer::Shader m_basicShader;
+    renderer::Shader m_litShader;
     renderer::Texture m_paletteTexture;
 
     // Mundo y Circuito Modular
@@ -148,7 +150,7 @@ private:
     vehicle::KartEntity m_kartEntity;
     animation::WheelAnimator m_wheelAnimator;
 
-    // Sistema y Controlador de Iluminacion (Fase 7 - Issues #25, #26, #27, #28)
+    // Sistema y Controlador de Iluminacion
     lighting::LightManager m_lightManager;
     lighting::LightingController m_lightingController;
 

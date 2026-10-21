@@ -7,7 +7,7 @@ in vec2 v_TexCoords;
 out vec4 FragColor;
 
 // -------------------------------------------------------------
-// Estructuras de Iluminación Multi-Fuente (Fase 7 - Issue #26)
+// Estructuras de Iluminacion Multi-Fuente
 // -------------------------------------------------------------
 
 #define MAX_POINT_LIGHTS 8
@@ -134,7 +134,7 @@ vec3 calcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec
     float dist = length(light.position - fragPos);
     float attenuation = 1.0 / max(light.constant + light.linear * dist + light.quadratic * (dist * dist), 0.0001);
 
-    // Desvanecimiento suave en los bordes usando la fórmula oficial del Issue #26:
+    // Desvanecimiento suave en los bordes de la penumbra conica:
     // intensity = clamp((theta - outerCutOff) / (cutOff - outerCutOff), 0.0, 1.0)
     float theta = dot(lightDir, normalize(-light.direction));
     float epsilon = max(light.cutOff - light.outerCutOff, 0.0001);
@@ -168,12 +168,15 @@ void main() {
 
     // Conmutación de modelo de normales:
     if (u_LightingModel == 0) {
-        // Caso 0 - Flat Shading: Normal facetada calculada por triángulo
+        // Flat Shading: Normal facetada calculada por triangulo
         vec3 dX = dFdx(v_FragPos);
         vec3 dY = dFdy(v_FragPos);
         normal = normalize(cross(dX, dY));
+        if (dot(normal, v_Normal) < 0.0) {
+            normal = -normal;
+        }
     } else {
-        // Caso 1 (Lambert) y Caso 2 (Blinn-Phong): Normal suave interpolada
+        // Lambert y Blinn-Phong: Normal suave interpolada
         normal = normalize(v_Normal);
     }
 

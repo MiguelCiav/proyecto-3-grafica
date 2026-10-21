@@ -6,10 +6,10 @@
 namespace lighting {
 
 /**
- * @brief Controlador interactivo para la iluminación de la escena y faros del kart (Fase 7 - Issue #27).
+ * @brief Controlador interactivo para la iluminacion de la escena y faros del kart.
  * Responsabilidades:
- * 1. Sincroniza en cada fotograma el Spotlight móvil con el morro delantero del kart.
- * 2. Captura las teclas 1, 2 y 3 para conmutar instantáneamente entre Flat, Lambert y Blinn-Phong.
+ * 1. Sincroniza en cada fotograma el Spotlight movil con el morro delantero del kart.
+ * 2. Captura las teclas 1, 2 y 3 para conmutar instantaneamente entre Flat, Lambert y Blinn-Phong.
  * 3. Captura la tecla L para alternar el encendido/apagado de los faros del kart.
  */
 class LightingController {

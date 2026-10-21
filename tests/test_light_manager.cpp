@@ -6,14 +6,13 @@
 int main() {
     std::cout << "==========================================================" << std::endl;
     std::cout << "  TEST: LightManager y Estructuras de Iluminacion         " << std::endl;
-    std::cout << "  Fase 7 - Issue #25 (Criterios Oficiales de Aceptacion)  " << std::endl;
     std::cout << "==========================================================" << std::endl;
 
     lighting::LightManager lightManager;
     lightManager.init();
 
     // -------------------------------------------------------------
-    // Criterio 1: Parámetros fotométricos completos en todos los structs
+    // Validacion de parametros fotometricos en structs de iluminacion
     // -------------------------------------------------------------
     // Luz Direccional (Sol)
     const auto& dir = lightManager.getDirectionalLight();
@@ -36,7 +35,7 @@ int main() {
     std::cout << "  [CHECK 1.3] Material: Propiedades de brillo especular inicializadas." << std::endl;
 
     // -------------------------------------------------------------
-    // Criterio 2: Soporte para registrar MULTIPLES fuentes puntuales con atenuación calculada
+    // Registro de multiples fuentes puntuales y calculo de atenuacion
     // -------------------------------------------------------------
     assert(lightManager.getPointLightCount() >= 4); // Al menos 4 postes iniciales
     std::cout << "  [CHECK 2.1] LightManager contiene " << lightManager.getPointLightCount()
@@ -63,7 +62,7 @@ int main() {
     std::cout << "  [CHECK 2.2] Registro dinamico de multiples fuentes puntuales con atenuacion verificado." << std::endl;
 
     // -------------------------------------------------------------
-    // Criterio 3: Conmutación de modelos y cinemática de faros
+    // Conmutacion de modelos de iluminacion y cinematica de faros
     // -------------------------------------------------------------
     assert(lightManager.getLightingModel() == lighting::LightingModel::BLINN_PHONG);
     lightManager.cycleNextModel();
@@ -89,7 +88,7 @@ int main() {
     std::cout << "  [CHECK 3.3] Toggle global de fuentes puntuales verificado." << std::endl;
 
     std::cout << "\n==========================================================" << std::endl;
-    std::cout << "  [SUCCESS] Todos los criterios del Issue #25 cumplidos!   " << std::endl;
+    std::cout << "  [SUCCESS] Pruebas de LightManager superadas con exito!   " << std::endl;
     std::cout << "==========================================================" << std::endl;
     return 0;
 }
