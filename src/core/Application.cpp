@@ -467,20 +467,26 @@ void Application::processInput() {
     // -------------------------------------------------------------
     if (m_gameState == GameState::MAIN_MENU) {
         if (Input::isKeyJustPressed(GLFW_KEY_ESCAPE)) {
+            std::cout << "[MENU] Saliendo del juego..." << std::endl;
             close();
             return;
         }
-        if (Input::isKeyJustPressed(GLFW_KEY_1) || Input::isKeyJustPressed(GLFW_KEY_ENTER)) {
+        if (Input::isKeyJustPressed(GLFW_KEY_1) || Input::isKeyJustPressed(GLFW_KEY_KP_1) ||
+            Input::isKeyJustPressed(GLFW_KEY_ENTER) || Input::isKeyJustPressed(GLFW_KEY_KP_ENTER)) {
+            std::cout << "[MENU] Opcion [1 / ENTER]: Abriendo Seleccion de Corredor y Vehiculo..." << std::endl;
             m_selectionCategory = SelectionCategory::DRIVER;
             setGameState(GameState::VEHICLE_SELECT);
             return;
         }
-        if (Input::isKeyJustPressed(GLFW_KEY_2)) {
+        if (Input::isKeyJustPressed(GLFW_KEY_2) || Input::isKeyJustPressed(GLFW_KEY_KP_2)) {
+            std::cout << "[MENU] Opcion [2]: Abriendo Seleccion de Vehiculo..." << std::endl;
             m_selectionCategory = SelectionCategory::VEHICLE;
             setGameState(GameState::VEHICLE_SELECT);
             return;
         }
-        if (Input::isKeyJustPressed(GLFW_KEY_3) || Input::isKeyJustPressed(GLFW_KEY_SPACE)) {
+        if (Input::isKeyJustPressed(GLFW_KEY_3) || Input::isKeyJustPressed(GLFW_KEY_KP_3) ||
+            Input::isKeyJustPressed(GLFW_KEY_SPACE)) {
+            std::cout << "[MENU] Opcion [3 / ESPACIO]: Iniciando Carrera Inmediata..." << std::endl;
             setGameState(GameState::RACING);
             return;
         }
@@ -492,6 +498,7 @@ void Application::processInput() {
     // -------------------------------------------------------------
     if (m_gameState == GameState::VEHICLE_SELECT) {
         if (Input::isKeyJustPressed(GLFW_KEY_ESCAPE) || Input::isKeyJustPressed(GLFW_KEY_BACKSPACE)) {
+            std::cout << "[SHOWROOM] Regresando al Menu Principal..." << std::endl;
             setGameState(GameState::MAIN_MENU);
             return;
         }
@@ -506,12 +513,12 @@ void Application::processInput() {
             printSelectionHUD();
         }
 
-        // Acceso directo por tecla numerica
-        if (Input::isKeyJustPressed(GLFW_KEY_1)) {
+        // Acceso directo por tecla numerica (estandar y keypad)
+        if (Input::isKeyJustPressed(GLFW_KEY_1) || Input::isKeyJustPressed(GLFW_KEY_KP_1)) {
             m_selectionCategory = SelectionCategory::DRIVER;
             printSelectionHUD();
         }
-        if (Input::isKeyJustPressed(GLFW_KEY_2)) {
+        if (Input::isKeyJustPressed(GLFW_KEY_2) || Input::isKeyJustPressed(GLFW_KEY_KP_2)) {
             m_selectionCategory = SelectionCategory::VEHICLE;
             printSelectionHUD();
         }
@@ -533,7 +540,9 @@ void Application::processInput() {
         }
 
         // Confirmar seleccion y comenzar la carrera
-        if (Input::isKeyJustPressed(GLFW_KEY_ENTER) || Input::isKeyJustPressed(GLFW_KEY_SPACE)) {
+        if (Input::isKeyJustPressed(GLFW_KEY_ENTER) || Input::isKeyJustPressed(GLFW_KEY_KP_ENTER) ||
+            Input::isKeyJustPressed(GLFW_KEY_SPACE)) {
+            std::cout << "[SHOWROOM] Seleccion confirmada! Iniciando carrera..." << std::endl;
             setGameState(GameState::RACING);
         }
         return;
@@ -866,14 +875,24 @@ void Application::render() {
 void Application::run() {
     while (m_running && !m_window->shouldClose()) {
         m_time.update();
+
+        // 1. Limpiar flags de teclas del fotograma anterior
         Input::update();
 
+        // 2. Sondear eventos frescos del sistema operativo (GLFW dispara keyCallback aqui)
+        m_window->pollEvents();
+
+        // 3. Procesar las entradas capturadas en este fotograma
         processInput();
+
+        // 4. Actualizar logica del juego
         update(m_time.getDeltaTime());
+
+        // 5. Renderizar escena
         render();
 
+        // 6. Presentar fotograma en pantalla
         m_window->swapBuffers();
-        m_window->pollEvents();
     }
 }
 

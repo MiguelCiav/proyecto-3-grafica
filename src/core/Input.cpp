@@ -91,6 +91,9 @@ void Input::keyCallback(GLFWwindow* /*window*/, int key, int /*scancode*/, int a
         if (action == GLFW_PRESS) {
             s_keys[key] = true;
             s_keysJustPressed[key] = true;
+        } else if (action == GLFW_REPEAT) {
+            s_keys[key] = true;
+            s_keysJustPressed[key] = true;
         } else if (action == GLFW_RELEASE) {
             s_keys[key] = false;
         }
