@@ -182,4 +182,28 @@ add_custom_command(TARGET test_shader_lighting POST_BUILD
     COMMENT "Copiando shaders al directorio de salida de test_shader_lighting..."
 )
 
+# ==============================================================================
+# 9. Ejecutable de Pruebas Unitarias - Controlador de Iluminación (Fase 7 - Issue #27)
+# ==============================================================================
+add_executable(test_lighting_controller
+    tests/test_lighting_controller.cpp
+    src/lighting/LightManager.cpp
+    src/lighting/LightingController.cpp
+    src/core/Input.cpp
+    src/renderer/Shader.cpp
+)
+
+target_include_directories(test_lighting_controller PUBLIC
+    ${PROJECT_INCLUDE_DIRS}
+)
+
+target_link_libraries(test_lighting_controller PRIVATE
+    OpenGL::GL
+    glad
+    glfw
+    glm::glm
+    ${CMAKE_DL_LIBS}
+)
+
+
 

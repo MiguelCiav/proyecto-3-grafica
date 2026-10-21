@@ -515,6 +515,10 @@ bool Application::init() {
     createPedestalMesh();
     loadCatalog();
 
+    // 4. Inicializar sistema y controlador de iluminacion (Fase 7 - Issues #25, #27)
+    m_lightManager.init();
+    m_lightingController.init(&m_lightManager);
+
     // 4. Cargar la primera pista por defecto (Ovalo Clasico)
     selectTrack(0);
 
@@ -693,6 +697,10 @@ void Application::processInput() {
                       << m_tracks[m_selectedTrackIndex].name << "." << std::endl;
         }
 
+        // Controlador de Iluminacion y Faros (Fase 7 - Issue #27)
+        // [1]: Flat Shading | [2]: Lambert | [3]: Blinn-Phong | [L]: Toggle Faros Kart
+        m_lightingController.handleInput();
+
         // En modo FPS: alternar captura de mouse con clic o TAB
         if (m_cameraMode == CameraMode::FPS) {
             if (Input::isKeyJustPressed(GLFW_KEY_TAB) || (!m_cursorLocked && Input::isMouseButtonJustPressed(GLFW_MOUSE_BUTTON_LEFT))) {
@@ -836,13 +844,16 @@ void Application::update(float deltaTime) {
     m_wheelAnimator.update(deltaTime, m_kartPhysics.getSpeed(), steer);
     m_kartEntity.update(m_kartPhysics.getPosition(), m_kartPhysics.getYaw(), m_wheelAnimator);
 
+    // 6.b Sincronizar faros moviles del kart (SpotLight) con la posicion y giro del morro (Fase 7 - Issue #27)
+    m_lightingController.update(m_kartPhysics.getPosition(), m_kartPhysics.getForwardVector(), deltaTime);
+
     // 7. Actualizar camaras
     m_chaseCamera.update(deltaTime, m_kartPhysics.getPosition(), m_kartPhysics.getForwardVector());
     if (m_cameraMode == CameraMode::FPS) {
         m_camera.resolveCollision(m_collisionSystem);
     }
 
-    // 8. Titulo con telemetria en tiempo real
+    // 8. Titulo con telemetria en tiempo real y estado de iluminacion (Issue #27)
     m_titleUpdateTimer += deltaTime;
     if (m_titleUpdateTimer >= 0.20f) {
         m_titleUpdateTimer = 0.0f;
@@ -860,7 +871,9 @@ void Application::update(float deltaTime) {
                << m_camera.getPosition().y << ", "
                << m_camera.getPosition().z << ")";
         }
-        ss << " | [M: Menu] [C: Camara] [R: Reset] [ESC: Salir]";
+        ss << " | [" << m_lightingController.getLightingModelName()
+           << " | Faros: " << (m_lightingController.areHeadlightsOn() ? "ON" : "OFF") << "]";
+        ss << " | [1/2/3: Luz] [L: Faros] [M: Menu] [C: Camara] [R: Reset] [ESC: Salir]";
         m_window->setTitle(ss.str());
     }
 }

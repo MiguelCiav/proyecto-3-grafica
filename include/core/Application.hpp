@@ -16,6 +16,8 @@
 #include "world/PropSpawner.hpp"
 #include "world/ZoneTrigger.hpp"
 #include "geometry/KartPreprocessor.hpp"
+#include "lighting/LightManager.hpp"
+#include "lighting/LightingController.hpp"
 #include <memory>
 #include <string>
 #include <vector>
@@ -145,6 +147,10 @@ private:
     // Entidad jerarquica del Kart articulado
     vehicle::KartEntity m_kartEntity;
     animation::WheelAnimator m_wheelAnimator;
+
+    // Sistema y Controlador de Iluminacion (Fase 7 - Issues #25, #26, #27, #28)
+    lighting::LightManager m_lightManager;
+    lighting::LightingController m_lightingController;
 
     // Catalogo de Corredores, Vehiculos y Pistas
     SelectionCategory m_selectionCategory{SelectionCategory::DRIVER};
