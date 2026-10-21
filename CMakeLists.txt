@@ -154,3 +154,32 @@ target_link_libraries(test_lighting_system PRIVATE
     ${CMAKE_DL_LIBS}
 )
 
+# ==============================================================================
+# 8. Ejecutable de Pruebas Unitarias - Compilación de Shaders (Fase 7 - Issue #26)
+# ==============================================================================
+add_executable(test_shader_lighting
+    tests/test_shader_lighting.cpp
+    src/lighting/LightingSystem.cpp
+    src/renderer/Shader.cpp
+)
+
+target_include_directories(test_shader_lighting PUBLIC
+    ${PROJECT_INCLUDE_DIRS}
+)
+
+target_link_libraries(test_shader_lighting PRIVATE
+    OpenGL::GL
+    glad
+    glfw
+    glm::glm
+    ${CMAKE_DL_LIBS}
+)
+
+add_custom_command(TARGET test_shader_lighting POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
+        $<TARGET_FILE_DIR:test_shader_lighting>/shaders
+    COMMENT "Copiando shaders al directorio de salida de test_shader_lighting..."
+)
+
+
