@@ -32,7 +32,7 @@ void Application::createPedestalMesh() {
     pedestal.name = "Showroom_Pedestal";
 
     const int segments = 36;
-    const float radius = 1.35f;
+    const float radius = 1.75f;
     const float height = 0.12f;
     const float topY = 0.0f;
     const float botY = -height;
@@ -77,90 +77,253 @@ void Application::createPedestalMesh() {
     m_pedestalMesh.setup(pedestal);
 }
 
-void Application::loadKartProfiles() {
-    m_kartProfiles = {
+void Application::loadCatalog() {
+    // -------------------------------------------------------------
+    // 1. Catalogo de Corredores / Pilotos
+    // -------------------------------------------------------------
+    m_drivers = {
         {
-            "kart-oobi",
-            "Oobi (Verde Clasico)",
-            "Equilibrado | Ideal para todo tipo de pistas",
+            "driver-oobi",
+            "Oobi (Verde)",
+            "Personaje clasico, amistoso y equilibrado",
             "assets/models/karts/kart-oobi.obj",
-            22.0f, 18.0f, 100.0f, 0.45f,
-            glm::vec4(0.2f, 0.85f, 0.3f, 1.0f)
+            {}, glm::vec4(0.2f, 0.85f, 0.3f, 1.0f), false
         },
         {
-            "kart-oodi",
-            "Oodi (Azul Turbo)",
-            "Alta Velocidad Punta | Bólido aerodinámico",
+            "driver-oodi",
+            "Oodi (Azul)",
+            "Piloto veloz con instinto aerodinamico",
             "assets/models/karts/kart-oodi.obj",
-            25.5f, 16.0f, 85.0f, 0.38f,
-            glm::vec4(0.2f, 0.5f, 0.95f, 1.0f)
+            {}, glm::vec4(0.2f, 0.5f, 0.95f, 1.0f), false
         },
         {
-            "kart-ooli",
-            "Ooli (Naranja Rally)",
-            "Tracción Total | Máximo agarre en césped y curvas",
+            "driver-ooli",
+            "Ooli (Naranja)",
+            "Especialista en terrenos rusticos y rally",
             "assets/models/karts/kart-ooli.obj",
-            21.0f, 20.0f, 105.0f, 0.65f,
-            glm::vec4(0.95f, 0.55f, 0.15f, 1.0f)
+            {}, glm::vec4(0.95f, 0.55f, 0.15f, 1.0f), false
         },
         {
-            "kart-oopi",
-            "Oopi (Rojo Furia)",
-            "Aceleración Explosiva | Salida rápida y turbo potente",
+            "driver-oopi",
+            "Oopi (Rojo)",
+            "Espiritu competitivo y aceleracion feroz",
             "assets/models/karts/kart-oopi.obj",
-            23.5f, 22.0f, 95.0f, 0.40f,
-            glm::vec4(0.9f, 0.2f, 0.2f, 1.0f)
+            {}, glm::vec4(0.9f, 0.2f, 0.2f, 1.0f), false
         },
         {
-            "kart-oozi",
-            "Oozi (Negro Nocturno)",
-            "Derrape Ultra Ágil | Máxima maniobrabilidad técnica",
+            "driver-oozi",
+            "Oozi (Negro)",
+            "Piloto sigiloso y maestro de curvas cerradas",
             "assets/models/karts/kart-oozi.obj",
-            22.5f, 19.0f, 120.0f, 0.44f,
-            glm::vec4(0.25f, 0.25f, 0.3f, 1.0f)
+            {}, glm::vec4(0.25f, 0.25f, 0.3f, 1.0f), false
         }
     };
 
-    // Preprocesar y cargar las 5 geometrias con pivotes en (0,0,0) a la memoria
     std::cout << "\n========================================================" << std::endl;
-    std::cout << "  Cargando Catálogo de Vehículos para el Showroom...    " << std::endl;
+    std::cout << "  Cargando Catalogo de Pilotos y Corredores...          " << std::endl;
     std::cout << "========================================================" << std::endl;
 
-    for (size_t i = 0; i < m_kartProfiles.size(); ++i) {
-        auto& profile = m_kartProfiles[i];
-        if (geometry::KartPreprocessor::processKart(profile.filePath, profile.assembly)) {
-            profile.loaded = true;
-            std::cout << "  [" << (i + 1) << "/5] " << profile.name << " -> [CARGADO]" << std::endl;
+    for (size_t i = 0; i < m_drivers.size(); ++i) {
+        auto& driver = m_drivers[i];
+        geometry::KartAssembly tempAssembly;
+        if (geometry::KartPreprocessor::processKart(driver.sourcePath, tempAssembly)) {
+            driver.driverMesh = tempAssembly.driver;
+            driver.loaded = !driver.driverMesh.vertices.empty();
+            std::cout << "  [" << (i + 1) << "/5] Piloto " << driver.name << " -> [CARGADO]" << std::endl;
         } else {
-            std::cerr << "  [ERROR] Fallo al cargar: " << profile.filePath << std::endl;
+            std::cerr << "  [ERROR] Fallo al cargar piloto: " << driver.sourcePath << std::endl;
+        }
+    }
+
+    // -------------------------------------------------------------
+    // 2. Catalogo de Vehiculos / Carrocerias
+    // -------------------------------------------------------------
+    m_vehicles = {
+        // --- Karts Oficiales Kenney ---
+        {
+            "kart-oobi",
+            "Kart Clasico",
+            "Kart",
+            "Chasis ligero estandar, agil y facil de maniobrar",
+            "assets/models/karts/kart-oobi.obj",
+            glm::vec3(0.0f, 0.0f, 0.0f),
+            22.0f, 18.0f, 100.0f, 0.45f, {}, false
+        },
+        {
+            "kart-oodi",
+            "Kart Turbo",
+            "Kart",
+            "Aleron aerodinamico de alta velocidad punta",
+            "assets/models/karts/kart-oodi.obj",
+            glm::vec3(0.0f, 0.0f, 0.0f),
+            25.5f, 16.0f, 85.0f, 0.38f, {}, false
+        },
+        {
+            "kart-ooli",
+            "Kart Rally",
+            "Kart",
+            "Traccion total y suspension reforzada para curvas",
+            "assets/models/karts/kart-ooli.obj",
+            glm::vec3(0.0f, 0.0f, 0.0f),
+            21.0f, 20.0f, 105.0f, 0.65f, {}, false
+        },
+        {
+            "kart-oopi",
+            "Kart Furia",
+            "Kart",
+            "Aceleracion explosiva y turbo de salida rapida",
+            "assets/models/karts/kart-oopi.obj",
+            glm::vec3(0.0f, 0.0f, 0.0f),
+            23.5f, 22.0f, 95.0f, 0.40f, {}, false
+        },
+        {
+            "kart-oozi",
+            "Kart Nocturno",
+            "Kart",
+            "Maximo angulo de giro y derrape ultratecnico",
+            "assets/models/karts/kart-oozi.obj",
+            glm::vec3(0.0f, 0.0f, 0.0f),
+            22.5f, 19.0f, 120.0f, 0.44f, {}, false
+        },
+        // --- Vehiculos Adicionales Kenney Car-Kit ---
+        {
+            "race",
+            "Formula Race F1",
+            "Carreras",
+            "Monoplaza de competicion ultraligero y aerodinamico",
+            "assets/models/vehicles/race.obj",
+            glm::vec3(0.0f, -0.04f, -0.12f),
+            27.0f, 21.0f, 110.0f, 0.35f, {}, false
+        },
+        {
+            "race-future",
+            "Formula Future",
+            "Carreras",
+            "Prototipo futurista de vanguardia y maxima velocidad",
+            "assets/models/vehicles/race-future.obj",
+            glm::vec3(0.0f, -0.04f, -0.18f),
+            28.5f, 23.0f, 105.0f, 0.32f, {}, false
+        },
+        {
+            "police",
+            "Patrulla Policia",
+            "Especial",
+            "Vehiculo de persecucion con gran estabilidad y sirena",
+            "assets/models/vehicles/police.obj",
+            glm::vec3(0.0f, -0.15f, 0.02f),
+            23.0f, 19.0f, 90.0f, 0.45f, {}, false
+        },
+        {
+            "taxi",
+            "Taxi Deportivo",
+            "Ciudad",
+            "Iconico taxi urbano preparado para carreras callejeras",
+            "assets/models/vehicles/taxi.obj",
+            glm::vec3(0.0f, -0.15f, 0.02f),
+            23.5f, 17.5f, 95.0f, 0.42f, {}, false
+        },
+        {
+            "sedan-sports",
+            "Sedan Sports",
+            "Ciudad",
+            "Sedan con aleron deportivo y agarre equilibrado",
+            "assets/models/vehicles/sedan-sports.obj",
+            glm::vec3(0.0f, -0.15f, 0.02f),
+            24.5f, 18.5f, 92.0f, 0.40f, {}, false
+        },
+        {
+            "suv",
+            "Camioneta SUV 4x4",
+            "Especial",
+            "Traccion integral 4x4 con rueda de repuesto",
+            "assets/models/vehicles/suv.obj",
+            glm::vec3(0.0f, -0.15f, 0.02f),
+            21.5f, 19.5f, 88.0f, 0.70f, {}, false
+        }
+    };
+
+    std::cout << "\n========================================================" << std::endl;
+    std::cout << "  Cargando Catalogo de Vehiculos para el Showroom...    " << std::endl;
+    std::cout << "========================================================" << std::endl;
+
+    for (size_t i = 0; i < m_vehicles.size(); ++i) {
+        auto& v = m_vehicles[i];
+        if (geometry::KartPreprocessor::processKart(v.modelPath, v.assembly)) {
+            v.loaded = true;
+            std::cout << "  [" << (i + 1) << "/" << m_vehicles.size() << "] "
+                      << v.name << " (" << v.category << ") -> [CARGADO]" << std::endl;
+        } else {
+            std::cerr << "  [ERROR] Fallo al cargar vehiculo: " << v.modelPath << std::endl;
         }
     }
     std::cout << "========================================================\n" << std::endl;
 }
 
-void Application::selectKart(int index) {
-    if (m_kartProfiles.empty()) return;
+void Application::applySelection() {
+    if (m_vehicles.empty() || m_drivers.empty()) return;
 
-    if (index < 0) index = static_cast<int>(m_kartProfiles.size()) - 1;
-    if (index >= static_cast<int>(m_kartProfiles.size())) index = 0;
+    auto& vehicle = m_vehicles[m_selectedVehicleIndex];
+    auto& driver = m_drivers[m_selectedDriverIndex];
 
-    m_selectedKartIndex = index;
-    const auto& profile = m_kartProfiles[m_selectedKartIndex];
+    // Combinar la carroceria y ruedas del vehiculo con el piloto seleccionado
+    geometry::KartAssembly combinedAssembly = vehicle.assembly;
+    combinedAssembly.driver = driver.driverMesh;
+    combinedAssembly.driver.pivotOffset = vehicle.driverOffset;
 
-    if (profile.loaded) {
-        m_kartEntity.setup(profile.assembly);
+    // Configurar el grafo de escena articulado
+    m_kartEntity.setup(combinedAssembly);
 
-        // Aplicar personalidad física del vehículo
-        m_kartPhysics.m_maxSpeed = profile.maxSpeed;
-        m_kartPhysics.m_acceleration = profile.acceleration;
-        m_kartPhysics.m_turnSpeed = profile.turnSpeed;
+    // Actualizar fisicas segun el vehiculo elegido
+    m_kartPhysics.m_maxSpeed = vehicle.maxSpeed;
+    m_kartPhysics.m_acceleration = vehicle.acceleration;
+    m_kartPhysics.m_turnSpeed = vehicle.turnSpeed;
+    m_kartPhysics.m_drag = 7.0f;
+}
 
-        std::cout << "\n>>> [SHOWROOM] Vehículo seleccionado: " << profile.name << " <<<" << std::endl;
-        std::cout << "    Características: " << profile.subtitle << std::endl;
-        std::cout << "    Velocidad Punta: " << (profile.maxSpeed * 3.6f) << " km/h"
-                  << " | Aceleración: " << profile.acceleration
-                  << " | Maniobrabilidad: " << profile.turnSpeed << "\n" << std::endl;
-    }
+void Application::selectDriver(int index) {
+    if (m_drivers.empty()) return;
+    int count = static_cast<int>(m_drivers.size());
+    m_selectedDriverIndex = (index % count + count) % count;
+
+    applySelection();
+    printSelectionHUD();
+}
+
+void Application::selectVehicle(int index) {
+    if (m_vehicles.empty()) return;
+    int count = static_cast<int>(m_vehicles.size());
+    m_selectedVehicleIndex = (index % count + count) % count;
+
+    applySelection();
+    printSelectionHUD();
+}
+
+void Application::printSelectionHUD() {
+    const auto& driver = m_drivers[m_selectedDriverIndex];
+    const auto& vehicle = m_vehicles[m_selectedVehicleIndex];
+
+    std::cout << "\n========================================================" << std::endl;
+    std::cout << "  SHOWROOM 3D - SELECCION DE CORREDOR Y VEHICULO        " << std::endl;
+    std::cout << "  [VISTA FRONTAL FIJA ACTIVADA (SIN GIRO AUTOMATICO)]   " << std::endl;
+    std::cout << "--------------------------------------------------------" << std::endl;
+    std::cout << (m_selectionCategory == SelectionCategory::DRIVER ? ">> " : "   ")
+              << "[1] CORREDOR : " << driver.name << " (" << (m_selectedDriverIndex + 1)
+              << "/" << m_drivers.size() << ") - " << driver.description << std::endl;
+    std::cout << (m_selectionCategory == SelectionCategory::VEHICLE ? ">> " : "   ")
+              << "[2] VEHICULO : " << vehicle.name << " (" << (m_selectedVehicleIndex + 1)
+              << "/" << m_vehicles.size() << ") [" << vehicle.category << "]" << std::endl;
+    std::cout << "      Detalle: " << vehicle.description << std::endl;
+    std::cout << "      Vel. Max: " << (vehicle.maxSpeed * 3.6f) << " km/h | Acel: " << vehicle.acceleration
+              << " m/s2 | Giro: " << vehicle.turnSpeed << " deg/s | Cesped: "
+              << static_cast<int>(vehicle.offRoadFriction * 100) << "% traccion" << std::endl;
+    std::cout << "--------------------------------------------------------" << std::endl;
+    std::cout << "  [TAB / W / S o Flechas Arriba/Abajo]: Alternar Categoria" << std::endl;
+    std::cout << "  [A / D o Flechas Izq/Der]           : Cambiar Opcion  " << std::endl;
+    std::cout << "  [1]                                 : Elegir Corredor " << std::endl;
+    std::cout << "  [2]                                 : Elegir Vehiculo " << std::endl;
+    std::cout << "  [ENTER / ESPACIO]                   : Iniciar Carrera " << std::endl;
+    std::cout << "  [ESC]                               : Volver al Menu  " << std::endl;
+    std::cout << "========================================================\n" << std::endl;
 }
 
 void Application::setGameState(GameState state) {
@@ -174,11 +337,13 @@ void Application::setGameState(GameState state) {
         m_kartPhysics.setYaw(m_kartInitialYaw);
         m_wheelAnimator.reset();
         m_chaseCamera.reset(m_kartInitialPos, m_kartPhysics.getForwardVector());
-        std::cout << "\n>>> [CARRERA INICIADA] Conduce con W/S/A/D | [M: Cambiar Kart] [ESC: Menú] <<<\n" << std::endl;
+        std::cout << "\n>>> [CARRERA INICIADA] Conduce con W/S/A/D | [M: Cambiar Auto/Piloto] [ESC: Menu] <<<\n" << std::endl;
     } else if (m_gameState == GameState::VEHICLE_SELECT) {
         m_cursorLocked = false;
         Input::setCursorVisible(true);
-        selectKart(m_selectedKartIndex);
+        m_showcaseAngle = 0.0f; // Vista frontal fija obligatoria
+        applySelection();
+        printSelectionHUD();
     } else if (m_gameState == GameState::MAIN_MENU) {
         m_cursorLocked = false;
         Input::setCursorVisible(true);
@@ -259,9 +424,9 @@ bool Application::init() {
     // 3. Configurar el motor de colisiones
     setupColliders();
 
-    // 4. Crear pedestal para el showroom 3D y cargar catálogo de karts
+    // 4. Crear pedestal para el showroom 3D y cargar catalogo completo
     createPedestalMesh();
-    loadKartProfiles();
+    loadCatalog();
 
     // 5. Posicionar kart en casilla START_FINISH
     m_kartInitialPos = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -275,8 +440,9 @@ bool Application::init() {
         }
     }
 
-    // Seleccionar el primer kart por defecto
-    selectKart(0);
+    // Seleccionar el primer corredor y vehiculo por defecto
+    selectDriver(0);
+    selectVehicle(0);
 
     // Iniciar en el Menu Principal con opciones
     setGameState(GameState::MAIN_MENU);
@@ -284,8 +450,9 @@ bool Application::init() {
     std::cout << "\n========================================================" << std::endl;
     std::cout << "  PROTOTIPO MARIO KART - CGI PROYECTO #3 (UCV)          " << std::endl;
     std::cout << "  [MENU DEL JUEGO Y SHOWROOM ACTIVOS]:                  " << std::endl;
-    std::cout << "    [1] o ENTER : Seleccionar Vehículo y Piloto         " << std::endl;
-    std::cout << "    [2] o ESPACIO: Iniciar Carrera Inmediata             " << std::endl;
+    std::cout << "    [1] o ENTER : Seleccionar Corredor y Vehiculo       " << std::endl;
+    std::cout << "    [2]         : Seleccion Directa de Vehiculo         " << std::endl;
+    std::cout << "    [3] o ESPACIO: Iniciar Carrera Inmediata            " << std::endl;
     std::cout << "    [ESC]        : Salir                                " << std::endl;
     std::cout << "========================================================\n" << std::endl;
 
@@ -304,10 +471,16 @@ void Application::processInput() {
             return;
         }
         if (Input::isKeyJustPressed(GLFW_KEY_1) || Input::isKeyJustPressed(GLFW_KEY_ENTER)) {
+            m_selectionCategory = SelectionCategory::DRIVER;
             setGameState(GameState::VEHICLE_SELECT);
             return;
         }
-        if (Input::isKeyJustPressed(GLFW_KEY_2) || Input::isKeyJustPressed(GLFW_KEY_SPACE)) {
+        if (Input::isKeyJustPressed(GLFW_KEY_2)) {
+            m_selectionCategory = SelectionCategory::VEHICLE;
+            setGameState(GameState::VEHICLE_SELECT);
+            return;
+        }
+        if (Input::isKeyJustPressed(GLFW_KEY_3) || Input::isKeyJustPressed(GLFW_KEY_SPACE)) {
             setGameState(GameState::RACING);
             return;
         }
@@ -322,13 +495,43 @@ void Application::processInput() {
             setGameState(GameState::MAIN_MENU);
             return;
         }
-        // Navegacion entre karts: A / D o Flechas Izquierda / Derecha
+
+        // Alternar categoria (Corredor <-> Vehiculo) con TAB, W, S, Arriba, Abajo
+        if (Input::isKeyJustPressed(GLFW_KEY_TAB) ||
+            Input::isKeyJustPressed(GLFW_KEY_W) || Input::isKeyJustPressed(GLFW_KEY_S) ||
+            Input::isKeyJustPressed(GLFW_KEY_UP) || Input::isKeyJustPressed(GLFW_KEY_DOWN)) {
+            m_selectionCategory = (m_selectionCategory == SelectionCategory::DRIVER)
+                                  ? SelectionCategory::VEHICLE
+                                  : SelectionCategory::DRIVER;
+            printSelectionHUD();
+        }
+
+        // Acceso directo por tecla numerica
+        if (Input::isKeyJustPressed(GLFW_KEY_1)) {
+            m_selectionCategory = SelectionCategory::DRIVER;
+            printSelectionHUD();
+        }
+        if (Input::isKeyJustPressed(GLFW_KEY_2)) {
+            m_selectionCategory = SelectionCategory::VEHICLE;
+            printSelectionHUD();
+        }
+
+        // Navegacion entre opciones de la categoria activa (A/D o Flechas Izq/Der)
         if (Input::isKeyJustPressed(GLFW_KEY_A) || Input::isKeyJustPressed(GLFW_KEY_LEFT)) {
-            selectKart(m_selectedKartIndex - 1);
+            if (m_selectionCategory == SelectionCategory::DRIVER) {
+                selectDriver(m_selectedDriverIndex - 1);
+            } else {
+                selectVehicle(m_selectedVehicleIndex - 1);
+            }
         }
         if (Input::isKeyJustPressed(GLFW_KEY_D) || Input::isKeyJustPressed(GLFW_KEY_RIGHT)) {
-            selectKart(m_selectedKartIndex + 1);
+            if (m_selectionCategory == SelectionCategory::DRIVER) {
+                selectDriver(m_selectedDriverIndex + 1);
+            } else {
+                selectVehicle(m_selectedVehicleIndex + 1);
+            }
         }
+
         // Confirmar seleccion y comenzar la carrera
         if (Input::isKeyJustPressed(GLFW_KEY_ENTER) || Input::isKeyJustPressed(GLFW_KEY_SPACE)) {
             setGameState(GameState::RACING);
@@ -340,7 +543,7 @@ void Application::processInput() {
     // Control en RACING (Carrera activa)
     // -------------------------------------------------------------
     if (m_gameState == GameState::RACING) {
-        // Tecla M: Volver al Showroom a cambiar de auto
+        // Tecla M: Volver al Showroom a cambiar de auto o piloto
         if (Input::isKeyJustPressed(GLFW_KEY_M)) {
             setGameState(GameState::VEHICLE_SELECT);
             return;
@@ -430,31 +633,36 @@ void Application::update(float deltaTime) {
         if (m_titleUpdateTimer >= 0.25f) {
             m_titleUpdateTimer = 0.0f;
             std::stringstream ss;
-            ss << m_config.title << " | [MENU PRINCIPAL] [1 o ENTER: Seleccionar Vehiculo] [2 o ESPACIO: Correr] [ESC: Salir]";
+            ss << m_config.title << " | [MENU PRINCIPAL] [1 o ENTER: Seleccionar Corredor y Vehiculo] [2: Solo Vehiculo] [3: Correr] [ESC: Salir]";
             m_window->setTitle(ss.str());
         }
         return;
     }
 
     // -------------------------------------------------------------
-    // Actualizacion en VEHICLE_SELECT: Rotacion en Showroom
+    // Actualizacion en VEHICLE_SELECT: Showroom Vista Frontal Fija
     // -------------------------------------------------------------
     if (m_gameState == GameState::VEHICLE_SELECT) {
-        m_showcaseAngle += deltaTime * 35.0f;
-        if (m_showcaseAngle > 360.0f) m_showcaseAngle -= 360.0f;
+        // En el showroom el kart se mantiene FIJO DE FRENTE (sin vueltas)
+        m_showcaseAngle = 0.0f;
 
-        // Rotar el kart en el pedestal del showroom
+        // Kart en el pedestal del showroom mirando de frente
         m_wheelAnimator.update(deltaTime, 0.0f, 0.0f);
         m_kartEntity.update(glm::vec3(0.0f, 0.05f, 0.0f), m_showcaseAngle, m_wheelAnimator);
 
         m_titleUpdateTimer += deltaTime;
         if (m_titleUpdateTimer >= 0.20f) {
             m_titleUpdateTimer = 0.0f;
-            const auto& p = m_kartProfiles[m_selectedKartIndex];
+            const auto& d = m_drivers[m_selectedDriverIndex];
+            const auto& v = m_vehicles[m_selectedVehicleIndex];
             std::stringstream ss;
-            ss << m_config.title << " | SHOWROOM [" << (m_selectedKartIndex + 1) << "/5]: < " << p.name << " > "
-               << "| Vel: " << static_cast<int>(p.maxSpeed * 3.6f) << " km/h "
-               << "| [A/D: Cambiar] [ENTER: Confirmar y Correr] [ESC: Menu]";
+            ss << m_config.title << " | SHOWROOM ["
+               << (m_selectionCategory == SelectionCategory::DRIVER ? ">> CORREDOR: " : "Corredor: ")
+               << d.name
+               << " | "
+               << (m_selectionCategory == SelectionCategory::VEHICLE ? ">> VEHICULO: " : "Vehiculo: ")
+               << v.name
+               << "] | [TAB/W/S: Modo] [A/D: Cambiar] [ENTER: Iniciar Carrera] [ESC: Menu]";
             m_window->setTitle(ss.str());
         }
         return;
@@ -489,7 +697,7 @@ void Application::update(float deltaTime) {
     glm::vec3 kartPos = m_kartPhysics.getPosition();
     const auto* currentTile = m_trackGrid.getTileAtWorldPos(kartPos.x, kartPos.z);
     if (currentTile == nullptr || currentTile->type == world::TileType::EMPTY) {
-        m_kartPhysics.setSurfaceFriction(m_kartProfiles[m_selectedKartIndex].offRoadFriction);
+        m_kartPhysics.setSurfaceFriction(m_vehicles[m_selectedVehicleIndex].offRoadFriction);
     } else {
         m_kartPhysics.setSurfaceFriction(1.0f);
     }
@@ -512,11 +720,12 @@ void Application::update(float deltaTime) {
             m_lapsCompleted++;
             m_finishLineCooldown = 5.0f;
             std::cout << ">>> [META!] Vuelta " << m_lapsCompleted << " completada con "
-                      << m_kartProfiles[m_selectedKartIndex].name << "! <<<" << std::endl;
+                      << m_vehicles[m_selectedVehicleIndex].name << " ("
+                      << m_drivers[m_selectedDriverIndex].name << ")! <<<" << std::endl;
         }
     }
 
-    // 6. Actualizar cinemática de ruedas y Grafo de Escena
+    // 6. Actualizar cinematica de ruedas y Grafo de Escena
     m_wheelAnimator.update(deltaTime, m_kartPhysics.getSpeed(), steer);
     m_kartEntity.update(m_kartPhysics.getPosition(), m_kartPhysics.getYaw(), m_wheelAnimator);
 
@@ -533,7 +742,7 @@ void Application::update(float deltaTime) {
         std::stringstream ss;
         ss << m_config.title << " | " << static_cast<int>(m_time.getFPS()) << " FPS | ";
         if (m_cameraMode == CameraMode::CHASE) {
-            ss << "[" << m_kartProfiles[m_selectedKartIndex].name << "] ";
+            ss << "[" << m_vehicles[m_selectedVehicleIndex].name << " - " << m_drivers[m_selectedDriverIndex].name << "] ";
             ss << "| Vel: " << std::fixed << std::setprecision(1) << (m_kartPhysics.getSpeed() * 3.6f) << " km/h";
             if (m_kartPhysics.isBoosting()) ss << " [TURBO BOOST!]";
             if (m_kartPhysics.getSurfaceFriction() < 0.9f) ss << " [OFF-ROAD]";
@@ -544,7 +753,7 @@ void Application::update(float deltaTime) {
                << m_camera.getPosition().y << ", "
                << m_camera.getPosition().z << ")";
         }
-        ss << " | [M: Cambiar Kart] [C: Camara] [R: Reset] [ESC: Menu]";
+        ss << " | [M: Menu Seleccion] [C: Camara] [R: Reset] [ESC: Menu Principal]";
         m_window->setTitle(ss.str());
     }
 }
@@ -588,16 +797,16 @@ void Application::render() {
     }
 
     // -------------------------------------------------------------
-    // RENDERIZADO: VEHICLE_SELECT (Showroom 3D con pedestal)
+    // RENDERIZADO: VEHICLE_SELECT (Showroom 3D con pedestal DE FRENTE)
     // -------------------------------------------------------------
     if (m_gameState == GameState::VEHICLE_SELECT) {
-        // Fondo showroom azul marino degradado suave
+        // Fondo showroom azul marino suave
         m_window->clear(0.14f, 0.18f, 0.28f, 1.0f);
         if (!m_basicShader.isValid()) return;
 
         m_basicShader.use();
 
-        // Camara enfocada al vehiculo en exhibicion
+        // Camara enfocada al vehiculo de frente
         glm::vec3 camPos(0.0f, 1.35f, 3.4f);
         glm::mat4 view = glm::lookAt(camPos, glm::vec3(0.0f, 0.40f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         glm::mat4 proj = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
@@ -608,14 +817,14 @@ void Application::render() {
 
         if (m_paletteTexture.isLoaded()) m_paletteTexture.bind(0);
 
-        // 1. Dibujar el Pedestal giratorio bajo el kart
+        // 1. Dibujar el Pedestal bajo el kart
         m_basicShader.setBool("u_UseTexture", false);
         glm::mat4 pedMat = glm::rotate(glm::mat4(1.0f), glm::radians(m_showcaseAngle), glm::vec3(0.0f, 1.0f, 0.0f));
         m_basicShader.setMat4("u_Model", pedMat);
         m_basicShader.setVec4("u_Color", glm::vec4(0.20f, 0.22f, 0.28f, 1.0f)); // Plataforma metalica
         m_pedestalMesh.draw();
 
-        // 2. Dibujar el Kart girando con sus texturas
+        // 2. Dibujar el Kart y Piloto DE FRENTE con sus texturas
         m_basicShader.setBool("u_UseTexture", true);
         m_basicShader.setVec4("u_Color", glm::vec4(1.0f));
         m_kartEntity.draw(m_basicShader);
@@ -649,8 +858,7 @@ void Application::render() {
     // 2. Renderizar props y obstaculos
     m_propSpawner.render(m_basicShader);
 
-    // 3. Renderizar el Kart articulado jerarquicamente via Grafo de Escena
-    m_basicShader.setBool("u_UseTexture", true);
+    // 3. Renderizar entidad jerarquica del kart
     m_basicShader.setVec4("u_Color", glm::vec4(1.0f));
     m_kartEntity.draw(m_basicShader);
 }
@@ -658,22 +866,19 @@ void Application::render() {
 void Application::run() {
     while (m_running && !m_window->shouldClose()) {
         m_time.update();
-        float dt = m_time.getDeltaTime();
-
-        m_window->pollEvents();
-        processInput();
-        update(dt);
-        render();
-        m_window->swapBuffers();
         Input::update();
+
+        processInput();
+        update(m_time.getDeltaTime());
+        render();
+
+        m_window->swapBuffers();
+        m_window->pollEvents();
     }
 }
 
 void Application::close() {
     m_running = false;
-    if (m_window) {
-        m_window->setShouldClose(true);
-    }
 }
 
 } // namespace core

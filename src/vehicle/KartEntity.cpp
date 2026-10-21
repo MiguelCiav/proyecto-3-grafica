@@ -23,9 +23,10 @@ bool KartEntity::setup(const geometry::KartAssembly& assembly) {
     m_rootNode = std::make_unique<scene::SceneNode>("Kart_Root_Chassis");
     m_rootNode->setMesh(&m_chassisMesh);
 
-    // Piloto: Anclado relativo al habitaculo del chasis
+    // Piloto: Anclado relativo al habitaculo del chasis con offset configurable por vehiculo
     if (m_driverMesh.isLoaded()) {
         m_driverNode = m_rootNode->createChild("Kart_Driver");
+        m_driverNode->getTransform().position = assembly.driver.pivotOffset;
         m_driverNode->setMesh(&m_driverMesh);
     }
 

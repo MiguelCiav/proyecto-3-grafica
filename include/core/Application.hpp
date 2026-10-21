@@ -24,8 +24,13 @@ namespace core {
 
 enum class GameState {
     MAIN_MENU,       // Pantalla de inicio con camara orbital cinematografica
-    VEHICLE_SELECT,  // Showroom 3D con pedestal giratorio y seleccion de karts
+    VEHICLE_SELECT,  // Showroom 3D con seleccion de corredor y vehiculo de frente
     RACING           // Modo de juego de carreras activo
+};
+
+enum class SelectionCategory {
+    DRIVER,   // Seleccionando piloto / corredor
+    VEHICLE   // Seleccionando vehiculo / carroceria
 };
 
 enum class CameraMode {
@@ -33,16 +38,27 @@ enum class CameraMode {
     FPS    // Inspeccion libre en primera persona restringida por colision
 };
 
-struct KartProfile {
+struct DriverProfile {
     std::string id;
     std::string name;
-    std::string subtitle;
-    std::string filePath;
+    std::string description;
+    std::string sourcePath;
+    geometry::SubMesh driverMesh;
+    glm::vec4 accentColor{1.0f};
+    bool loaded{false};
+};
+
+struct VehicleProfile {
+    std::string id;
+    std::string name;
+    std::string category;
+    std::string description;
+    std::string modelPath;
+    glm::vec3 driverOffset{0.0f};
     float maxSpeed{22.0f};
     float acceleration{18.0f};
     float turnSpeed{100.0f};
     float offRoadFriction{0.45f};
-    glm::vec4 accentColor{1.0f};
     geometry::KartAssembly assembly;
     bool loaded{false};
 };
@@ -78,8 +94,11 @@ private:
     void update(float deltaTime);
     void render();
     void setupColliders();
-    void loadKartProfiles();
-    void selectKart(int index);
+    void loadCatalog();
+    void selectDriver(int index);
+    void selectVehicle(int index);
+    void applySelection();
+    void printSelectionHUD();
     void createPedestalMesh();
 
     AppConfig m_config;
@@ -115,10 +134,14 @@ private:
     vehicle::KartEntity m_kartEntity;
     animation::WheelAnimator m_wheelAnimator;
 
-    // Catalogo de Karts y Showroom
-    std::vector<KartProfile> m_kartProfiles;
-    int m_selectedKartIndex{0};
-    float m_showcaseAngle{0.0f};
+    // Catalogo de Corredores y Vehiculos
+    SelectionCategory m_selectionCategory{SelectionCategory::DRIVER};
+    std::vector<DriverProfile> m_drivers;
+    std::vector<VehicleProfile> m_vehicles;
+    int m_selectedDriverIndex{0};
+    int m_selectedVehicleIndex{0};
+
+    float m_showcaseAngle{0.0f}; // Fijo en 0 grados (de frente a la camara)
     float m_menuOrbitAngle{0.0f};
     renderer::MeshGL m_pedestalMesh;
 

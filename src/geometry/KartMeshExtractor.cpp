@@ -130,7 +130,8 @@ bool KartMeshExtractor::extractFromModelData(const ModelData& model, KartAssembl
                 appendSubMesh(outAssembly.wheelBackRight, sm);
                 outAssembly.wheelBackRight.name = "wheel-back-right";
             } else {
-                std::cout << "[AVISO] Submalla de rueda no clasificada: " << sm.name << std::endl;
+                // Submalla de rueda adicional o de repuesto montada en la carroceria (ej: llanta trasera de SUV)
+                appendSubMesh(outAssembly.chassis, sm);
             }
         } else if (lowerName.find("character") != std::string::npos || lowerName.find("driver") != std::string::npos) {
             appendSubMesh(outAssembly.driver, sm);
