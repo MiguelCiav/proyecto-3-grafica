@@ -132,3 +132,25 @@ add_custom_command(TARGET test_mesh_preprocessing POST_BUILD
         $<TARGET_FILE_DIR:test_mesh_preprocessing>/assets
     COMMENT "Copiando assets al directorio de salida de tests..."
 )
+
+# ==============================================================================
+# 7. Ejecutable de Pruebas Unitarias - Sistema de Iluminación (Fase 7 - Issue #25)
+# ==============================================================================
+add_executable(test_lighting_system
+    tests/test_lighting_system.cpp
+    src/lighting/LightingSystem.cpp
+    src/renderer/Shader.cpp
+)
+
+target_include_directories(test_lighting_system PUBLIC
+    ${PROJECT_INCLUDE_DIRS}
+)
+
+target_link_libraries(test_lighting_system PRIVATE
+    OpenGL::GL
+    glad
+    glfw
+    glm::glm
+    ${CMAKE_DL_LIBS}
+)
+
