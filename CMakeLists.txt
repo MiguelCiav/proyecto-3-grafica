@@ -138,7 +138,7 @@ add_custom_command(TARGET test_mesh_preprocessing POST_BUILD
 # ==============================================================================
 add_executable(test_lighting_system
     tests/test_lighting_system.cpp
-    src/lighting/LightingSystem.cpp
+    src/lighting/LightManager.cpp
     src/renderer/Shader.cpp
 )
 
@@ -159,7 +159,7 @@ target_link_libraries(test_lighting_system PRIVATE
 # ==============================================================================
 add_executable(test_shader_lighting
     tests/test_shader_lighting.cpp
-    src/lighting/LightingSystem.cpp
+    src/lighting/LightManager.cpp
     src/renderer/Shader.cpp
 )
 
