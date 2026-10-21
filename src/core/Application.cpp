@@ -257,6 +257,52 @@ void Application::loadCatalog() {
         }
     }
     std::cout << "========================================================\n" << std::endl;
+
+    // -------------------------------------------------------------
+    // 3. Catalogo de Circuitos y Pistas
+    // -------------------------------------------------------------
+    m_tracks = {
+        {
+            "track-oval",
+            "Ovalo Clasico UCV",
+            "Facil ★☆☆",
+            "Circuito tradicional de alta velocidad con rectas largas y 4 curvas.",
+            "assets/levels/track_oval.txt",
+            12, 12
+        },
+        {
+            "track-gp",
+            "Chicana Grand Prix",
+            "Media ★★☆",
+            "Circuito tecnico F1 con chicanas en 'S' y curvas que exigen frenado.",
+            "assets/levels/track_grand_prix.txt",
+            14, 14
+        },
+        {
+            "track-karto",
+            "Kartodromo Compacto",
+            "Tecnico ★★☆",
+            "Trazado corto y frenetico de karts con curvas cerradas continuas.",
+            "assets/levels/track_kartodromo.txt",
+            10, 10
+        },
+        {
+            "track-spd",
+            "Super Speedway UCV",
+            "Extremo ★★★",
+            "Mega circuito gigante de 54 tramos disenado para maxima aceleracion.",
+            "assets/levels/track_speedway.txt",
+            17, 16
+        },
+        {
+            "track-tech",
+            "Desafio Doble Chicana",
+            "Experto ★★★",
+            "Trazado complejo con multiples curvas consecutivas y zonas estrechas.",
+            "assets/levels/track_technical.txt",
+            14, 14
+        }
+    };
 }
 
 void Application::applySelection() {
@@ -298,12 +344,52 @@ void Application::selectVehicle(int index) {
     printSelectionHUD();
 }
 
+void Application::selectTrack(int index) {
+    if (m_tracks.empty()) return;
+    int count = static_cast<int>(m_tracks.size());
+    m_selectedTrackIndex = (index % count + count) % count;
+    const auto& track = m_tracks[m_selectedTrackIndex];
+
+    // Cargar nuevo archivo de pista modular
+    world::LevelLoader::loadFromFile(track.filePath, m_trackGrid);
+
+    // Regenerar obstaculos y triggers para la nueva pista
+    m_propSpawner.generateForGrid(m_trackGrid);
+    m_zoneManager.autoGenerateFromGrid(m_trackGrid);
+
+    // Actualizar colisionadores
+    setupColliders();
+
+    // Actualizar posicion y rumbo de salida
+    m_kartInitialPos = glm::vec3(0.0f, 0.0f, 0.0f);
+    m_kartInitialYaw = 90.0f;
+
+    for (const auto& tile : m_trackGrid.getAllTiles()) {
+        if (tile.type == world::TileType::START_FINISH) {
+            m_kartInitialPos = tile.worldPos;
+            m_kartInitialYaw = tile.rotationDegrees;
+            break;
+        }
+    }
+
+    // Reposicionar kart y camara
+    m_kartPhysics.setPosition(m_kartInitialPos);
+    m_kartPhysics.setYaw(m_kartInitialYaw);
+    m_kartPhysics.resetSpeed();
+    m_wheelAnimator.reset();
+    m_chaseCamera.reset(m_kartInitialPos, m_kartPhysics.getForwardVector());
+    m_lapsCompleted = 0;
+
+    printSelectionHUD();
+}
+
 void Application::printSelectionHUD() {
     const auto& driver = m_drivers[m_selectedDriverIndex];
     const auto& vehicle = m_vehicles[m_selectedVehicleIndex];
+    const auto& track = m_tracks[m_selectedTrackIndex];
 
     std::cout << "\n========================================================" << std::endl;
-    std::cout << "  SHOWROOM 3D - SELECCION DE CORREDOR Y VEHICULO        " << std::endl;
+    std::cout << "  SHOWROOM 3D - CONFIGURACION DE CARRERA MARIO KART     " << std::endl;
     std::cout << "  [VISTA FRONTAL FIJA ACTIVADA (SIN GIRO AUTOMATICO)]   " << std::endl;
     std::cout << "--------------------------------------------------------" << std::endl;
     std::cout << (m_selectionCategory == SelectionCategory::DRIVER ? ">> " : "   ")
@@ -312,15 +398,19 @@ void Application::printSelectionHUD() {
     std::cout << (m_selectionCategory == SelectionCategory::VEHICLE ? ">> " : "   ")
               << "[2] VEHICULO : " << vehicle.name << " (" << (m_selectedVehicleIndex + 1)
               << "/" << m_vehicles.size() << ") [" << vehicle.category << "]" << std::endl;
-    std::cout << "      Detalle: " << vehicle.description << std::endl;
-    std::cout << "      Vel. Max: " << (vehicle.maxSpeed * 3.6f) << " km/h | Acel: " << vehicle.acceleration
+    std::cout << "      Stats: Vel: " << (vehicle.maxSpeed * 3.6f) << " km/h | Acel: " << vehicle.acceleration
               << " m/s2 | Giro: " << vehicle.turnSpeed << " deg/s | Cesped: "
               << static_cast<int>(vehicle.offRoadFriction * 100) << "% traccion" << std::endl;
+    std::cout << (m_selectionCategory == SelectionCategory::TRACK ? ">> " : "   ")
+              << "[3] PISTA    : " << track.name << " (" << (m_selectedTrackIndex + 1)
+              << "/" << m_tracks.size() << ") [" << track.difficulty << "]" << std::endl;
+    std::cout << "      Detalle: " << track.description << " (" << track.cols << "x" << track.rows << " celdas)" << std::endl;
     std::cout << "--------------------------------------------------------" << std::endl;
     std::cout << "  [TAB / W / S o Flechas Arriba/Abajo]: Alternar Categoria" << std::endl;
     std::cout << "  [A / D o Flechas Izq/Der]           : Cambiar Opcion  " << std::endl;
     std::cout << "  [1]                                 : Elegir Corredor " << std::endl;
     std::cout << "  [2]                                 : Elegir Vehiculo " << std::endl;
+    std::cout << "  [3]                                 : Elegir Pista    " << std::endl;
     std::cout << "  [ENTER / ESPACIO]                   : Iniciar Carrera " << std::endl;
     std::cout << "  [ESC]                               : Volver al Menu  " << std::endl;
     std::cout << "========================================================\n" << std::endl;
@@ -337,7 +427,8 @@ void Application::setGameState(GameState state) {
         m_kartPhysics.setYaw(m_kartInitialYaw);
         m_wheelAnimator.reset();
         m_chaseCamera.reset(m_kartInitialPos, m_kartPhysics.getForwardVector());
-        std::cout << "\n>>> [CARRERA INICIADA] Conduce con W/S/A/D | [M: Cambiar Auto/Piloto] [ESC: Menu] <<<\n" << std::endl;
+        std::cout << "\n>>> [CARRERA INICIADA] Pista: " << m_tracks[m_selectedTrackIndex].name
+                  << " | Conduce con W/S/A/D | [M: Cambiar Auto/Pista] [ESC: Menu] <<<\n" << std::endl;
     } else if (m_gameState == GameState::VEHICLE_SELECT) {
         m_cursorLocked = false;
         Input::setCursorVisible(true);
@@ -358,28 +449,31 @@ void Application::setupColliders() {
         m_collisionSystem.addStaticBox(Engine::Physics::BoundingBox(prop.aabbMin, prop.aabbMax));
     }
 
-    // 2. Registrar limites perimetrales exteriores del circuito para evitar caidas al vacio
-    float halfSize = 25.0f;
+    // 2. Registrar limites perimetrales exteriores adaptados al tamano de la pista actual
+    float halfWidth = (m_trackGrid.getCols() * world::TrackGrid::TILE_SIZE) * 0.5f + 4.0f;
+    float halfDepth = (m_trackGrid.getRows() * world::TrackGrid::TILE_SIZE) * 0.5f + 4.0f;
     float wallHeight = 6.0f;
+
     m_collisionSystem.addStaticBox(Engine::Physics::BoundingBox(
-        glm::vec3(-halfSize, 0.0f, halfSize),
-        glm::vec3(halfSize, wallHeight, halfSize + 2.0f)
+        glm::vec3(-halfWidth, 0.0f, halfDepth),
+        glm::vec3(halfWidth, wallHeight, halfWidth + 2.0f)
     ));
     m_collisionSystem.addStaticBox(Engine::Physics::BoundingBox(
-        glm::vec3(-halfSize, 0.0f, -halfSize - 2.0f),
-        glm::vec3(halfSize, wallHeight, -halfSize)
+        glm::vec3(-halfWidth, 0.0f, -halfDepth - 2.0f),
+        glm::vec3(halfWidth, wallHeight, -halfDepth)
     ));
     m_collisionSystem.addStaticBox(Engine::Physics::BoundingBox(
-        glm::vec3(halfSize, 0.0f, -halfSize),
-        glm::vec3(halfSize + 2.0f, wallHeight, halfSize)
+        glm::vec3(halfWidth, 0.0f, -halfDepth),
+        glm::vec3(halfWidth + 2.0f, wallHeight, halfDepth)
     ));
     m_collisionSystem.addStaticBox(Engine::Physics::BoundingBox(
-        glm::vec3(-halfSize - 2.0f, 0.0f, -halfSize),
-        glm::vec3(-halfSize, wallHeight, halfSize)
+        glm::vec3(-halfWidth - 2.0f, 0.0f, -halfDepth),
+        glm::vec3(-halfWidth, wallHeight, halfDepth)
     ));
 
     std::cout << "[OK] [CollisionSystem] Registrados " << m_collisionSystem.getStaticBoxes().size()
-              << " colisionadores estaticos en el escenario." << std::endl;
+              << " colisionadores estaticos adaptados al circuito (" << m_trackGrid.getCols()
+              << "x" << m_trackGrid.getRows() << ")." << std::endl;
 }
 
 bool Application::init() {
@@ -407,9 +501,7 @@ bool Application::init() {
         std::cerr << "[AVISO] [Application] No se pudo cargar colormap.png" << std::endl;
     }
 
-    // 2. Cargar circuito modular (12x12)
-    world::LevelLoader::loadFromFile("assets/levels/main_track.txt", m_trackGrid);
-
+    // 2. Inicializar renderizadores
     if (!m_trackRenderer.init("assets/models/track")) {
         std::cerr << "[ERROR] [Application] Fallo al inicializar TrackRenderer." << std::endl;
         return false;
@@ -418,42 +510,29 @@ bool Application::init() {
     if (!m_propSpawner.init("assets/models/obstacles")) {
         std::cerr << "[AVISO] [Application] Fallo al inicializar PropSpawner." << std::endl;
     }
-    m_propSpawner.generateForGrid(m_trackGrid);
-    m_zoneManager.autoGenerateFromGrid(m_trackGrid);
 
-    // 3. Configurar el motor de colisiones
-    setupColliders();
-
-    // 4. Crear pedestal para el showroom 3D y cargar catalogo completo
+    // 3. Crear pedestal para el showroom 3D y cargar catalogo completo
     createPedestalMesh();
     loadCatalog();
 
-    // 5. Posicionar kart en casilla START_FINISH
-    m_kartInitialPos = glm::vec3(0.0f, 0.0f, 0.0f);
-    m_kartInitialYaw = 90.0f;
+    // 4. Cargar la primera pista por defecto (Ovalo Clasico)
+    selectTrack(0);
 
-    for (const auto& tile : m_trackGrid.getAllTiles()) {
-        if (tile.type == world::TileType::START_FINISH) {
-            m_kartInitialPos = tile.worldPos;
-            m_kartInitialYaw = tile.rotationDegrees;
-            break;
-        }
-    }
-
-    // Seleccionar el primer corredor y vehiculo por defecto
+    // 5. Seleccionar el primer corredor y vehiculo por defecto
     selectDriver(0);
     selectVehicle(0);
 
-    // Iniciar en el Menu Principal con opciones
+    // 6. Iniciar en el Menu Principal con opciones
     setGameState(GameState::MAIN_MENU);
 
     std::cout << "\n========================================================" << std::endl;
     std::cout << "  PROTOTIPO MARIO KART - CGI PROYECTO #3 (UCV)          " << std::endl;
-    std::cout << "  [MENU DEL JUEGO Y SHOWROOM ACTIVOS]:                  " << std::endl;
-    std::cout << "    [1] o ENTER : Seleccionar Corredor y Vehiculo       " << std::endl;
+    std::cout << "  [MENU DEL JUEGO Y MULTIPLES PISTAS ACTIVOS]:          " << std::endl;
+    std::cout << "    [1] o ENTER : Seleccionar Corredor, Auto y Pista    " << std::endl;
     std::cout << "    [2]         : Seleccion Directa de Vehiculo         " << std::endl;
-    std::cout << "    [3] o ESPACIO: Iniciar Carrera Inmediata            " << std::endl;
-    std::cout << "    [ESC]        : Salir                                " << std::endl;
+    std::cout << "    [3]         : Seleccion Directa de Pista            " << std::endl;
+    std::cout << "    [ESPACIO]   : Iniciar Carrera Inmediata             " << std::endl;
+    std::cout << "    [ESC]       : Salir                                 " << std::endl;
     std::cout << "========================================================\n" << std::endl;
 
     m_time.reset();
@@ -473,20 +552,25 @@ void Application::processInput() {
         }
         if (Input::isKeyJustPressed(GLFW_KEY_1) || Input::isKeyJustPressed(GLFW_KEY_KP_1) ||
             Input::isKeyJustPressed(GLFW_KEY_ENTER) || Input::isKeyJustPressed(GLFW_KEY_KP_ENTER)) {
-            std::cout << "[MENU] Opcion [1 / ENTER]: Abriendo Seleccion de Corredor y Vehiculo..." << std::endl;
+            std::cout << "[MENU] Opcion [1 / ENTER]: Abriendo Configuracion (Corredor)..." << std::endl;
             m_selectionCategory = SelectionCategory::DRIVER;
             setGameState(GameState::VEHICLE_SELECT);
             return;
         }
         if (Input::isKeyJustPressed(GLFW_KEY_2) || Input::isKeyJustPressed(GLFW_KEY_KP_2)) {
-            std::cout << "[MENU] Opcion [2]: Abriendo Seleccion de Vehiculo..." << std::endl;
+            std::cout << "[MENU] Opcion [2]: Abriendo Configuracion (Vehiculo)..." << std::endl;
             m_selectionCategory = SelectionCategory::VEHICLE;
             setGameState(GameState::VEHICLE_SELECT);
             return;
         }
-        if (Input::isKeyJustPressed(GLFW_KEY_3) || Input::isKeyJustPressed(GLFW_KEY_KP_3) ||
-            Input::isKeyJustPressed(GLFW_KEY_SPACE)) {
-            std::cout << "[MENU] Opcion [3 / ESPACIO]: Iniciando Carrera Inmediata..." << std::endl;
+        if (Input::isKeyJustPressed(GLFW_KEY_3) || Input::isKeyJustPressed(GLFW_KEY_KP_3)) {
+            std::cout << "[MENU] Opcion [3]: Abriendo Configuracion (Pista)..." << std::endl;
+            m_selectionCategory = SelectionCategory::TRACK;
+            setGameState(GameState::VEHICLE_SELECT);
+            return;
+        }
+        if (Input::isKeyJustPressed(GLFW_KEY_SPACE)) {
+            std::cout << "[MENU] Opcion [ESPACIO]: Iniciando Carrera Inmediata..." << std::endl;
             setGameState(GameState::RACING);
             return;
         }
@@ -503,13 +587,16 @@ void Application::processInput() {
             return;
         }
 
-        // Alternar categoria (Corredor <-> Vehiculo) con TAB, W, S, Arriba, Abajo
-        if (Input::isKeyJustPressed(GLFW_KEY_TAB) ||
-            Input::isKeyJustPressed(GLFW_KEY_W) || Input::isKeyJustPressed(GLFW_KEY_S) ||
-            Input::isKeyJustPressed(GLFW_KEY_UP) || Input::isKeyJustPressed(GLFW_KEY_DOWN)) {
-            m_selectionCategory = (m_selectionCategory == SelectionCategory::DRIVER)
-                                  ? SelectionCategory::VEHICLE
-                                  : SelectionCategory::DRIVER;
+        // Alternar circularmente categoria con TAB, W, S, Arriba, Abajo
+        if (Input::isKeyJustPressed(GLFW_KEY_TAB) || Input::isKeyJustPressed(GLFW_KEY_S) || Input::isKeyJustPressed(GLFW_KEY_DOWN)) {
+            if (m_selectionCategory == SelectionCategory::DRIVER) m_selectionCategory = SelectionCategory::VEHICLE;
+            else if (m_selectionCategory == SelectionCategory::VEHICLE) m_selectionCategory = SelectionCategory::TRACK;
+            else m_selectionCategory = SelectionCategory::DRIVER;
+            printSelectionHUD();
+        } else if (Input::isKeyJustPressed(GLFW_KEY_W) || Input::isKeyJustPressed(GLFW_KEY_UP)) {
+            if (m_selectionCategory == SelectionCategory::DRIVER) m_selectionCategory = SelectionCategory::TRACK;
+            else if (m_selectionCategory == SelectionCategory::TRACK) m_selectionCategory = SelectionCategory::VEHICLE;
+            else m_selectionCategory = SelectionCategory::DRIVER;
             printSelectionHUD();
         }
 
@@ -522,27 +609,36 @@ void Application::processInput() {
             m_selectionCategory = SelectionCategory::VEHICLE;
             printSelectionHUD();
         }
+        if (Input::isKeyJustPressed(GLFW_KEY_3) || Input::isKeyJustPressed(GLFW_KEY_KP_3)) {
+            m_selectionCategory = SelectionCategory::TRACK;
+            printSelectionHUD();
+        }
 
         // Navegacion entre opciones de la categoria activa (A/D o Flechas Izq/Der)
         if (Input::isKeyJustPressed(GLFW_KEY_A) || Input::isKeyJustPressed(GLFW_KEY_LEFT)) {
             if (m_selectionCategory == SelectionCategory::DRIVER) {
                 selectDriver(m_selectedDriverIndex - 1);
-            } else {
+            } else if (m_selectionCategory == SelectionCategory::VEHICLE) {
                 selectVehicle(m_selectedVehicleIndex - 1);
+            } else {
+                selectTrack(m_selectedTrackIndex - 1);
             }
         }
         if (Input::isKeyJustPressed(GLFW_KEY_D) || Input::isKeyJustPressed(GLFW_KEY_RIGHT)) {
             if (m_selectionCategory == SelectionCategory::DRIVER) {
                 selectDriver(m_selectedDriverIndex + 1);
-            } else {
+            } else if (m_selectionCategory == SelectionCategory::VEHICLE) {
                 selectVehicle(m_selectedVehicleIndex + 1);
+            } else {
+                selectTrack(m_selectedTrackIndex + 1);
             }
         }
 
         // Confirmar seleccion y comenzar la carrera
         if (Input::isKeyJustPressed(GLFW_KEY_ENTER) || Input::isKeyJustPressed(GLFW_KEY_KP_ENTER) ||
             Input::isKeyJustPressed(GLFW_KEY_SPACE)) {
-            std::cout << "[SHOWROOM] Seleccion confirmada! Iniciando carrera..." << std::endl;
+            std::cout << "[SHOWROOM] Seleccion confirmada! Iniciando carrera en "
+                      << m_tracks[m_selectedTrackIndex].name << "..." << std::endl;
             setGameState(GameState::RACING);
         }
         return;
@@ -552,7 +648,7 @@ void Application::processInput() {
     // Control en RACING (Carrera activa)
     // -------------------------------------------------------------
     if (m_gameState == GameState::RACING) {
-        // Tecla M: Volver al Showroom a cambiar de auto o piloto
+        // Tecla M: Volver al Showroom a cambiar de auto, piloto o pista
         if (Input::isKeyJustPressed(GLFW_KEY_M)) {
             setGameState(GameState::VEHICLE_SELECT);
             return;
@@ -593,7 +689,8 @@ void Application::processInput() {
             m_kartPhysics.setYaw(m_kartInitialYaw);
             m_wheelAnimator.reset();
             m_chaseCamera.reset(m_kartInitialPos, m_kartPhysics.getForwardVector());
-            std::cout << "[Kart] Posicion reiniciada a la linea de salida." << std::endl;
+            std::cout << "[Kart] Posicion reiniciada a la linea de salida de "
+                      << m_tracks[m_selectedTrackIndex].name << "." << std::endl;
         }
 
         // En modo FPS: alternar captura de mouse con clic o TAB
@@ -642,7 +739,8 @@ void Application::update(float deltaTime) {
         if (m_titleUpdateTimer >= 0.25f) {
             m_titleUpdateTimer = 0.0f;
             std::stringstream ss;
-            ss << m_config.title << " | [MENU PRINCIPAL] [1 o ENTER: Seleccionar Corredor y Vehiculo] [2: Solo Vehiculo] [3: Correr] [ESC: Salir]";
+            ss << m_config.title << " | [MENU] [1: Corredor] [2: Auto] [3: Pista: "
+               << m_tracks[m_selectedTrackIndex].name << "] [ESPACIO: Correr] [ESC: Salir]";
             m_window->setTitle(ss.str());
         }
         return;
@@ -664,14 +762,13 @@ void Application::update(float deltaTime) {
             m_titleUpdateTimer = 0.0f;
             const auto& d = m_drivers[m_selectedDriverIndex];
             const auto& v = m_vehicles[m_selectedVehicleIndex];
+            const auto& t = m_tracks[m_selectedTrackIndex];
             std::stringstream ss;
             ss << m_config.title << " | SHOWROOM ["
-               << (m_selectionCategory == SelectionCategory::DRIVER ? ">> CORREDOR: " : "Corredor: ")
-               << d.name
-               << " | "
-               << (m_selectionCategory == SelectionCategory::VEHICLE ? ">> VEHICULO: " : "Vehiculo: ")
-               << v.name
-               << "] | [TAB/W/S: Modo] [A/D: Cambiar] [ENTER: Iniciar Carrera] [ESC: Menu]";
+               << (m_selectionCategory == SelectionCategory::DRIVER ? ">> 1.CORREDOR: " : "1.Piloto: ") << d.name << " | "
+               << (m_selectionCategory == SelectionCategory::VEHICLE ? ">> 2.VEHICULO: " : "2.Auto: ") << v.name << " | "
+               << (m_selectionCategory == SelectionCategory::TRACK ? ">> 3.PISTA: " : "3.Pista: ") << t.name
+               << "] | [TAB] Categoria | [A/D] Cambiar | [ENTER] Correr";
             m_window->setTitle(ss.str());
         }
         return;
@@ -728,7 +825,8 @@ void Application::update(float deltaTime) {
         } else if (hitZone->type == world::ZoneType::FINISH_LINE && m_finishLineCooldown <= 0.0f && m_kartPhysics.getSpeed() > 1.5f) {
             m_lapsCompleted++;
             m_finishLineCooldown = 5.0f;
-            std::cout << ">>> [META!] Vuelta " << m_lapsCompleted << " completada con "
+            std::cout << ">>> [META!] Vuelta " << m_lapsCompleted << " completada en "
+                      << m_tracks[m_selectedTrackIndex].name << " con "
                       << m_vehicles[m_selectedVehicleIndex].name << " ("
                       << m_drivers[m_selectedDriverIndex].name << ")! <<<" << std::endl;
         }
@@ -751,9 +849,9 @@ void Application::update(float deltaTime) {
         std::stringstream ss;
         ss << m_config.title << " | " << static_cast<int>(m_time.getFPS()) << " FPS | ";
         if (m_cameraMode == CameraMode::CHASE) {
-            ss << "[" << m_vehicles[m_selectedVehicleIndex].name << " - " << m_drivers[m_selectedDriverIndex].name << "] ";
+            ss << "[" << m_vehicles[m_selectedVehicleIndex].name << " @ " << m_tracks[m_selectedTrackIndex].name << "] ";
             ss << "| Vel: " << std::fixed << std::setprecision(1) << (m_kartPhysics.getSpeed() * 3.6f) << " km/h";
-            if (m_kartPhysics.isBoosting()) ss << " [TURBO BOOST!]";
+            if (m_kartPhysics.isBoosting()) ss << " [TURBO!]";
             if (m_kartPhysics.getSurfaceFriction() < 0.9f) ss << " [OFF-ROAD]";
             ss << " | Vueltas: " << m_lapsCompleted;
         } else {
@@ -762,7 +860,7 @@ void Application::update(float deltaTime) {
                << m_camera.getPosition().y << ", "
                << m_camera.getPosition().z << ")";
         }
-        ss << " | [M: Menu Seleccion] [C: Camara] [R: Reset] [ESC: Menu Principal]";
+        ss << " | [M: Menu] [C: Camara] [R: Reset] [ESC: Salir]";
         m_window->setTitle(ss.str());
     }
 }
@@ -783,8 +881,8 @@ void Application::render() {
         m_basicShader.use();
 
         float rad = glm::radians(m_menuOrbitAngle);
-        float orbitDist = 28.0f;
-        glm::vec3 camPos(std::sin(rad) * orbitDist, 14.0f, std::cos(rad) * orbitDist);
+        float orbitDist = (m_trackGrid.getCols() * world::TrackGrid::TILE_SIZE) * 0.65f;
+        glm::vec3 camPos(std::sin(rad) * orbitDist, 15.0f, std::cos(rad) * orbitDist);
         glm::mat4 view = glm::lookAt(camPos, glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         glm::mat4 proj = glm::perspective(glm::radians(55.0f), aspect, 0.1f, 1000.0f);
 

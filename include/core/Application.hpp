@@ -24,13 +24,14 @@ namespace core {
 
 enum class GameState {
     MAIN_MENU,       // Pantalla de inicio con camara orbital cinematografica
-    VEHICLE_SELECT,  // Showroom 3D con seleccion de corredor y vehiculo de frente
+    VEHICLE_SELECT,  // Showroom 3D con seleccion de corredor, vehiculo y pista de frente
     RACING           // Modo de juego de carreras activo
 };
 
 enum class SelectionCategory {
-    DRIVER,   // Seleccionando piloto / corredor
-    VEHICLE   // Seleccionando vehiculo / carroceria
+    DRIVER,   // [1] Seleccionando piloto / corredor
+    VEHICLE,  // [2] Seleccionando vehiculo / carroceria
+    TRACK     // [3] Seleccionando pista / circuito
 };
 
 enum class CameraMode {
@@ -61,6 +62,16 @@ struct VehicleProfile {
     float offRoadFriction{0.45f};
     geometry::KartAssembly assembly;
     bool loaded{false};
+};
+
+struct TrackProfile {
+    std::string id;
+    std::string name;
+    std::string difficulty;
+    std::string description;
+    std::string filePath;
+    int cols{12};
+    int rows{12};
 };
 
 struct AppConfig {
@@ -97,6 +108,7 @@ private:
     void loadCatalog();
     void selectDriver(int index);
     void selectVehicle(int index);
+    void selectTrack(int index);
     void applySelection();
     void printSelectionHUD();
     void createPedestalMesh();
@@ -120,7 +132,7 @@ private:
     renderer::Shader m_basicShader;
     renderer::Texture m_paletteTexture;
 
-    // Mundo y Circuito Modular (12x12)
+    // Mundo y Circuito Modular
     world::TrackGrid m_trackGrid;
     renderer::TrackRenderer m_trackRenderer;
     world::PropSpawner m_propSpawner;
@@ -134,12 +146,14 @@ private:
     vehicle::KartEntity m_kartEntity;
     animation::WheelAnimator m_wheelAnimator;
 
-    // Catalogo de Corredores y Vehiculos
+    // Catalogo de Corredores, Vehiculos y Pistas
     SelectionCategory m_selectionCategory{SelectionCategory::DRIVER};
     std::vector<DriverProfile> m_drivers;
     std::vector<VehicleProfile> m_vehicles;
+    std::vector<TrackProfile> m_tracks;
     int m_selectedDriverIndex{0};
     int m_selectedVehicleIndex{0};
+    int m_selectedTrackIndex{0};
 
     float m_showcaseAngle{0.0f}; // Fijo en 0 grados (de frente a la camara)
     float m_menuOrbitAngle{0.0f};

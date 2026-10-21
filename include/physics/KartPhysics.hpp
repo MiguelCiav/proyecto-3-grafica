@@ -24,6 +24,7 @@ public:
     [[nodiscard]] float getYaw() const { return m_yawDegrees; }
 
     [[nodiscard]] float getSpeed() const { return m_currentSpeed; }
+    void resetSpeed() { m_currentSpeed = 0.0f; }
     [[nodiscard]] float getNormalizedSpeed() const { return std::abs(m_currentSpeed) / m_maxSpeed; }
     [[nodiscard]] float getSteeringAngle() const { return m_steeringAngle; }
 
