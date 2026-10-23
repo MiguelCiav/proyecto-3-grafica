@@ -269,6 +269,34 @@ add_custom_command(TARGET test_skybox POST_BUILD
     COMMENT "Copiando shaders al directorio de salida de test_skybox..."
 )
 
+# ==============================================================================
+# 12. Ejecutable de Pruebas Unitarias - Shader Procedural de Boosters
+# ==============================================================================
+add_executable(test_shader_booster_procedural
+    tests/test_shader_booster_procedural.cpp
+    src/renderer/Shader.cpp
+)
+
+target_include_directories(test_shader_booster_procedural PUBLIC
+    ${PROJECT_INCLUDE_DIRS}
+)
+
+target_link_libraries(test_shader_booster_procedural PRIVATE
+    OpenGL::GL
+    glad
+    glfw
+    glm::glm
+    ${CMAKE_DL_LIBS}
+)
+
+add_custom_command(TARGET test_shader_booster_procedural POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
+        $<TARGET_FILE_DIR:test_shader_booster_procedural>/shaders
+    COMMENT "Copiando shaders al directorio de salida de test_shader_booster_procedural..."
+)
+
+
 
 
 
