@@ -388,6 +388,37 @@ add_custom_command(TARGET test_particle_system POST_BUILD
     COMMENT "Copiando shaders al directorio de salida de test_particle_system..."
 )
 
+# ==============================================================================
+# 16. Ejecutable de Pruebas Unitarias - Emisores de Partículas del Kart
+# ==============================================================================
+add_executable(test_kart_particle_emitter
+    tests/test_kart_particle_emitter.cpp
+    src/vfx/KartParticleEmitter.cpp
+    src/vfx/ParticleSystem.cpp
+    src/physics/KartPhysics.cpp
+    src/renderer/Shader.cpp
+)
+
+target_include_directories(test_kart_particle_emitter PUBLIC
+    ${PROJECT_INCLUDE_DIRS}
+)
+
+target_link_libraries(test_kart_particle_emitter PRIVATE
+    OpenGL::GL
+    glad
+    glfw
+    glm::glm
+    ${CMAKE_DL_LIBS}
+)
+
+add_custom_command(TARGET test_kart_particle_emitter POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
+        $<TARGET_FILE_DIR:test_kart_particle_emitter>/shaders
+    COMMENT "Copiando shaders al directorio de salida de test_kart_particle_emitter..."
+)
+
+
 
 
 

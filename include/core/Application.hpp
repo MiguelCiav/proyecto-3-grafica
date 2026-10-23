@@ -20,6 +20,7 @@
 #include "lighting/LightingController.hpp"
 #include "renderer/Skybox.hpp"
 #include "world/BoosterPad.hpp"
+#include "vfx/KartParticleEmitter.hpp"
 #include <memory>
 #include <string>
 #include <vector>
@@ -107,6 +108,8 @@ public:
     const renderer::Skybox& getSkybox() const { return m_skybox; }
     const renderer::Shader& getBoosterShader() const { return m_boosterShader; }
     const std::vector<world::BoosterPad>& getBoosterPads() const { return m_boosterPads; }
+    vfx::KartParticleEmitter& getKartEmitter() { return m_kartEmitter; }
+    const vfx::KartParticleEmitter& getKartEmitter() const { return m_kartEmitter; }
 
 private:
     void processInput();
@@ -159,6 +162,7 @@ private:
     // Entidad jerarquica del Kart articulado
     vehicle::KartEntity m_kartEntity;
     animation::WheelAnimator m_wheelAnimator;
+    vfx::KartParticleEmitter m_kartEmitter;
 
     // Sistema y Controlador de Iluminacion
     lighting::LightManager m_lightManager;

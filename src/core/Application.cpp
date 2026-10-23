@@ -669,6 +669,10 @@ bool Application::init() {
         std::cerr << "[AVISO] [Application] No se pudo cargar el Skybox." << std::endl;
     }
 
+    if (!m_kartEmitter.init() || !m_kartEmitter.loadShaders("shaders/particle.vert", "shaders/particle.frag")) {
+        std::cerr << "[AVISO] [Application] No se pudo inicializar el sistema de particulas del kart." << std::endl;
+    }
+
     if (!m_paletteTexture.loadFromFile("assets/textures/colormap.png")) {
         std::cerr << "[AVISO] [Application] No se pudo cargar colormap.png" << std::endl;
     }
@@ -1021,6 +1025,9 @@ void Application::update(float deltaTime) {
     m_wheelAnimator.update(deltaTime, m_kartPhysics.getSpeed(), steer);
     m_kartEntity.update(m_kartPhysics.getPosition(), m_kartPhysics.getYaw(), m_wheelAnimator);
 
+    // Actualizar emisor de particulas (humo de escape y turbo del kart)
+    m_kartEmitter.update(deltaTime, m_kartPhysics, accel);
+
     // Sincronizar faros moviles del kart (SpotLight) con la posicion y giro del morro
     m_lightingController.update(m_kartPhysics.getPosition(), m_kartPhysics.getForwardVector(), deltaTime);
 
@@ -1114,6 +1121,9 @@ void Application::render() {
                 pad.draw(m_boosterShader, currentTime);
             }
         }
+
+        // Efectos visuales de particulas del kart (humo y turbo)
+        m_kartEmitter.render(view, proj);
 
         // Skybox 3D panoramico al fondo
         if (m_skybox.isLoaded()) {
@@ -1220,7 +1230,10 @@ void Application::render() {
         }
     }
 
-    // 5. Renderizar Skybox 3D inmersivo con optimizacion GL_LEQUAL al fondo de la escena
+    // 5. Renderizar efectos visuales de particulas del kart (humo de escape y turbo)
+    m_kartEmitter.render(view, proj);
+
+    // 6. Renderizar Skybox 3D inmersivo con optimizacion GL_LEQUAL al fondo de la escena
     if (m_skybox.isLoaded()) {
         m_skybox.draw(view, proj);
     }
