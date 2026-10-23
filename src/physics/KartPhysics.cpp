@@ -10,8 +10,11 @@ glm::vec3 KartPhysics::getForwardVector() const {
     return glm::vec3(std::sin(rad), 0.0f, std::cos(rad));
 }
 
-void KartPhysics::applyBoost(float duration) {
+void KartPhysics::applyBoost(float duration, float multiplier, float instantImpulse) {
     m_boostTimer = duration;
+    m_boostMultiplier = multiplier;
+    float boostedMax = m_maxSpeed * m_boostMultiplier;
+    m_currentSpeed = std::min(m_currentSpeed + instantImpulse, boostedMax);
 }
 
 void KartPhysics::update(float deltaTime, bool accelerate, bool brake, float steerInput) {

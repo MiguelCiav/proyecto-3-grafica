@@ -38,8 +38,11 @@ public:
         return BoundingBox::fromCenterHalfExtents(m_position + glm::vec3(0.0f, 0.4f, 0.0f), glm::vec3(0.55f, 0.4f, 0.8f));
     }
 
-    void applyBoost(float duration = 1.5f);
+    void applyBoost(float duration = 2.0f, float multiplier = 1.6f, float instantImpulse = 7.0f);
     [[nodiscard]] bool isBoosting() const { return m_boostTimer > 0.0f; }
+    [[nodiscard]] float getBoostTimer() const { return m_boostTimer; }
+    [[nodiscard]] float getBoostMultiplier() const { return m_boostMultiplier; }
+    void setBoostMultiplier(float mult) { m_boostMultiplier = mult; }
 
     void setSurfaceFriction(float multiplier) { m_surfaceFriction = std::clamp(multiplier, 0.1f, 1.0f); }
     [[nodiscard]] float getSurfaceFriction() const { return m_surfaceFriction; }

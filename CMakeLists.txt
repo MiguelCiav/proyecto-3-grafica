@@ -296,6 +296,37 @@ add_custom_command(TARGET test_shader_booster_procedural POST_BUILD
     COMMENT "Copiando shaders al directorio de salida de test_shader_booster_procedural..."
 )
 
+# ==============================================================================
+# 13. Ejecutable de Pruebas Unitarias - Entidad BoosterPad
+# ==============================================================================
+add_executable(test_booster_pad
+    tests/test_booster_pad.cpp
+    src/world/BoosterPad.cpp
+    src/world/ZoneTrigger.cpp
+    src/physics/KartPhysics.cpp
+    src/renderer/Shader.cpp
+)
+
+target_include_directories(test_booster_pad PUBLIC
+    ${PROJECT_INCLUDE_DIRS}
+)
+
+target_link_libraries(test_booster_pad PRIVATE
+    OpenGL::GL
+    glad
+    glfw
+    glm::glm
+    ${CMAKE_DL_LIBS}
+)
+
+add_custom_command(TARGET test_booster_pad POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
+        $<TARGET_FILE_DIR:test_booster_pad>/shaders
+    COMMENT "Copiando shaders al directorio de salida de test_booster_pad..."
+)
+
+
 
 
 
