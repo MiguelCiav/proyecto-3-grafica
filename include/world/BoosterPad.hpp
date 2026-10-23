@@ -57,7 +57,7 @@ private:
     float m_yawDegrees{0.0f};
     float m_width{3.0f};
     float m_length{4.5f};
-    float m_elevationOffset{0.02f};
+    float m_elevationOffset{0.085f};
 
     float m_boostMultiplier{1.6f};
     float m_boostDuration{2.0f};

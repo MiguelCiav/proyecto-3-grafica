@@ -326,6 +326,41 @@ add_custom_command(TARGET test_booster_pad POST_BUILD
     COMMENT "Copiando shaders al directorio de salida de test_booster_pad..."
 )
 
+# ==============================================================================
+# 14. Ejecutable de Pruebas Unitarias - Integración Skybox y Boosters en Circuito
+# ==============================================================================
+add_executable(test_skybox_booster_integration
+    tests/test_skybox_booster_integration.cpp
+    src/renderer/Skybox.cpp
+    src/renderer/Texture.cpp
+    src/renderer/Shader.cpp
+    src/world/BoosterPad.cpp
+    src/world/ZoneTrigger.cpp
+    src/world/TrackGrid.cpp
+    src/world/LevelLoader.cpp
+    src/physics/KartPhysics.cpp
+)
+
+target_include_directories(test_skybox_booster_integration PUBLIC
+    ${PROJECT_INCLUDE_DIRS}
+)
+
+target_link_libraries(test_skybox_booster_integration PRIVATE
+    OpenGL::GL
+    glad
+    glfw
+    glm::glm
+    ${CMAKE_DL_LIBS}
+)
+
+add_custom_command(TARGET test_skybox_booster_integration POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
+        $<TARGET_FILE_DIR:test_skybox_booster_integration>/shaders
+    COMMENT "Copiando shaders al directorio de salida de test_skybox_booster_integration..."
+)
+
+
 
 
 

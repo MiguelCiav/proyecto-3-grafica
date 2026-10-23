@@ -363,6 +363,9 @@ void Application::selectTrack(int index) {
     // Configurar iluminacion adaptada al circuito
     setupTrackLighting();
 
+    // Desplegar pads de aceleracion procedural en rectas de la pista
+    setupBoosterPads();
+
     // Actualizar posicion y rumbo de salida
     m_kartInitialPos = glm::vec3(0.0f, 0.0f, 0.0f);
     m_kartInitialYaw = 90.0f;
@@ -534,6 +537,103 @@ void Application::setupTrackLighting() {
               << " farolas puntuales, sol direccional y faros frontales." << std::endl;
 }
 
+void Application::setupBoosterPads() {
+    m_boosterPads.clear();
+
+    // 1. Localizar la celda de salida y orientacion de carrera
+    const world::TileData* startTile = nullptr;
+    for (const auto& tile : m_trackGrid.getAllTiles()) {
+        if (tile.type == world::TileType::START_FINISH) {
+            startTile = &tile;
+            break;
+        }
+    }
+    if (!startTile) return;
+
+    // 2. Trazar el bucle cerrado del circuito en el sentido de avance
+    std::vector<const world::TileData*> circuitPath;
+    std::vector<bool> visited(m_trackGrid.getCols() * m_trackGrid.getRows(), false);
+
+    const world::TileData* curr = startTile;
+    while (curr != nullptr) {
+        circuitPath.push_back(curr);
+        int idx = curr->row * m_trackGrid.getCols() + curr->col;
+        visited[idx] = true;
+
+        const world::TileData* next = nullptr;
+        static const glm::ivec2 offsets[4] = { {1, 0}, {0, 1}, {-1, 0}, {0, -1} };
+
+        if (circuitPath.size() == 1) {
+            float rad = glm::radians(m_kartInitialYaw);
+            glm::vec2 forward(std::sin(rad), std::cos(rad));
+            float bestDot = -1.0f;
+            for (const auto& off : offsets) {
+                const auto* neighbor = m_trackGrid.getTile(curr->col + off.x, curr->row + off.y);
+                if (neighbor && neighbor->type != world::TileType::EMPTY) {
+                    glm::vec2 dir(off.x, off.y);
+                    float d = glm::dot(glm::normalize(forward), glm::normalize(dir));
+                    if (d > bestDot) {
+                        bestDot = d;
+                        next = neighbor;
+                    }
+                }
+            }
+        } else {
+            for (const auto& off : offsets) {
+                const auto* neighbor = m_trackGrid.getTile(curr->col + off.x, curr->row + off.y);
+                if (neighbor && neighbor->type != world::TileType::EMPTY) {
+                    int nIdx = neighbor->row * m_trackGrid.getCols() + neighbor->col;
+                    if (!visited[nIdx]) {
+                        next = neighbor;
+                        break;
+                    }
+                }
+            }
+        }
+        curr = next;
+    }
+
+    // 3. Extraer tramos de recta con su orientación real en el sentido de carrera
+    struct StraightPlacement {
+        glm::vec3 worldPos;
+        float trafficYaw;
+    };
+    std::vector<StraightPlacement> straights;
+
+    for (size_t i = 0; i < circuitPath.size(); ++i) {
+        const auto* tile = circuitPath[i];
+        if (tile->type == world::TileType::ROAD_STRAIGHT) {
+            size_t nextIdx = (i + 1) % circuitPath.size();
+            const auto* nextTile = circuitPath[nextIdx];
+            glm::vec3 dir = nextTile->worldPos - tile->worldPos;
+            float yawDeg = glm::degrees(std::atan2(dir.x, dir.z));
+            if (yawDeg < 0.0f) yawDeg += 360.0f;
+
+            straights.push_back({ tile->worldPos, yawDeg });
+        }
+    }
+
+    if (!straights.empty()) {
+        size_t count = std::min<size_t>(4, straights.size());
+        size_t step = straights.size() / count;
+
+        for (size_t i = 0; i < count; ++i) {
+            size_t idx = (i * step + 1) % straights.size();
+            const auto& item = straights[idx];
+
+            world::BoosterPad pad(item.worldPos, item.trafficYaw, 2.6f, 3.8f);
+            pad.setBoostMultiplier(1.6f);
+            pad.setBoostDuration(2.0f);
+            pad.setInstantImpulse(8.0f);
+            pad.registerTrigger(m_zoneManager);
+            m_boosterPads.push_back(std::move(pad));
+        }
+    }
+
+    std::cout << "[OK] [Boosters] Desplegados " << m_boosterPads.size()
+              << " pads de aceleracion alineados con el sentido de carrera." << std::endl;
+}
+
 bool Application::init() {
     WindowProps props;
     props.title = m_config.title;
@@ -558,6 +658,15 @@ bool Application::init() {
     if (!m_litShader.loadFromFiles("shaders/lit.vert", "shaders/lit.frag")) {
         std::cerr << "[ERROR] [Application] Fallo al cargar shaders de iluminacion (shaders/lit)." << std::endl;
         return false;
+    }
+
+    if (!m_boosterShader.loadFromFiles("shaders/booster_procedural.vert", "shaders/booster_procedural.frag")) {
+        std::cerr << "[AVISO] [Application] No se pudo cargar el shader procedural de boosters." << std::endl;
+    }
+
+    if (!m_skybox.loadShader("shaders/skybox.vert", "shaders/skybox.frag") ||
+        !m_skybox.loadFromDirectory("assets/textures/skybox", ".png")) {
+        std::cerr << "[AVISO] [Application] No se pudo cargar el Skybox." << std::endl;
     }
 
     if (!m_paletteTexture.loadFromFile("assets/textures/colormap.png")) {
@@ -890,10 +999,14 @@ void Application::update(float deltaTime) {
     }
 
     // 5. Evaluacion de zonas de boost y meta
+    for (const auto& pad : m_boosterPads) {
+        pad.onKartContact(m_kartPhysics);
+    }
+
     const world::SpecialZone* hitZone = m_zoneManager.checkTrigger(m_kartPhysics.getPosition());
     if (hitZone != nullptr) {
         if (hitZone->type == world::ZoneType::BOOST) {
-            m_kartPhysics.applyBoost(hitZone->durationSeconds);
+            m_kartPhysics.applyBoost(hitZone->durationSeconds, hitZone->speedMultiplier);
         } else if (hitZone->type == world::ZoneType::FINISH_LINE && m_finishLineCooldown <= 0.0f && m_kartPhysics.getSpeed() > 1.5f) {
             m_lapsCompleted++;
             m_finishLineCooldown = 5.0f;
@@ -982,6 +1095,30 @@ void Application::render() {
         shader.setBool("u_UseTexture", true);
         shader.setVec4("u_Color", glm::vec4(1.0f));
         m_kartEntity.draw(shader);
+
+        // Booster pads procedurales en el circuito
+        if (m_boosterShader.isValid() && !m_boosterPads.empty()) {
+            m_boosterShader.use();
+            m_boosterShader.setMat4("u_View", view);
+            m_boosterShader.setMat4("u_Projection", proj);
+            m_boosterShader.setVec3("u_BaseColor", glm::vec3(0.08f, 0.08f, 0.10f));
+            m_boosterShader.setVec3("u_EnergyColor", glm::vec3(1.0f, 0.55f, 0.0f));
+            m_boosterShader.setVec3("u_CoreColor", glm::vec3(1.0f, 1.0f, 0.85f));
+            m_boosterShader.setFloat("u_EmissionIntensity", 3.0f);
+            m_boosterShader.setFloat("u_Speed", 3.5f);
+            m_boosterShader.setFloat("u_Repetitions", 3.0f);
+            m_boosterShader.setFloat("u_ArrowThickness", 0.22f);
+            m_boosterShader.setFloat("u_PulseSpeed", 5.0f);
+            float currentTime = static_cast<float>(m_time.getElapsedTime());
+            for (const auto& pad : m_boosterPads) {
+                pad.draw(m_boosterShader, currentTime);
+            }
+        }
+
+        // Skybox 3D panoramico al fondo
+        if (m_skybox.isLoaded()) {
+            m_skybox.draw(view, proj);
+        }
         return;
     }
 
@@ -1063,6 +1200,30 @@ void Application::render() {
     shader.setBool("u_UseTexture", true);
     shader.setVec4("u_Color", glm::vec4(1.0f));
     m_kartEntity.draw(shader);
+
+    // 4. Renderizar pads de aceleracion procedural
+    if (m_boosterShader.isValid() && !m_boosterPads.empty()) {
+        m_boosterShader.use();
+        m_boosterShader.setMat4("u_View", view);
+        m_boosterShader.setMat4("u_Projection", proj);
+        m_boosterShader.setVec3("u_BaseColor", glm::vec3(0.08f, 0.08f, 0.10f));
+        m_boosterShader.setVec3("u_EnergyColor", glm::vec3(1.0f, 0.55f, 0.0f));
+        m_boosterShader.setVec3("u_CoreColor", glm::vec3(1.0f, 1.0f, 0.85f));
+        m_boosterShader.setFloat("u_EmissionIntensity", 3.0f);
+        m_boosterShader.setFloat("u_Speed", 3.5f);
+        m_boosterShader.setFloat("u_Repetitions", 3.0f);
+        m_boosterShader.setFloat("u_ArrowThickness", 0.22f);
+        m_boosterShader.setFloat("u_PulseSpeed", 5.0f);
+        float currentTime = static_cast<float>(m_time.getElapsedTime());
+        for (const auto& pad : m_boosterPads) {
+            pad.draw(m_boosterShader, currentTime);
+        }
+    }
+
+    // 5. Renderizar Skybox 3D inmersivo con optimizacion GL_LEQUAL al fondo de la escena
+    if (m_skybox.isLoaded()) {
+        m_skybox.draw(view, proj);
+    }
 }
 
 void Application::run() {

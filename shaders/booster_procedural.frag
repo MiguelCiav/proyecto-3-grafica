@@ -36,11 +36,11 @@ void main()
     float flow = uv.y * reps - u_Time * speed;
     float vAnim = fract(flow);
 
-    // 2. Cálculo geométrico del patrón Chevron (Flecha)
+    // 2. Cálculo geométrico del patrón Chevron (Flecha) orientada hacia adelante
     // arrowDist mide la distancia horizontal al centro escalada [0, 1]
     float arrowDist = abs(uv.x - 0.5) * 2.0;
     float slope = 0.45; // Pendiente de las alas de la flecha
-    float chevronBase = arrowDist * slope;
+    float chevronBase = (1.0 - arrowDist) * slope;
 
     // Máscara de flecha suave con soporte anti-aliasing
     float delta = 0.02;

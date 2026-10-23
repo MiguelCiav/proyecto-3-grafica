@@ -18,6 +18,8 @@
 #include "geometry/KartPreprocessor.hpp"
 #include "lighting/LightManager.hpp"
 #include "lighting/LightingController.hpp"
+#include "renderer/Skybox.hpp"
+#include "world/BoosterPad.hpp"
 #include <memory>
 #include <string>
 #include <vector>
@@ -102,12 +104,17 @@ public:
     GameState getGameState() const { return m_gameState; }
     void setGameState(GameState state);
 
+    const renderer::Skybox& getSkybox() const { return m_skybox; }
+    const renderer::Shader& getBoosterShader() const { return m_boosterShader; }
+    const std::vector<world::BoosterPad>& getBoosterPads() const { return m_boosterPads; }
+
 private:
     void processInput();
     void update(float deltaTime);
     void render();
     void setupColliders();
     void setupTrackLighting();
+    void setupBoosterPads();
     void loadCatalog();
     void selectDriver(int index);
     void selectVehicle(int index);
@@ -134,13 +141,16 @@ private:
     // Shaders y Texturas
     renderer::Shader m_basicShader;
     renderer::Shader m_litShader;
+    renderer::Shader m_boosterShader;
     renderer::Texture m_paletteTexture;
+    renderer::Skybox m_skybox;
 
     // Mundo y Circuito Modular
     world::TrackGrid m_trackGrid;
     renderer::TrackRenderer m_trackRenderer;
     world::PropSpawner m_propSpawner;
     world::ZoneTriggerManager m_zoneManager;
+    std::vector<world::BoosterPad> m_boosterPads;
 
     // Fisicas y Colisiones
     Engine::Physics::CollisionSystem m_collisionSystem;
