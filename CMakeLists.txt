@@ -360,6 +360,35 @@ add_custom_command(TARGET test_skybox_booster_integration POST_BUILD
     COMMENT "Copiando shaders al directorio de salida de test_skybox_booster_integration..."
 )
 
+# ==============================================================================
+# 15. Ejecutable de Pruebas Unitarias - Sistema de Partículas 3D
+# ==============================================================================
+add_executable(test_particle_system
+    tests/test_particle_system.cpp
+    src/vfx/ParticleSystem.cpp
+    src/renderer/Shader.cpp
+)
+
+target_include_directories(test_particle_system PUBLIC
+    ${PROJECT_INCLUDE_DIRS}
+)
+
+target_link_libraries(test_particle_system PRIVATE
+    OpenGL::GL
+    glad
+    glfw
+    glm::glm
+    ${CMAKE_DL_LIBS}
+)
+
+add_custom_command(TARGET test_particle_system POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
+        $<TARGET_FILE_DIR:test_particle_system>/shaders
+    COMMENT "Copiando shaders al directorio de salida de test_particle_system..."
+)
+
+
 
 
 
