@@ -418,6 +418,19 @@ add_custom_command(TARGET test_kart_particle_emitter POST_BUILD
     COMMENT "Copiando shaders al directorio de salida de test_kart_particle_emitter..."
 )
 
+# ==============================================================================
+# 17. Target de Empaquetado para Entrega UCV
+# ==============================================================================
+find_package(Python3 QUIET COMPONENTS Interpreter)
+if(Python3_FOUND)
+    add_custom_target(package_project
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/package.py
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Generando paquete ZIP para entrega final UCV..."
+    )
+endif()
+
+
 
 
 
