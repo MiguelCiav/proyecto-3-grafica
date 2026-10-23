@@ -419,7 +419,49 @@ add_custom_command(TARGET test_kart_particle_emitter POST_BUILD
 )
 
 # ==============================================================================
-# 17. Target de Empaquetado para Entrega UCV
+# 17. Ejecutable de Pruebas Unitarias - Integración Final Mario Kart 20/20
+# ==============================================================================
+add_executable(test_final_integration
+    tests/test_final_integration.cpp
+    src/renderer/Shader.cpp
+    src/renderer/Texture.cpp
+    src/renderer/Skybox.cpp
+    src/lighting/LightManager.cpp
+    src/lighting/LightingController.cpp
+    src/vfx/KartParticleEmitter.cpp
+    src/vfx/ParticleSystem.cpp
+    src/world/TrackGrid.cpp
+    src/world/LevelLoader.cpp
+    src/world/BoosterPad.cpp
+    src/world/ZoneTrigger.cpp
+    src/physics/KartPhysics.cpp
+    src/physics/CollisionSystem.cpp
+    src/camera/Camera.cpp
+    src/camera/ChaseCamera.cpp
+    src/core/Input.cpp
+)
+
+target_include_directories(test_final_integration PUBLIC
+    ${PROJECT_INCLUDE_DIRS}
+)
+
+target_link_libraries(test_final_integration PRIVATE
+    OpenGL::GL
+    glad
+    glfw
+    glm::glm
+    ${CMAKE_DL_LIBS}
+)
+
+add_custom_command(TARGET test_final_integration POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
+        $<TARGET_FILE_DIR:test_final_integration>/shaders
+    COMMENT "Copiando shaders al directorio de salida de test_final_integration..."
+)
+
+# ==============================================================================
+# 18. Target de Empaquetado para Entrega UCV
 # ==============================================================================
 find_package(Python3 QUIET COMPONENTS Interpreter)
 if(Python3_FOUND)
@@ -429,6 +471,7 @@ if(Python3_FOUND)
         COMMENT "Generando paquete ZIP para entrega final UCV..."
     )
 endif()
+
 
 
 
