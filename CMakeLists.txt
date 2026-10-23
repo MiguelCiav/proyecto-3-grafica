@@ -240,5 +240,35 @@ add_custom_command(TARGET test_scene_lighting_integration POST_BUILD
     COMMENT "Copiando shaders y assets al directorio de salida de test_scene_lighting_integration..."
 )
 
+# ==============================================================================
+# 11. Ejecutable de Pruebas Unitarias - Skybox con Cubemap 3D
+# ==============================================================================
+add_executable(test_skybox
+    tests/test_skybox.cpp
+    src/renderer/Skybox.cpp
+    src/renderer/Shader.cpp
+    src/renderer/Texture.cpp
+)
+
+target_include_directories(test_skybox PUBLIC
+    ${PROJECT_INCLUDE_DIRS}
+)
+
+target_link_libraries(test_skybox PRIVATE
+    OpenGL::GL
+    glad
+    glfw
+    glm::glm
+    ${CMAKE_DL_LIBS}
+)
+
+add_custom_command(TARGET test_skybox POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
+        $<TARGET_FILE_DIR:test_skybox>/shaders
+    COMMENT "Copiando shaders al directorio de salida de test_skybox..."
+)
+
+
 
 
