@@ -263,6 +263,14 @@ void Application::loadCatalog() {
     // -------------------------------------------------------------
     m_tracks = {
         {
+            "track-grand-circuit",
+            "Gran Circuito Internacional UCV",
+            "Gran Prix ★★★",
+            "Mega circuito profesional de 112 tramos con multiples chicanas, horquillas, rectas y decoraciones.",
+            "assets/levels/track_grand_circuit.txt",
+            28, 25
+        },
+        {
             "track-oval",
             "Ovalo Clasico UCV",
             "Facil ★☆☆",
@@ -462,7 +470,7 @@ void Application::setupColliders() {
 
     m_collisionSystem.addStaticBox(Engine::Physics::BoundingBox(
         glm::vec3(-halfWidth, 0.0f, halfDepth),
-        glm::vec3(halfWidth, wallHeight, halfWidth + 2.0f)
+        glm::vec3(halfWidth, wallHeight, halfDepth + 2.0f)
     ));
     m_collisionSystem.addStaticBox(Engine::Physics::BoundingBox(
         glm::vec3(-halfWidth, 0.0f, -halfDepth - 2.0f),
@@ -505,7 +513,7 @@ void Application::setupTrackLighting() {
     // 3. Ubicar fuentes de luz puntuales a lo largo del trazado
     if (roadPositions.size() >= 4) {
         size_t n = roadPositions.size();
-        size_t count = (n >= 6) ? 6 : 4;
+        size_t count = std::min<size_t>(8, n);
 
         for (size_t i = 0; i < count; ++i) {
             size_t idx = (i * n) / count;
@@ -515,8 +523,8 @@ void Application::setupTrackLighting() {
             lamp.diffuse  = glm::vec3(1.0f, 0.85f, 0.45f);
             lamp.specular = glm::vec3(1.0f, 0.90f, 0.60f);
             lamp.constant = 1.0f;
-            lamp.linear   = 0.07f;
-            lamp.quadratic = 0.017f;
+            lamp.linear   = 0.05f;
+            lamp.quadratic = 0.010f;
             lamp.enabled  = true;
             m_lightManager.addPointLight(lamp);
         }
@@ -614,7 +622,7 @@ void Application::setupBoosterPads() {
     }
 
     if (!straights.empty()) {
-        size_t count = std::min<size_t>(4, straights.size());
+        size_t count = std::min<size_t>(8, straights.size());
         size_t step = straights.size() / count;
 
         for (size_t i = 0; i < count; ++i) {

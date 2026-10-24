@@ -14,8 +14,8 @@ void TrackRenderer::createGroundPlane() {
     geometry::SubMesh ground;
     ground.name = "Ground_Plane";
 
-    float size = 200.0f;
-    float uvScale = 40.0f;
+    float size = 350.0f;
+    float uvScale = 70.0f;
     float y = -0.05f;
 
     // Vértices del plano de césped/suelo
