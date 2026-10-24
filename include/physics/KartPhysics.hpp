@@ -31,7 +31,7 @@ public:
     [[nodiscard]] glm::vec3 getForwardVector() const;
 
     [[nodiscard]] BoundingSphere getBoundingSphere() const {
-        return BoundingSphere(m_position + glm::vec3(0.0f, 0.35f, 0.0f), 0.72f);
+        return BoundingSphere(m_position + glm::vec3(0.0f, 0.35f, 0.10f), 0.48f);
     }
 
     [[nodiscard]] BoundingBox getBoundingBox() const {
