@@ -106,7 +106,7 @@ public:
     GameState getGameState() const { return m_gameState; }
     void setGameState(GameState state);
 
-    const renderer::Skybox& getSkybox() const { return m_skybox; }
+    const renderer::Skybox& getSkybox() const;
     const renderer::Shader& getBoosterShader() const { return m_boosterShader; }
     const std::vector<world::BoosterPad>& getBoosterPads() const { return m_boosterPads; }
     vfx::KartParticleEmitter& getKartEmitter() { return m_kartEmitter; }
@@ -147,7 +147,8 @@ private:
     renderer::Shader m_litShader;
     renderer::Shader m_boosterShader;
     renderer::Texture m_paletteTexture;
-    renderer::Skybox m_skybox;
+    renderer::Skybox m_skyboxDay;
+    renderer::Skybox m_skyboxNight;
 
     // Mundo y Circuito Modular
     world::TrackGrid m_trackGrid;

@@ -291,15 +291,29 @@ void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight) {
         }
     }
 
-    // 2. Generar 8 Postes de Alumbrado Público 3D (Farolas con brazos y bombillas)
+    // 2. Generar Farolas 3D Ampliamente Espaciadas (Mínimo 28m de separación entre postes)
     if (!straightTiles.empty()) {
-        size_t count = std::min<size_t>(8, straightTiles.size());
-        size_t step = straightTiles.size() / count;
+        const float MIN_LAMP_DIST = 28.0f; // Al menos 28 metros entre farolas (7 losas de separación)
+        const size_t MAX_LAMPS = 6;        // Máximo 6 farolas estratégicas para no sobrecargar de luz
 
-        for (size_t i = 0; i < count; ++i) {
-            size_t idx = (i * step + 1) % straightTiles.size();
-            const auto* tile = straightTiles[idx];
+        std::vector<const TileData*> selectedLamps;
+        size_t stride = std::max<size_t>(1, straightTiles.size() / 16);
+        for (size_t i = 0; i < straightTiles.size() && selectedLamps.size() < MAX_LAMPS; i += stride) {
+            const auto* cand = straightTiles[i];
+            bool tooClose = false;
+            for (const auto* existing : selectedLamps) {
+                if (glm::distance(cand->worldPos, existing->worldPos) < MIN_LAMP_DIST) {
+                    tooClose = true;
+                    break;
+                }
+            }
+            if (!tooClose) {
+                selectedLamps.push_back(cand);
+            }
+        }
 
+        for (size_t i = 0; i < selectedLamps.size(); ++i) {
+            const auto* tile = selectedLamps[i];
             bool isHorizontal = (tile->rotationDegrees == 90.0f || tile->rotationDegrees == 270.0f);
             float sideSign = (i % 2 == 0) ? 1.0f : -1.0f;
             glm::vec3 sideDir = isHorizontal ? glm::vec3(0.0f, 0.0f, sideSign) : glm::vec3(sideSign, 0.0f, 0.0f);

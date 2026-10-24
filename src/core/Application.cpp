@@ -386,11 +386,6 @@ void Application::selectTrack(int index) {
     // Configurar iluminacion adaptada al circuito (diurno o nocturno)
     setupTrackLighting();
 
-    // Sincronizar tono del cielo segun el modo de la pista
-    if (m_skybox.isLoaded()) {
-        m_skybox.setTint(track.isNight ? glm::vec3(0.20f, 0.24f, 0.42f) : glm::vec3(1.0f));
-    }
-
     // Desplegar pads de aceleracion procedural en rectas de la pista
     setupBoosterPads();
 
@@ -514,6 +509,13 @@ void Application::setupColliders() {
               << "x" << m_trackGrid.getRows() << ")." << std::endl;
 }
 
+const renderer::Skybox& Application::getSkybox() const {
+    if (m_lightingController.isNight() && m_skyboxNight.isLoaded()) {
+        return m_skyboxNight;
+    }
+    return m_skyboxDay;
+}
+
 void Application::setupTrackLighting() {
     m_lightManager.clearPointLights();
     bool isNight = (!m_tracks.empty() && m_selectedTrackIndex >= 0 && static_cast<size_t>(m_selectedTrackIndex) < m_tracks.size())
@@ -542,9 +544,10 @@ void Application::setupTrackLighting() {
             lighting::PointLight lamp;
             lamp.position = pos;
             if (isNight) {
-                lamp.ambient  = glm::vec3(0.06f, 0.05f, 0.02f);
-                lamp.diffuse  = glm::vec3(2.2f, 1.8f, 0.75f);
-                lamp.specular = glm::vec3(1.5f, 1.2f, 0.5f);
+                // Iluminación nocturna suave y cálida: conos dorados focalizados sin quemar el asfalto
+                lamp.ambient  = glm::vec3(0.04f, 0.03f, 0.01f);
+                lamp.diffuse  = glm::vec3(1.15f, 0.95f, 0.42f);
+                lamp.specular = glm::vec3(0.60f, 0.50f, 0.25f);
                 lamp.enabled  = true;
             } else {
                 // De día, las farolas se mantienen en reposo para no quemar el asfalto
@@ -553,9 +556,9 @@ void Application::setupTrackLighting() {
                 lamp.specular = glm::vec3(0.0f);
                 lamp.enabled  = false;
             }
-            lamp.constant = 1.0f;
-            lamp.linear   = 0.045f;
-            lamp.quadratic = 0.010f;
+            lamp.constant  = 1.0f;
+            lamp.linear    = 0.09f;
+            lamp.quadratic = 0.030f;
             m_lightManager.addPointLight(lamp);
         }
     } else {
@@ -567,16 +570,16 @@ void Application::setupTrackLighting() {
         }
         if (roadPositions.size() >= 4) {
             size_t n = roadPositions.size();
-            size_t count = std::min<size_t>(8, n);
+            size_t count = std::min<size_t>(6, n);
 
             for (size_t i = 0; i < count; ++i) {
                 size_t idx = (i * n) / count;
                 lighting::PointLight lamp;
                 lamp.position = roadPositions[idx] + glm::vec3(0.0f, 4.2f, 0.0f);
                 if (isNight) {
-                    lamp.ambient  = glm::vec3(0.06f, 0.05f, 0.02f);
-                    lamp.diffuse  = glm::vec3(2.2f, 1.8f, 0.75f);
-                    lamp.specular = glm::vec3(1.5f, 1.2f, 0.5f);
+                    lamp.ambient  = glm::vec3(0.04f, 0.03f, 0.01f);
+                    lamp.diffuse  = glm::vec3(1.15f, 0.95f, 0.42f);
+                    lamp.specular = glm::vec3(0.60f, 0.50f, 0.25f);
                     lamp.enabled  = true;
                 } else {
                     lamp.ambient  = glm::vec3(0.0f);
@@ -584,9 +587,9 @@ void Application::setupTrackLighting() {
                     lamp.specular = glm::vec3(0.0f);
                     lamp.enabled  = false;
                 }
-                lamp.constant = 1.0f;
-                lamp.linear   = 0.05f;
-                lamp.quadratic = 0.010f;
+                lamp.constant  = 1.0f;
+                lamp.linear    = 0.09f;
+                lamp.quadratic = 0.030f;
                 m_lightManager.addPointLight(lamp);
             }
         }
@@ -727,9 +730,14 @@ bool Application::init() {
         std::cerr << "[AVISO] [Application] No se pudo cargar el shader procedural de boosters." << std::endl;
     }
 
-    if (!m_skybox.loadShader("shaders/skybox.vert", "shaders/skybox.frag") ||
-        !m_skybox.loadFromDirectory("assets/textures/skybox", ".png")) {
-        std::cerr << "[AVISO] [Application] No se pudo cargar el Skybox." << std::endl;
+    if (!m_skyboxDay.loadShader("shaders/skybox.vert", "shaders/skybox.frag") ||
+        !m_skyboxDay.loadFromDirectory("assets/textures/skybox", ".png")) {
+        std::cerr << "[AVISO] [Application] No se pudo cargar el Skybox diurno." << std::endl;
+    }
+
+    if (!m_skyboxNight.loadShader("shaders/skybox.vert", "shaders/skybox.frag") ||
+        !m_skyboxNight.loadFromDirectory("assets/textures/skybox_night", ".tga")) {
+        std::cerr << "[AVISO] [Application] No se pudo cargar el Skybox nocturno." << std::endl;
     }
 
     if (!m_kartEmitter.init() || !m_kartEmitter.loadShaders("shaders/particle.vert", "shaders/particle.frag")) {
@@ -938,9 +946,6 @@ void Application::processInput() {
 
         // Controlador de Iluminacion y Faros: [1] Flat | [2] Lambert | [3] Blinn-Phong | [L] Faros | [P] Farolas | [N] Noche/Dia
         m_lightingController.handleInput();
-        if (m_skybox.isLoaded()) {
-            m_skybox.setTint(m_lightingController.isNight() ? glm::vec3(0.20f, 0.24f, 0.42f) : glm::vec3(1.0f));
-        }
 
         // En modo FPS: alternar captura de mouse con clic o TAB
         if (m_cameraMode == CameraMode::FPS) {
@@ -1197,8 +1202,9 @@ void Application::render() {
         m_kartEmitter.render(view, proj);
 
         // Skybox 3D panoramico al fondo
-        if (m_skybox.isLoaded()) {
-            m_skybox.draw(view, proj);
+        const auto& skybox = getSkybox();
+        if (skybox.isLoaded()) {
+            skybox.draw(view, proj);
         }
         return;
     }
@@ -1310,8 +1316,9 @@ void Application::render() {
     m_kartEmitter.render(view, proj);
 
     // 6. Renderizar Skybox 3D inmersivo con optimizacion GL_LEQUAL al fondo de la escena
-    if (m_skybox.isLoaded()) {
-        m_skybox.draw(view, proj);
+    const auto& skybox = getSkybox();
+    if (skybox.isLoaded()) {
+        skybox.draw(view, proj);
     }
 }
 
