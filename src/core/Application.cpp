@@ -502,25 +502,14 @@ void Application::setupTrackLighting() {
     sun.enabled   = true;
     m_lightManager.setDirectionalLight(sun);
 
-    // 2. Extraer posiciones de losas de asfalto de la pista
-    std::vector<glm::vec3> roadPositions;
-    for (const auto& tile : m_trackGrid.getAllTiles()) {
-        if (tile.type != world::TileType::EMPTY && tile.type != world::TileType::OFFROAD_GRASS) {
-            roadPositions.push_back(tile.worldPos);
-        }
-    }
-
-    // 3. Ubicar fuentes de luz puntuales a lo largo del trazado
-    if (roadPositions.size() >= 4) {
-        size_t n = roadPositions.size();
-        size_t count = std::min<size_t>(8, n);
-
-        for (size_t i = 0; i < count; ++i) {
-            size_t idx = (i * n) / count;
+    // 2. Extraer posiciones exactas de las farolas 3D generadas por PropSpawner
+    const auto& lampPositions = m_propSpawner.getLampPositions();
+    if (!lampPositions.empty()) {
+        for (const auto& pos : lampPositions) {
             lighting::PointLight lamp;
-            lamp.position = roadPositions[idx] + glm::vec3(0.0f, 4.2f, 0.0f);
-            lamp.ambient  = glm::vec3(0.08f, 0.06f, 0.03f);
-            lamp.diffuse  = glm::vec3(1.0f, 0.85f, 0.45f);
+            lamp.position = pos;
+            lamp.ambient  = glm::vec3(0.12f, 0.09f, 0.04f);
+            lamp.diffuse  = glm::vec3(1.0f, 0.88f, 0.42f);
             lamp.specular = glm::vec3(1.0f, 0.90f, 0.60f);
             lamp.constant = 1.0f;
             lamp.linear   = 0.05f;
@@ -529,15 +518,30 @@ void Application::setupTrackLighting() {
             m_lightManager.addPointLight(lamp);
         }
     } else {
-        lighting::PointLight lamp1, lamp2, lamp3, lamp4;
-        lamp1.position = glm::vec3(0.0f, 4.2f, 0.0f);
-        lamp2.position = glm::vec3(30.0f, 4.2f, 15.0f);
-        lamp3.position = glm::vec3(45.0f, 4.2f, 45.0f);
-        lamp4.position = glm::vec3(15.0f, 4.2f, 45.0f);
-        m_lightManager.addPointLight(lamp1);
-        m_lightManager.addPointLight(lamp2);
-        m_lightManager.addPointLight(lamp3);
-        m_lightManager.addPointLight(lamp4);
+        std::vector<glm::vec3> roadPositions;
+        for (const auto& tile : m_trackGrid.getAllTiles()) {
+            if (tile.type != world::TileType::EMPTY && tile.type != world::TileType::OFFROAD_GRASS) {
+                roadPositions.push_back(tile.worldPos);
+            }
+        }
+        if (roadPositions.size() >= 4) {
+            size_t n = roadPositions.size();
+            size_t count = std::min<size_t>(8, n);
+
+            for (size_t i = 0; i < count; ++i) {
+                size_t idx = (i * n) / count;
+                lighting::PointLight lamp;
+                lamp.position = roadPositions[idx] + glm::vec3(0.0f, 4.2f, 0.0f);
+                lamp.ambient  = glm::vec3(0.12f, 0.09f, 0.04f);
+                lamp.diffuse  = glm::vec3(1.0f, 0.88f, 0.42f);
+                lamp.specular = glm::vec3(1.0f, 0.90f, 0.60f);
+                lamp.constant = 1.0f;
+                lamp.linear   = 0.05f;
+                lamp.quadratic = 0.010f;
+                lamp.enabled  = true;
+                m_lightManager.addPointLight(lamp);
+            }
+        }
     }
 
     std::cout << "[OK] [Lighting] Circuito configurado con "

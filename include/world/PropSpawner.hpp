@@ -36,12 +36,14 @@ public:
 
     const std::vector<PropInstance>& getProps() const { return m_props; }
     size_t getPropCount() const { return m_props.size(); }
+    const std::vector<glm::vec3>& getLampPositions() const { return m_lampPositions; }
 
     void addProp(const std::string& type, const glm::vec3& pos, float rotDeg = 0.0f, const glm::vec3& scale = glm::vec3(1.0f));
-    void clear() { m_props.clear(); }
+    void clear() { m_props.clear(); m_lampPositions.clear(); }
 
 private:
     std::vector<PropInstance> m_props;
+    std::vector<glm::vec3> m_lampPositions;
     std::unordered_map<std::string, renderer::MeshGL> m_propMeshes;
     bool m_initialized{false};
 };

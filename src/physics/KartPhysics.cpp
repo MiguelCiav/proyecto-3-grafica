@@ -94,20 +94,25 @@ void KartPhysics::update(float deltaTime, bool accelerate, bool brake, float ste
 }
 
 void KartPhysics::onCollision(const glm::vec3& mtv, float reboundFactor) {
-    // Corregir posicion expulsando el kart del colisionador
-    m_position += mtv;
+    // Corregir posicion expulsando el kart del colisionador (restringido al plano horizontal XZ)
+    glm::vec3 planarMTV = glm::vec3(mtv.x, 0.0f, mtv.z);
+    if (glm::length(planarMTV) > 0.0001f) {
+        m_position += planarMTV;
+    } else {
+        m_position += mtv;
+    }
 
     // Disminuir o rebotar la velocidad si el impacto fue frontal
     glm::vec3 forward = getForwardVector();
-    glm::vec3 mtvDir = glm::normalize(mtv);
+    glm::vec3 mtvDir = (glm::length(planarMTV) > 0.0001f) ? glm::normalize(planarMTV) : glm::normalize(mtv);
     float dot = glm::dot(forward, mtvDir);
 
-    if (dot < -0.38f) {
-        // Impacto frontal directo contra el obstaculo
+    if (dot < -0.22f) {
+        // Impacto frontal o angular directo contra el obstaculo
         m_currentSpeed = -m_currentSpeed * reboundFactor;
     } else {
-        // Roce lateral o deslizamiento suave junto a conos y barreras
-        m_currentSpeed *= 0.94f;
+        // Roce lateral o contacto rasante junto a conos y barreras
+        m_currentSpeed *= 0.85f;
     }
 }
 
