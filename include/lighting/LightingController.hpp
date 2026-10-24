@@ -34,6 +34,10 @@ public:
     void setHeadlights(bool enabled);
     bool areHeadlightsOn() const;
 
+    // Control de farolas de pista y ciclo dia/noche
+    void togglePointLights();
+    void toggleDayNight();
+
     // Control de modelo de sombreado
     void setLightingModel(LightingModel model);
     LightingModel getLightingModel() const;

@@ -440,9 +440,13 @@ void Application::setGameState(GameState state) {
         m_kartPhysics.setPosition(m_kartInitialPos);
         m_kartPhysics.setYaw(m_kartInitialYaw);
         m_wheelAnimator.reset();
-        m_chaseCamera.reset(m_kartInitialPos, m_kartPhysics.getForwardVector());
-        std::cout << "\n>>> [CARRERA INICIADA] Pista: " << m_tracks[m_selectedTrackIndex].name
-                  << " | Conduce con W/S/A/D | [M: Cambiar Auto/Pista] [ESC: Menu] <<<\n" << std::endl;
+        std::cout << "\n========================================================" << std::endl;
+        std::cout << "  >>> [CARRERA INICIADA] Pista: " << m_tracks[m_selectedTrackIndex].name << " <<<" << std::endl;
+        std::cout << "  [W/A/S/D] Conducir | [C] Camara FPS / Chase | [R] Reiniciar" << std::endl;
+        std::cout << "  [1/2/3] Modelos Sombreado | [L] Faros Delanteros" << std::endl;
+        std::cout << "  [P] Farolas de Pista ON/OFF | [N] Modo Noche / Dia" << std::endl;
+        std::cout << "  [M] Showroom / Pistas | [ESC] Menu" << std::endl;
+        std::cout << "========================================================\n" << std::endl;
     } else if (m_gameState == GameState::VEHICLE_SELECT) {
         m_cursorLocked = false;
         Input::setCursorVisible(true);
@@ -493,12 +497,12 @@ void Application::setupColliders() {
 void Application::setupTrackLighting() {
     m_lightManager.clearPointLights();
 
-    // 1. Luz Direccional (Sol cenital con tono calido)
+    // 1. Luz Direccional (Sol cenital con tono calido pero balanceado para resaltar las farolas)
     lighting::DirectionalLight sun;
     sun.direction = glm::normalize(glm::vec3(-0.35f, -0.85f, -0.40f));
-    sun.ambient   = glm::vec3(0.35f, 0.35f, 0.38f);
-    sun.diffuse   = glm::vec3(0.92f, 0.88f, 0.82f);
-    sun.specular  = glm::vec3(0.55f, 0.55f, 0.55f);
+    sun.ambient   = glm::vec3(0.20f, 0.20f, 0.23f);
+    sun.diffuse   = glm::vec3(0.55f, 0.52f, 0.48f);
+    sun.specular  = glm::vec3(0.35f, 0.35f, 0.35f);
     sun.enabled   = true;
     m_lightManager.setDirectionalLight(sun);
 
@@ -508,12 +512,12 @@ void Application::setupTrackLighting() {
         for (const auto& pos : lampPositions) {
             lighting::PointLight lamp;
             lamp.position = pos;
-            lamp.ambient  = glm::vec3(0.12f, 0.09f, 0.04f);
-            lamp.diffuse  = glm::vec3(1.0f, 0.88f, 0.42f);
-            lamp.specular = glm::vec3(1.0f, 0.90f, 0.60f);
+            lamp.ambient  = glm::vec3(0.18f, 0.14f, 0.06f);
+            lamp.diffuse  = glm::vec3(3.5f, 2.8f, 1.1f);
+            lamp.specular = glm::vec3(2.5f, 2.0f, 1.0f);
             lamp.constant = 1.0f;
-            lamp.linear   = 0.05f;
-            lamp.quadratic = 0.010f;
+            lamp.linear   = 0.035f;
+            lamp.quadratic = 0.007f;
             lamp.enabled  = true;
             m_lightManager.addPointLight(lamp);
         }

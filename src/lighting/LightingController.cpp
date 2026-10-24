@@ -62,10 +62,25 @@ void LightingController::handleInput() {
     }
 
     // -------------------------------------------------------------
+    // -------------------------------------------------------------
     // Alternancia de Faros del Kart (Tecla L)
     // -------------------------------------------------------------
     if (core::Input::isKeyJustPressed(GLFW_KEY_L)) {
         toggleHeadlights();
+    }
+
+    // -------------------------------------------------------------
+    // Alternancia de Farolas de Pista (Tecla P)
+    // -------------------------------------------------------------
+    if (core::Input::isKeyJustPressed(GLFW_KEY_P)) {
+        togglePointLights();
+    }
+
+    // -------------------------------------------------------------
+    // Conmutador de Ciclo Dia / Noche (Tecla N)
+    // -------------------------------------------------------------
+    if (core::Input::isKeyJustPressed(GLFW_KEY_N)) {
+        toggleDayNight();
     }
 }
 
@@ -79,6 +94,29 @@ void LightingController::setHeadlights(bool enabled) {
         m_lightManager->getSpotLight().enabled = m_headlightsOn;
     }
     std::cout << "[Faros Kart] Estado: " << (m_headlightsOn ? "[ENCENDIDOS - SPOT ACTIVO]" : "[APAGADOS]") << std::endl;
+}
+
+void LightingController::togglePointLights() {
+    if (!m_lightManager) return;
+    m_lightManager->togglePointLights();
+    bool on = !m_lightManager->getPointLights().empty() && m_lightManager->getPointLights()[0].enabled;
+    std::cout << "\n>>> [FAROLAS DE PISTA]: " << (on ? "[ENCENDIDAS - 8 FUENTES DE LUZ ACTIVAS]" : "[APAGADAS]") << " <<<\n" << std::endl;
+}
+
+void LightingController::toggleDayNight() {
+    if (!m_lightManager) return;
+    auto& sun = m_lightManager->getDirectionalLight();
+    if (sun.diffuse.x > 0.35f) {
+        sun.ambient = glm::vec3(0.06f, 0.07f, 0.10f);
+        sun.diffuse = glm::vec3(0.10f, 0.10f, 0.14f);
+        sun.specular = glm::vec3(0.08f);
+        std::cout << "\n>>> [AMBIENTE]: Modo [NOCHE / ATARDECER ACTIVADO (Tecla N)] - Farolas y Faros al maximo contraste! <<<\n" << std::endl;
+    } else {
+        sun.ambient = glm::vec3(0.20f, 0.20f, 0.23f);
+        sun.diffuse = glm::vec3(0.55f, 0.52f, 0.48f);
+        sun.specular = glm::vec3(0.35f);
+        std::cout << "\n>>> [AMBIENTE]: Modo [DIA ILUMINADO ACTIVADO (Tecla N)] <<<\n" << std::endl;
+    }
 }
 
 bool LightingController::areHeadlightsOn() const {
