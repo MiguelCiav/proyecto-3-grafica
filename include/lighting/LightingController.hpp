@@ -37,6 +37,8 @@ public:
     // Control de farolas de pista y ciclo dia/noche
     void togglePointLights();
     void toggleDayNight();
+    void setDayNight(bool isNight);
+    bool isNight() const { return m_isNight; }
 
     // Control de modelo de sombreado
     void setLightingModel(LightingModel model);
@@ -53,6 +55,7 @@ private:
     LightManager* m_lightManager{nullptr};
     float m_frontOffset{0.75f};
     bool m_headlightsOn{true};
+    bool m_isNight{false};
 };
 
 } // namespace lighting

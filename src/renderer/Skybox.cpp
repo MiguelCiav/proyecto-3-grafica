@@ -208,6 +208,7 @@ void Skybox::draw(const glm::mat4& view, const glm::mat4& projection, const Shad
     shader.setMat4("u_View", view);
     shader.setMat4("u_Projection", projection);
     shader.setInt("u_Skybox", 0);
+    shader.setVec3("u_SkyTint", m_tint);
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_CUBE_MAP, m_textureID);

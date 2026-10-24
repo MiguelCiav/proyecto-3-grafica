@@ -264,11 +264,21 @@ void Application::loadCatalog() {
     m_tracks = {
         {
             "track-grand-circuit",
-            "Gran Circuito Internacional UCV",
+            "Gran Circuito Internacional UCV (Dia)",
             "Gran Prix ★★★",
-            "Mega circuito profesional de 112 tramos con multiples chicanas, horquillas, rectas y decoraciones.",
+            "Mega circuito profesional de 112 tramos diurno con multiples chicanas, horquillas y arco monumental.",
             "assets/levels/track_grand_circuit.txt",
-            28, 25
+            28, 25,
+            false // isNight
+        },
+        {
+            "track-night-neon",
+            "Autodromo Nocturno UCV (Neon GP)",
+            "Nocturno ★★★",
+            "Espectacular circuito nocturno de 90 tramos iluminado con farolas, arcos de neon y balizas luminosas.",
+            "assets/levels/track_night_circuit.txt",
+            26, 22,
+            true // isNight
         },
         {
             "track-oval",
@@ -276,7 +286,8 @@ void Application::loadCatalog() {
             "Facil ★☆☆",
             "Circuito tradicional de alta velocidad con rectas largas y 4 curvas.",
             "assets/levels/track_oval.txt",
-            12, 12
+            12, 12,
+            false
         },
         {
             "track-gp",
@@ -284,7 +295,8 @@ void Application::loadCatalog() {
             "Media ★★☆",
             "Circuito tecnico F1 con chicanas en 'S' y curvas que exigen frenado.",
             "assets/levels/track_grand_prix.txt",
-            14, 14
+            14, 14,
+            false
         },
         {
             "track-karto",
@@ -292,7 +304,8 @@ void Application::loadCatalog() {
             "Tecnico ★★☆",
             "Trazado corto y frenetico de karts con curvas cerradas continuas.",
             "assets/levels/track_kartodromo.txt",
-            10, 10
+            10, 10,
+            false
         },
         {
             "track-spd",
@@ -300,7 +313,8 @@ void Application::loadCatalog() {
             "Extremo ★★★",
             "Mega circuito gigante de 54 tramos disenado para maxima aceleracion.",
             "assets/levels/track_speedway.txt",
-            17, 16
+            17, 16,
+            false
         },
         {
             "track-tech",
@@ -308,7 +322,8 @@ void Application::loadCatalog() {
             "Experto ★★★",
             "Trazado complejo con multiples curvas consecutivas y zonas estrechas.",
             "assets/levels/track_technical.txt",
-            14, 14
+            14, 14,
+            false
         }
     };
 }
@@ -361,15 +376,20 @@ void Application::selectTrack(int index) {
     // Cargar nuevo archivo de pista modular
     world::LevelLoader::loadFromFile(track.filePath, m_trackGrid);
 
-    // Regenerar obstaculos y triggers para la nueva pista
-    m_propSpawner.generateForGrid(m_trackGrid);
+    // Regenerar obstaculos y triggers para la nueva pista (con props diurnos o nocturnos)
+    m_propSpawner.generateForGrid(m_trackGrid, track.isNight);
     m_zoneManager.autoGenerateFromGrid(m_trackGrid);
 
     // Actualizar colisionadores
     setupColliders();
 
-    // Configurar iluminacion adaptada al circuito
+    // Configurar iluminacion adaptada al circuito (diurno o nocturno)
     setupTrackLighting();
+
+    // Sincronizar tono del cielo segun el modo de la pista
+    if (m_skybox.isLoaded()) {
+        m_skybox.setTint(track.isNight ? glm::vec3(0.20f, 0.24f, 0.42f) : glm::vec3(1.0f));
+    }
 
     // Desplegar pads de aceleracion procedural en rectas de la pista
     setupBoosterPads();
@@ -496,14 +516,23 @@ void Application::setupColliders() {
 
 void Application::setupTrackLighting() {
     m_lightManager.clearPointLights();
+    bool isNight = (!m_tracks.empty() && m_selectedTrackIndex >= 0 && static_cast<size_t>(m_selectedTrackIndex) < m_tracks.size())
+                    ? m_tracks[m_selectedTrackIndex].isNight : false;
 
-    // 1. Luz Direccional (Sol cenital con tono calido pero balanceado para resaltar las farolas)
+    // 1. Luz Direccional (Sol en el día o Luna en la noche)
     lighting::DirectionalLight sun;
-    sun.direction = glm::normalize(glm::vec3(-0.35f, -0.85f, -0.40f));
-    sun.ambient   = glm::vec3(0.20f, 0.20f, 0.23f);
-    sun.diffuse   = glm::vec3(0.55f, 0.52f, 0.48f);
-    sun.specular  = glm::vec3(0.35f, 0.35f, 0.35f);
-    sun.enabled   = true;
+    if (isNight) {
+        sun.direction = glm::normalize(glm::vec3(-0.25f, -0.65f, -0.50f));
+        sun.ambient   = glm::vec3(0.06f, 0.07f, 0.10f);
+        sun.diffuse   = glm::vec3(0.08f, 0.08f, 0.12f);
+        sun.specular  = glm::vec3(0.06f);
+    } else {
+        sun.direction = glm::normalize(glm::vec3(-0.35f, -0.85f, -0.40f));
+        sun.ambient   = glm::vec3(0.28f, 0.28f, 0.30f);
+        sun.diffuse   = glm::vec3(0.82f, 0.80f, 0.76f);
+        sun.specular  = glm::vec3(0.40f);
+    }
+    sun.enabled = true;
     m_lightManager.setDirectionalLight(sun);
 
     // 2. Extraer posiciones exactas de las farolas 3D generadas por PropSpawner
@@ -512,13 +541,21 @@ void Application::setupTrackLighting() {
         for (const auto& pos : lampPositions) {
             lighting::PointLight lamp;
             lamp.position = pos;
-            lamp.ambient  = glm::vec3(0.18f, 0.14f, 0.06f);
-            lamp.diffuse  = glm::vec3(3.5f, 2.8f, 1.1f);
-            lamp.specular = glm::vec3(2.5f, 2.0f, 1.0f);
+            if (isNight) {
+                lamp.ambient  = glm::vec3(0.06f, 0.05f, 0.02f);
+                lamp.diffuse  = glm::vec3(2.2f, 1.8f, 0.75f);
+                lamp.specular = glm::vec3(1.5f, 1.2f, 0.5f);
+                lamp.enabled  = true;
+            } else {
+                // De día, las farolas se mantienen en reposo para no quemar el asfalto
+                lamp.ambient  = glm::vec3(0.0f);
+                lamp.diffuse  = glm::vec3(0.0f);
+                lamp.specular = glm::vec3(0.0f);
+                lamp.enabled  = false;
+            }
             lamp.constant = 1.0f;
-            lamp.linear   = 0.035f;
-            lamp.quadratic = 0.007f;
-            lamp.enabled  = true;
+            lamp.linear   = 0.045f;
+            lamp.quadratic = 0.010f;
             m_lightManager.addPointLight(lamp);
         }
     } else {
@@ -536,21 +573,31 @@ void Application::setupTrackLighting() {
                 size_t idx = (i * n) / count;
                 lighting::PointLight lamp;
                 lamp.position = roadPositions[idx] + glm::vec3(0.0f, 4.2f, 0.0f);
-                lamp.ambient  = glm::vec3(0.12f, 0.09f, 0.04f);
-                lamp.diffuse  = glm::vec3(1.0f, 0.88f, 0.42f);
-                lamp.specular = glm::vec3(1.0f, 0.90f, 0.60f);
+                if (isNight) {
+                    lamp.ambient  = glm::vec3(0.06f, 0.05f, 0.02f);
+                    lamp.diffuse  = glm::vec3(2.2f, 1.8f, 0.75f);
+                    lamp.specular = glm::vec3(1.5f, 1.2f, 0.5f);
+                    lamp.enabled  = true;
+                } else {
+                    lamp.ambient  = glm::vec3(0.0f);
+                    lamp.diffuse  = glm::vec3(0.0f);
+                    lamp.specular = glm::vec3(0.0f);
+                    lamp.enabled  = false;
+                }
                 lamp.constant = 1.0f;
                 lamp.linear   = 0.05f;
                 lamp.quadratic = 0.010f;
-                lamp.enabled  = true;
                 m_lightManager.addPointLight(lamp);
             }
         }
     }
 
-    std::cout << "[OK] [Lighting] Circuito configurado con "
-              << m_lightManager.getPointLightCount()
-              << " farolas puntuales, sol direccional y faros frontales." << std::endl;
+    // 3. Sincronizar controlador de iluminacion y faros frontales
+    m_lightingController.setDayNight(isNight);
+
+    std::cout << "[OK] [Lighting] Circuito configurado: "
+              << (isNight ? "MODO NOCHE (Farolas activas, luna azulada)" : "MODO DIA (Sol brillante, farolas en reposo)")
+              << " (" << m_lightManager.getPointLightCount() << " farolas registradas)." << std::endl;
 }
 
 void Application::setupBoosterPads() {
@@ -889,8 +936,11 @@ void Application::processInput() {
                       << m_tracks[m_selectedTrackIndex].name << "." << std::endl;
         }
 
-        // Controlador de Iluminacion y Faros: [1] Flat | [2] Lambert | [3] Blinn-Phong | [L] Faros
+        // Controlador de Iluminacion y Faros: [1] Flat | [2] Lambert | [3] Blinn-Phong | [L] Faros | [P] Farolas | [N] Noche/Dia
         m_lightingController.handleInput();
+        if (m_skybox.isLoaded()) {
+            m_skybox.setTint(m_lightingController.isNight() ? glm::vec3(0.20f, 0.24f, 0.42f) : glm::vec3(1.0f));
+        }
 
         // En modo FPS: alternar captura de mouse con clic o TAB
         if (m_cameraMode == CameraMode::FPS) {
@@ -1088,7 +1138,12 @@ void Application::render() {
     // RENDERIZADO: MAIN_MENU (Vista panoramica orbital)
     // -------------------------------------------------------------
     if (m_gameState == GameState::MAIN_MENU) {
-        m_window->clear(0.40f, 0.68f, 0.95f, 1.0f);
+        bool isNight = m_lightingController.isNight();
+        if (isNight) {
+            m_window->clear(0.04f, 0.05f, 0.09f, 1.0f);
+        } else {
+            m_window->clear(0.40f, 0.68f, 0.95f, 1.0f);
+        }
         renderer::Shader& shader = m_litShader.isValid() ? m_litShader : m_basicShader;
         if (!shader.isValid()) return;
 
@@ -1191,7 +1246,12 @@ void Application::render() {
     // -------------------------------------------------------------
     // RENDERIZADO: RACING (Modo Carrera activo)
     // -------------------------------------------------------------
-    m_window->clear(0.42f, 0.70f, 0.95f, 1.0f);
+    bool isNight = m_lightingController.isNight();
+    if (isNight) {
+        m_window->clear(0.03f, 0.04f, 0.08f, 1.0f);
+    } else {
+        m_window->clear(0.42f, 0.70f, 0.95f, 1.0f);
+    }
     renderer::Shader& shader = m_litShader.isValid() ? m_litShader : m_basicShader;
     if (!shader.isValid()) return;
 

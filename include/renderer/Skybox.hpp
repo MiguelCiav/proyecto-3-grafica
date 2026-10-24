@@ -28,6 +28,9 @@ public:
 
     void destroy();
 
+    void setTint(const glm::vec3& tint) { m_tint = tint; }
+    const glm::vec3& getTint() const { return m_tint; }
+
     unsigned int getTextureID() const { return m_textureID; }
     unsigned int getVAO() const { return m_vao; }
     bool isLoaded() const { return m_textureID != 0 && m_vao != 0; }
@@ -40,6 +43,7 @@ private:
     unsigned int m_textureID{0};
     unsigned int m_vao{0};
     unsigned int m_vbo{0};
+    glm::vec3 m_tint{1.0f};
     std::unique_ptr<Shader> m_shader;
 };
 

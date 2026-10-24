@@ -77,6 +77,7 @@ struct TrackProfile {
     std::string filePath;
     int cols{12};
     int rows{12};
+    bool isNight{false};
 };
 
 struct AppConfig {

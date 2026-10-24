@@ -98,25 +98,76 @@ void LightingController::setHeadlights(bool enabled) {
 
 void LightingController::togglePointLights() {
     if (!m_lightManager) return;
-    m_lightManager->togglePointLights();
-    bool on = !m_lightManager->getPointLights().empty() && m_lightManager->getPointLights()[0].enabled;
-    std::cout << "\n>>> [FAROLAS DE PISTA]: " << (on ? "[ENCENDIDAS - 8 FUENTES DE LUZ ACTIVAS]" : "[APAGADAS]") << " <<<\n" << std::endl;
+    auto& points = m_lightManager->getPointLights();
+    if (points.empty()) return;
+
+    bool wasOn = points[0].enabled && (glm::length(points[0].diffuse) > 0.05f);
+    bool turnOn = !wasOn;
+
+    for (auto& p : points) {
+        p.enabled = turnOn;
+        if (turnOn) {
+            p.ambient  = glm::vec3(0.06f, 0.05f, 0.02f);
+            p.diffuse  = m_isNight ? glm::vec3(2.2f, 1.8f, 0.75f) : glm::vec3(0.80f, 0.68f, 0.30f);
+            p.specular = glm::vec3(1.0f, 0.8f, 0.4f);
+        } else {
+            p.ambient  = glm::vec3(0.0f);
+            p.diffuse  = glm::vec3(0.0f);
+            p.specular = glm::vec3(0.0f);
+        }
+    }
+    std::cout << "\n>>> [FAROLAS DE PISTA]: " << (turnOn ? "[ENCENDIDAS (Tecla P)]" : "[APAGADAS (Tecla P)]") << " <<<\n" << std::endl;
+}
+
+void LightingController::setDayNight(bool night) {
+    m_isNight = night;
+    if (!m_lightManager) return;
+
+    auto& sun = m_lightManager->getDirectionalLight();
+    auto& spot = m_lightManager->getSpotLight();
+    auto& points = m_lightManager->getPointLights();
+
+    if (m_isNight) {
+        // Noche: Luna azulada suave, farolas encendidas a brillo cálido ámbar, faros encendidos
+        sun.ambient  = glm::vec3(0.06f, 0.07f, 0.10f);
+        sun.diffuse  = glm::vec3(0.08f, 0.08f, 0.12f);
+        sun.specular = glm::vec3(0.06f);
+
+        for (auto& p : points) {
+            p.ambient  = glm::vec3(0.06f, 0.05f, 0.02f);
+            p.diffuse  = glm::vec3(2.2f, 1.8f, 0.75f);
+            p.specular = glm::vec3(1.5f, 1.2f, 0.5f);
+            p.enabled  = true;
+        }
+
+        spot.diffuse  = glm::vec3(1.20f, 1.15f, 1.00f);
+        spot.specular = glm::vec3(1.0f);
+        setHeadlights(true);
+
+        std::cout << "\n>>> [AMBIENTE]: Modo [NOCHE / ATARDECER ACTIVADO (Tecla N)] - Farolas y Faros al maximo contraste! <<<\n" << std::endl;
+    } else {
+        // Dia: Sol resplandeciente natural, farolas en reposo para no quemar el asfalto, faros tenues
+        sun.ambient  = glm::vec3(0.28f, 0.28f, 0.30f);
+        sun.diffuse  = glm::vec3(0.82f, 0.80f, 0.76f);
+        sun.specular = glm::vec3(0.40f);
+
+        for (auto& p : points) {
+            p.ambient  = glm::vec3(0.0f);
+            p.diffuse  = glm::vec3(0.0f);
+            p.specular = glm::vec3(0.0f);
+            p.enabled  = false;
+        }
+
+        spot.diffuse  = glm::vec3(0.30f, 0.30f, 0.25f);
+        spot.specular = glm::vec3(0.20f);
+        setHeadlights(false);
+
+        std::cout << "\n>>> [AMBIENTE]: Modo [DIA CLARO ACTIVADO (Tecla N)] - Sol brillante, iluminacion suave y limpia <<<\n" << std::endl;
+    }
 }
 
 void LightingController::toggleDayNight() {
-    if (!m_lightManager) return;
-    auto& sun = m_lightManager->getDirectionalLight();
-    if (sun.diffuse.x > 0.35f) {
-        sun.ambient = glm::vec3(0.06f, 0.07f, 0.10f);
-        sun.diffuse = glm::vec3(0.10f, 0.10f, 0.14f);
-        sun.specular = glm::vec3(0.08f);
-        std::cout << "\n>>> [AMBIENTE]: Modo [NOCHE / ATARDECER ACTIVADO (Tecla N)] - Farolas y Faros al maximo contraste! <<<\n" << std::endl;
-    } else {
-        sun.ambient = glm::vec3(0.20f, 0.20f, 0.23f);
-        sun.diffuse = glm::vec3(0.55f, 0.52f, 0.48f);
-        sun.specular = glm::vec3(0.35f);
-        std::cout << "\n>>> [AMBIENTE]: Modo [DIA ILUMINADO ACTIVADO (Tecla N)] <<<\n" << std::endl;
-    }
+    setDayNight(!m_isNight);
 }
 
 bool LightingController::areHeadlightsOn() const {

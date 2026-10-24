@@ -45,6 +45,7 @@ public:
     size_t getPointLightCount() const { return m_pointLights.size(); }
     PointLight& getPointLight(size_t index);
     const PointLight& getPointLight(size_t index) const;
+    std::vector<PointLight>& getPointLights() { return m_pointLights; }
     const std::vector<PointLight>& getPointLights() const { return m_pointLights; }
     void togglePointLights();
 
