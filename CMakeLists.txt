@@ -97,6 +97,10 @@ target_link_libraries(mario_kart PRIVATE
     ${CMAKE_DL_LIBS}
 )
 
+if(MINGW)
+    target_link_options(mario_kart PRIVATE -static -static-libgcc -static-libstdc++)
+endif()
+
 # Copia de shaders y assets al directorio de ejecución
 add_custom_command(TARGET mario_kart POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
