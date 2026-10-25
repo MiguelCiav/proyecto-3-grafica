@@ -14,10 +14,18 @@ ShowroomScene::ShowroomScene(core::GameContext& ctx)
     : m_ctx(ctx) {
 }
 
+ShowroomScene::~ShowroomScene() {
+    m_showroomUI.destroy();
+}
+
 void ShowroomScene::onEnter() {
     core::Input::setCursorVisible(true);
     m_showcaseAngle = 0.0f; // Vista frontal fija obligatoria
     m_ctx.applySelection();
+
+    if (!m_showroomUI.isInitialized()) {
+        m_showroomUI.init(&m_ctx);
+    }
 
     if (m_ctx.wheelAnimator) {
         m_ctx.wheelAnimator->update(0.0f, 0.0f, 0.0f);
@@ -33,82 +41,18 @@ void ShowroomScene::onExit() {
 }
 
 void ShowroomScene::handleInput(float deltaTime) {
-    (void)deltaTime;
-    if (core::Input::isKeyJustPressed(GLFW_KEY_ESCAPE) || core::Input::isKeyJustPressed(GLFW_KEY_BACKSPACE)) {
-        std::cout << "[SHOWROOM] Regresando al Menu Principal..." << std::endl;
-        if (m_ctx.sceneManager) {
-            m_ctx.sceneManager->changeScene(core::GameState::MAIN_MENU);
-        }
-        return;
-    }
-
-    // Alternar circularmente categoria con TAB, W, S, Arriba, Abajo
-    if (core::Input::isKeyJustPressed(GLFW_KEY_TAB) || core::Input::isKeyJustPressed(GLFW_KEY_S) || core::Input::isKeyJustPressed(GLFW_KEY_DOWN)) {
-        if (m_ctx.selectionCategory == core::SelectionCategory::DRIVER) m_ctx.selectionCategory = core::SelectionCategory::VEHICLE;
-        else if (m_ctx.selectionCategory == core::SelectionCategory::VEHICLE) m_ctx.selectionCategory = core::SelectionCategory::TRACK;
-        else m_ctx.selectionCategory = core::SelectionCategory::DRIVER;
-        m_ctx.printSelectionHUD();
-    } else if (core::Input::isKeyJustPressed(GLFW_KEY_W) || core::Input::isKeyJustPressed(GLFW_KEY_UP)) {
-        if (m_ctx.selectionCategory == core::SelectionCategory::DRIVER) m_ctx.selectionCategory = core::SelectionCategory::TRACK;
-        else if (m_ctx.selectionCategory == core::SelectionCategory::TRACK) m_ctx.selectionCategory = core::SelectionCategory::VEHICLE;
-        else m_ctx.selectionCategory = core::SelectionCategory::DRIVER;
-        m_ctx.printSelectionHUD();
-    }
-
-    // Acceso directo por tecla numerica (estandar y keypad)
-    if (core::Input::isKeyJustPressed(GLFW_KEY_1) || core::Input::isKeyJustPressed(GLFW_KEY_KP_1)) {
-        m_ctx.selectionCategory = core::SelectionCategory::DRIVER;
-        m_ctx.printSelectionHUD();
-    }
-    if (core::Input::isKeyJustPressed(GLFW_KEY_2) || core::Input::isKeyJustPressed(GLFW_KEY_KP_2)) {
-        m_ctx.selectionCategory = core::SelectionCategory::VEHICLE;
-        m_ctx.printSelectionHUD();
-    }
-    if (core::Input::isKeyJustPressed(GLFW_KEY_3) || core::Input::isKeyJustPressed(GLFW_KEY_KP_3)) {
-        m_ctx.selectionCategory = core::SelectionCategory::TRACK;
-        m_ctx.printSelectionHUD();
-    }
-
-    // Navegacion entre opciones de la categoria activa (A/D o Flechas Izq/Der)
-    if (core::Input::isKeyJustPressed(GLFW_KEY_A) || core::Input::isKeyJustPressed(GLFW_KEY_LEFT)) {
-        if (m_ctx.selectionCategory == core::SelectionCategory::DRIVER) {
-            m_ctx.selectDriver(m_ctx.selectedDriverIndex - 1);
-        } else if (m_ctx.selectionCategory == core::SelectionCategory::VEHICLE) {
-            m_ctx.selectVehicle(m_ctx.selectedVehicleIndex - 1);
-        } else {
-            m_ctx.selectTrack(m_ctx.selectedTrackIndex - 1);
-        }
-    }
-    if (core::Input::isKeyJustPressed(GLFW_KEY_D) || core::Input::isKeyJustPressed(GLFW_KEY_RIGHT)) {
-        if (m_ctx.selectionCategory == core::SelectionCategory::DRIVER) {
-            m_ctx.selectDriver(m_ctx.selectedDriverIndex + 1);
-        } else if (m_ctx.selectionCategory == core::SelectionCategory::VEHICLE) {
-            m_ctx.selectVehicle(m_ctx.selectedVehicleIndex + 1);
-        } else {
-            m_ctx.selectTrack(m_ctx.selectedTrackIndex + 1);
-        }
-    }
-
-    // Confirmar seleccion y comenzar la carrera
-    if (core::Input::isKeyJustPressed(GLFW_KEY_ENTER) || core::Input::isKeyJustPressed(GLFW_KEY_KP_ENTER) ||
-        core::Input::isKeyJustPressed(GLFW_KEY_SPACE)) {
-        if (!m_ctx.tracks.empty() && m_ctx.selectedTrackIndex < static_cast<int>(m_ctx.tracks.size())) {
-            std::cout << "[SHOWROOM] Seleccion confirmada! Iniciando carrera en "
-                      << m_ctx.tracks[m_ctx.selectedTrackIndex].name << "..." << std::endl;
-        }
-        if (m_ctx.sceneManager) {
-            m_ctx.sceneManager->changeScene(core::GameState::RACING);
-        }
-    }
+    m_showroomUI.handleInput(deltaTime);
 }
 
 void ShowroomScene::update(float deltaTime) {
-    // En el showroom el kart se mantiene FIJO DE FRENTE (sin vueltas)
+    // En el showroom el kart se mantiene FIJO DE FRENTE (sin rotación continua)
     m_showcaseAngle = 0.0f;
+
+    m_showroomUI.update(deltaTime);
 
     // Kart en el pedestal del showroom mirando de frente. Es imprescindible propagar
     // el grafo de escena cada fotograma: sin esto las ruedas conservan matrices de mundo
-    // obsoletas (origen o posicion de carrera) y no se renderizan sobre el chasis.
+    // obsoletas (origen o posición de carrera) y no se renderizan sobre el chasis.
     if (m_ctx.wheelAnimator) {
         m_ctx.wheelAnimator->update(deltaTime, 0.0f, 0.0f);
     }
@@ -140,48 +84,59 @@ void ShowroomScene::update(float deltaTime) {
 }
 
 void ShowroomScene::render(int windowWidth, int windowHeight) {
-    glClearColor(0.14f, 0.18f, 0.28f, 1.0f);
+    // -----------------------------------------------------------------
+    // 1. Pase de Renderizado 3D: Pedestal, Iluminación y Kart en tiempo real
+    // -----------------------------------------------------------------
+    glClearColor(0.12f, 0.15f, 0.24f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_DEPTH_TEST);
 
-    renderer::Shader& shader = (m_ctx.litShader && m_ctx.litShader->isValid()) ? *m_ctx.litShader : *m_ctx.litShader;
-    if (!shader.isValid()) return;
+    if (m_ctx.litShader && m_ctx.litShader->isValid()) {
+        renderer::Shader& shader = *m_ctx.litShader;
+        shader.use();
 
-    shader.use();
+        float aspect = static_cast<float>(windowWidth) / static_cast<float>(windowHeight > 0 ? windowHeight : 1);
+        // Desplazamiento sutil de la cámara (0.35f) para encuadrar perfectamente el kart
+        // a la izquierda del panel lateral de estadísticas
+        glm::vec3 camPos(0.35f, 1.35f, 3.4f);
+        glm::mat4 view = glm::lookAt(camPos, glm::vec3(0.35f, 0.40f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 proj = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
 
-    float aspect = static_cast<float>(windowWidth) / static_cast<float>(windowHeight > 0 ? windowHeight : 1);
-    glm::vec3 camPos(0.0f, 1.35f, 3.4f);
-    glm::mat4 view = glm::lookAt(camPos, glm::vec3(0.0f, 0.40f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 proj = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
+        if (m_ctx.lightManager) {
+            m_ctx.lightManager->applyToShader(shader, camPos);
+        }
 
-    if (m_ctx.lightManager) {
-        m_ctx.lightManager->applyToShader(shader, camPos);
+        shader.setMat4("u_View", view);
+        shader.setMat4("u_Projection", proj);
+        shader.setInt("u_Texture", 0);
+
+        if (m_ctx.paletteTexture && m_ctx.paletteTexture->isLoaded()) {
+            m_ctx.paletteTexture->bind(0);
+        }
+
+        // 1.1 Dibujar el Pedestal bajo el kart
+        if (m_ctx.pedestalMesh) {
+            shader.setBool("u_UseTexture", false);
+            shader.setBool("u_UseVertexColor", false);
+            glm::mat4 pedMat = glm::rotate(glm::mat4(1.0f), glm::radians(m_showcaseAngle), glm::vec3(0.0f, 1.0f, 0.0f));
+            shader.setMat4("u_Model", pedMat);
+            shader.setVec4("u_Color", glm::vec4(0.20f, 0.22f, 0.28f, 1.0f));
+            m_ctx.pedestalMesh->draw();
+        }
+
+        // 1.2 Dibujar el Kart y Piloto DE FRENTE con sus texturas
+        if (m_ctx.kartEntity) {
+            shader.setBool("u_UseTexture", true);
+            shader.setBool("u_UseVertexColor", false);
+            shader.setVec4("u_Color", glm::vec4(1.0f));
+            m_ctx.kartEntity->draw(shader);
+        }
     }
 
-    shader.setMat4("u_View", view);
-    shader.setMat4("u_Projection", proj);
-    shader.setInt("u_Texture", 0);
-
-    if (m_ctx.paletteTexture && m_ctx.paletteTexture->isLoaded()) {
-        m_ctx.paletteTexture->bind(0);
-    }
-
-    // 1. Dibujar el Pedestal bajo el kart
-    if (m_ctx.pedestalMesh) {
-        shader.setBool("u_UseTexture", false);
-        shader.setBool("u_UseVertexColor", false);
-        glm::mat4 pedMat = glm::rotate(glm::mat4(1.0f), glm::radians(m_showcaseAngle), glm::vec3(0.0f, 1.0f, 0.0f));
-        shader.setMat4("u_Model", pedMat);
-        shader.setVec4("u_Color", glm::vec4(0.20f, 0.22f, 0.28f, 1.0f));
-        m_ctx.pedestalMesh->draw();
-    }
-
-    // 2. Dibujar el Kart y Piloto DE FRENTE con sus texturas
-    if (m_ctx.kartEntity) {
-        shader.setBool("u_UseTexture", true);
-        shader.setBool("u_UseVertexColor", false);
-        shader.setVec4("u_Color", glm::vec4(1.0f));
-        m_ctx.kartEntity->draw(shader);
-    }
+    // -----------------------------------------------------------------
+    // 2. Pase de Renderizado 2D: Interfaz gráfica ShowroomUI
+    // -----------------------------------------------------------------
+    m_showroomUI.render(static_cast<float>(windowWidth), static_cast<float>(windowHeight));
 }
 
 } // namespace scenes

@@ -171,17 +171,24 @@ int main() {
         std::cout << "  [CHECK 4] Conmutacion interactiva de sombreado, dia/noche, faros y camara OK." << std::endl;
 
         // -------------------------------------------------------------------------
-        // 6. Pase de Renderizado 2D completo (Menu y Modal)
+        // 6. Pase de Renderizado 2D completo (Menu y Modal con sombras y alto contraste)
         // -------------------------------------------------------------------------
         menu.update(0.016f);
         menu.render(1280.0f, 720.0f);
         assert(glGetError() == GL_NO_ERROR && "Renderizado de Menu Principal sin errores de GL");
 
         menu.openSettings();
-        menu.update(0.016f);
-        menu.render(1280.0f, 720.0f);
-        assert(glGetError() == GL_NO_ERROR && "Renderizado de Modal de Configuracion sin errores de GL");
-        std::cout << "  [CHECK 5] Pases de dibujo 2D (Menu y Modal con transparencia) sin errores de OpenGL OK." << std::endl;
+        // Renderizar modal para cada opcion seleccionada asegurando cobertura de cada fila y paleta
+        for (int opt = 0; opt < 6; ++opt) {
+            menu.update(0.016f);
+            menu.render(1280.0f, 720.0f);
+            assert(glGetError() == GL_NO_ERROR && "Renderizado de Modal de Configuracion sin errores de GL");
+
+            core::Input::simulateKey(GLFW_KEY_DOWN, GLFW_PRESS);
+            menu.handleInput(0.016f);
+            core::Input::update();
+        }
+        std::cout << "  [CHECK 5] Pases de dibujo 2D (Menu y Modal con placa de contraste y sombras) sin errores de OpenGL OK." << std::endl;
 
         renderer.destroy();
     }

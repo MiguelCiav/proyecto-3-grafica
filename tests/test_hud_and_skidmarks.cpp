@@ -132,16 +132,39 @@ int main() {
         GLenum err = glGetError();
         assert(err == GL_NO_ERROR && "No deben producirse errores de OpenGL en el renderizado con Turbo Boost");
 
-        // Renderizado sin Turbo Boost y en resolucion Full HD
+        // Renderizado sin Turbo Boost, con marcha atrás (R) y terreno OFFROAD
         telem.isBoosting = false;
         telem.isSkidding = false;
-        telem.speedKmH = 45.0f;
+        telem.isReversing = true;
+        telem.isOffRoad = true;
+        telem.speedKmH = -12.0f;
+        timing.isNewRecord = false;
         hud.render(1920.0f, 1080.0f, telem, timing);
         err = glGetError();
-        assert(err == GL_NO_ERROR && "No deben producirse errores de OpenGL en el renderizado sin Turbo Boost");
+        assert(err == GL_NO_ERROR && "No deben producirse errores de OpenGL en marcha atrás y offroad");
+
+        // Renderizado del Modal de Pausa interactivo (7 opciones)
+        ui::PauseMenuData pauseData;
+        pauseData.selectedOption = 0;
+        pauseData.lightingModel = "BLINN-PHONG";
+        pauseData.isNight = false;
+        pauseData.areHeadlightsOn = true;
+        pauseData.animTimer = 0.5f;
+
+        hud.renderPauseModal(1280.0f, 720.0f, pauseData);
+        err = glGetError();
+        assert(err == GL_NO_ERROR && "No deben producirse errores de OpenGL en renderPauseModal (opcion 0)");
+
+        // Probar modal de pausa en modo noche y con opción 2 seleccionada
+        pauseData.selectedOption = 2;
+        pauseData.isNight = true;
+        pauseData.lightingModel = "LAMBERT";
+        hud.renderPauseModal(1280.0f, 720.0f, pauseData);
+        err = glGetError();
+        assert(err == GL_NO_ERROR && "No deben producirse errores de OpenGL en renderPauseModal (modo noche)");
         (void)err;
 
-        std::cout << "  [CHECK 3] Interfaz HUD Sci-Fi (Kenney Space Pack + Velocimetro + Cronometro) validada." << std::endl;
+        std::cout << "  [CHECK 3] Interfaz HUD Sci-Fi y Modal de Pausa (Kenney Space Pack + UI Pack) validados." << std::endl;
     }
 
     glfwDestroyWindow(window);

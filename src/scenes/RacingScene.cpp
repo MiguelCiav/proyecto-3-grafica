@@ -21,6 +21,9 @@ void RacingScene::onEnter() {
     m_cursorLocked = false;
     core::Input::setCursorVisible(true);
     m_ctx.cameraMode = core::CameraMode::CHASE;
+    m_isPaused = false;
+    m_pauseSelectedOption = 0;
+    m_pauseAnimTimer = 0.0f;
 
     if (m_ctx.kartPhysics) {
         m_ctx.kartPhysics->setPosition(m_ctx.kartInitialPos);
@@ -54,29 +57,170 @@ void RacingScene::onEnter() {
 
 void RacingScene::onExit() {
     m_cursorLocked = false;
+    m_isPaused = false;
     core::Input::setCursorVisible(true);
 }
 
 void RacingScene::handleInput(float deltaTime) {
+    // Control de Pausa interactiva con ESC
+    if (core::Input::isKeyJustPressed(GLFW_KEY_ESCAPE)) {
+        if (m_isPaused) {
+            // Despausar y continuar la carrera
+            m_isPaused = false;
+            return;
+        } else {
+            // Si la cámara FPS tenía el cursor capturado, libera el cursor y abre la pausa
+            if (m_ctx.cameraMode == core::CameraMode::FPS && m_cursorLocked) {
+                m_cursorLocked = false;
+                core::Input::setCursorVisible(true);
+            }
+            m_isPaused = true;
+            core::Input::setCursorVisible(true);
+            return;
+        }
+    }
+
+    // Modal de Pausa interactivo: cuando la carrera esté pausada, gestionar opciones navegables y no procesar controles de carrera
+    if (m_isPaused) {
+        core::Input::setCursorVisible(true);
+
+        // 1. Navegación por teclado vertical (W / S / Flechas Arriba/Abajo)
+        if (core::Input::isKeyJustPressed(GLFW_KEY_UP) || core::Input::isKeyJustPressed(GLFW_KEY_W)) {
+            m_pauseSelectedOption = (m_pauseSelectedOption - 1 + 7) % 7;
+        }
+        if (core::Input::isKeyJustPressed(GLFW_KEY_DOWN) || core::Input::isKeyJustPressed(GLFW_KEY_S)) {
+            m_pauseSelectedOption = (m_pauseSelectedOption + 1) % 7;
+        }
+
+        // Atajos numéricos directos (1 a 7)
+        if (core::Input::isKeyJustPressed(GLFW_KEY_1) || core::Input::isKeyJustPressed(GLFW_KEY_KP_1)) m_pauseSelectedOption = 0;
+        else if (core::Input::isKeyJustPressed(GLFW_KEY_2) || core::Input::isKeyJustPressed(GLFW_KEY_KP_2)) m_pauseSelectedOption = 1;
+        else if (core::Input::isKeyJustPressed(GLFW_KEY_3) || core::Input::isKeyJustPressed(GLFW_KEY_KP_3)) m_pauseSelectedOption = 2;
+        else if (core::Input::isKeyJustPressed(GLFW_KEY_4) || core::Input::isKeyJustPressed(GLFW_KEY_KP_4)) m_pauseSelectedOption = 3;
+        else if (core::Input::isKeyJustPressed(GLFW_KEY_5) || core::Input::isKeyJustPressed(GLFW_KEY_KP_5)) m_pauseSelectedOption = 4;
+        else if (core::Input::isKeyJustPressed(GLFW_KEY_6) || core::Input::isKeyJustPressed(GLFW_KEY_KP_6)) m_pauseSelectedOption = 5;
+        else if (core::Input::isKeyJustPressed(GLFW_KEY_7) || core::Input::isKeyJustPressed(GLFW_KEY_KP_7)) m_pauseSelectedOption = 6;
+
+        bool goLeft = core::Input::isKeyJustPressed(GLFW_KEY_LEFT) || core::Input::isKeyJustPressed(GLFW_KEY_A);
+        bool goRight = core::Input::isKeyJustPressed(GLFW_KEY_RIGHT) || core::Input::isKeyJustPressed(GLFW_KEY_D);
+        bool activate = core::Input::isKeyJustPressed(GLFW_KEY_ENTER) ||
+                        core::Input::isKeyJustPressed(GLFW_KEY_KP_ENTER) ||
+                        core::Input::isKeyJustPressed(GLFW_KEY_SPACE);
+
+        // 2. Navegación e interacción por ratón
+        float sw = (m_ctx.window) ? static_cast<float>(m_ctx.window->getWidth()) : 1280.0f;
+        float sh = (m_ctx.window) ? static_cast<float>(m_ctx.window->getHeight()) : 720.0f;
+        float modalW = 680.0f;
+        float modalH = 500.0f;
+        float modalX = (sw - modalW) * 0.5f;
+        float modalY = (sh - modalH) * 0.5f;
+        float optStartY = modalY + 66.0f;
+        float rowHeight = 48.0f;
+        float rowW = modalW - 48.0f;
+        float rowX = modalX + 24.0f;
+
+        float mx = core::Input::getMouseX();
+        float my = core::Input::getMouseY();
+        bool mouseClicked = core::Input::isMouseButtonJustPressed(GLFW_MOUSE_BUTTON_LEFT);
+
+        for (int i = 0; i < 7; ++i) {
+            float rowY = optStartY + static_cast<float>(i) * rowHeight;
+            if (mx >= rowX && mx <= rowX + rowW && my >= rowY && my <= rowY + rowHeight - 6.0f) {
+                m_pauseSelectedOption = i;
+                if (mouseClicked) {
+                    activate = true;
+                }
+            }
+        }
+
+        // 3. Ejecución de la opción seleccionada
+        if (activate || goLeft || goRight) {
+            switch (m_pauseSelectedOption) {
+                case 0: { // 1) CONTINUAR CARRERA (Resume)
+                    if (activate) {
+                        m_isPaused = false;
+                    }
+                    break;
+                }
+                case 1: { // 2) MODELO DE ILUMINACIÓN (Flat / Lambert / Blinn-Phong)
+                    if (m_ctx.lightManager) {
+                        if (goLeft) {
+                            int prev = (static_cast<int>(m_ctx.lightManager->getLightingModel()) + 2) % 3;
+                            m_ctx.lightManager->setLightingModel(static_cast<lighting::LightingModel>(prev));
+                        } else {
+                            m_ctx.lightManager->cycleNextModel();
+                        }
+                    }
+                    break;
+                }
+                case 2: { // 3) CICLO DÍA / NOCHE (Toggle)
+                    if (m_ctx.lightingController) {
+                        m_ctx.lightingController->toggleDayNight();
+                    }
+                    break;
+                }
+                case 3: { // 4) FAROS DEL KART (ON / OFF)
+                    if (m_ctx.lightingController) {
+                        m_ctx.lightingController->toggleHeadlights();
+                    }
+                    break;
+                }
+                case 4: { // 5) REINICIAR CARRERA (Restart)
+                    if (activate) {
+                        if (m_ctx.kartPhysics) {
+                            m_ctx.kartPhysics->setPosition(m_ctx.kartInitialPos);
+                            m_ctx.kartPhysics->setYaw(m_ctx.kartInitialYaw);
+                            m_ctx.kartPhysics->resetSpeed();
+                        }
+                        if (m_ctx.wheelAnimator) {
+                            m_ctx.wheelAnimator->reset();
+                        }
+                        if (m_ctx.chaseCamera && m_ctx.kartPhysics) {
+                            m_ctx.chaseCamera->reset(m_ctx.kartInitialPos, m_ctx.kartPhysics->getForwardVector());
+                        }
+                        m_lapsCompleted = 0;
+                        m_currentLapTime = 0.0f;
+                        m_totalRaceTime = 0.0f;
+                        m_lapNoticeTimer = 0.0f;
+                        if (m_ctx.skidmarkManager) {
+                            m_ctx.skidmarkManager->clear();
+                        }
+                        m_isPaused = false;
+                        std::cout << "[Kart] Carrera reiniciada desde el menu de pausa." << std::endl;
+                    }
+                    break;
+                }
+                case 5: { // 6) VOLVER AL MENÚ PRINCIPAL (Return to Main Menu)
+                    if (activate) {
+                        m_isPaused = false;
+                        if (m_ctx.sceneManager) {
+                            m_ctx.sceneManager->changeScene(core::GameState::MAIN_MENU);
+                        }
+                    }
+                    break;
+                }
+                case 6: { // 7) SALIR AL ESCRITORIO (Quit)
+                    if (activate) {
+                        if (m_ctx.window) {
+                            glfwSetWindowShouldClose(m_ctx.window->getNativeWindow(), GLFW_TRUE);
+                        } else {
+                            GLFWwindow* win = glfwGetCurrentContext();
+                            if (win) glfwSetWindowShouldClose(win, GLFW_TRUE);
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+        return;
+    }
+
     // Tecla M: Volver al Showroom
     if (core::Input::isKeyJustPressed(GLFW_KEY_M)) {
         if (m_ctx.sceneManager) {
             m_ctx.sceneManager->changeScene(core::GameState::VEHICLE_SELECT);
         }
         return;
-    }
-
-    // ESC: Liberar cursor en modo FPS o volver al menu principal
-    if (core::Input::isKeyJustPressed(GLFW_KEY_ESCAPE)) {
-        if (m_ctx.cameraMode == core::CameraMode::FPS && m_cursorLocked) {
-            m_cursorLocked = false;
-            core::Input::setCursorVisible(true);
-        } else {
-            if (m_ctx.sceneManager) {
-                m_ctx.sceneManager->changeScene(core::GameState::MAIN_MENU);
-            }
-            return;
-        }
     }
 
     // Conmutador de camara (Tecla C)
@@ -163,6 +307,18 @@ void RacingScene::handleInput(float deltaTime) {
 }
 
 void RacingScene::update(float deltaTime) {
+    if (m_isPaused) {
+        m_pauseAnimTimer += deltaTime;
+
+        // Actualizar telemetría en el título de la ventana para indicar modo PAUSA
+        m_titleTimer += deltaTime;
+        if (m_titleTimer >= 0.20f && m_ctx.window) {
+            m_titleTimer = 0.0f;
+            m_ctx.window->setTitle("Prototipo Mario Kart - CGI (UCV) | >>> EN PAUSA <<< | [W/S/FLECHAS] Navegar | [ENTER/A/D] Modificar | [ESC] Continuar");
+        }
+        return;
+    }
+
     m_elapsedTime += deltaTime;
     if (m_finishLineCooldown > 0.0f) {
         m_finishLineCooldown -= deltaTime;
@@ -469,6 +625,18 @@ void RacingScene::render(int windowWidth, int windowHeight) {
         timing.isNewRecord = m_isNewRecord;
 
         m_ctx.racingHud->render(static_cast<float>(windowWidth), static_cast<float>(windowHeight), telem, timing);
+    }
+
+    // 9. Si la carrera está pausada, renderizar oscurecimiento de fondo (alpha = 0.70f) y modal interactivo
+    if (m_isPaused && m_ctx.racingHud) {
+        ui::PauseMenuData pauseData;
+        pauseData.selectedOption = m_pauseSelectedOption;
+        pauseData.lightingModel = (m_ctx.lightManager) ? m_ctx.lightManager->getCurrentModelName() : "BLINN-PHONG";
+        pauseData.isNight = (m_ctx.lightingController) ? m_ctx.lightingController->isNight() : false;
+        pauseData.areHeadlightsOn = (m_ctx.lightingController) ? m_ctx.lightingController->areHeadlightsOn() : true;
+        pauseData.animTimer = m_pauseAnimTimer;
+
+        m_ctx.racingHud->renderPauseModal(static_cast<float>(windowWidth), static_cast<float>(windowHeight), pauseData);
     }
 }
 

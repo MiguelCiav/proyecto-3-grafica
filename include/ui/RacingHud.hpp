@@ -36,6 +36,14 @@ struct TelemetryData {
     bool isOffRoad{false};
 };
 
+struct PauseMenuData {
+    int selectedOption{0};
+    std::string lightingModel{"BLINN-PHONG"};
+    bool isNight{false};
+    bool areHeadlightsOn{true};
+    float animTimer{0.0f};
+};
+
 /**
  * @brief Sistema de interfaz de usuario HUD para carreras (Zero Blender).
  * Proporciona:
@@ -66,6 +74,8 @@ public:
     void render(float screenWidth, float screenHeight,
                 const TelemetryData& telemetry,
                 const LapTimingData& timing);
+    void renderPauseModal(float screenWidth, float screenHeight,
+                          const PauseMenuData& pauseData);
 
     bool isInitialized() const { return m_initialized; }
 
@@ -115,6 +125,25 @@ private:
     renderer::Texture m_texLapTimerFrame;        // Blue button_square_header_blade_rectangle.png
     renderer::Texture m_texLapBadge;             // Yellow button_square_header_small_square.png
     renderer::Texture m_texTurboBoostBanner;     // Red bar_square_gloss_large.png
+
+    // Insignias de marcha y telemetría Sci-Fi (Kenney Space Expansion)
+    renderer::Texture m_texGearDrive;            // Blue button_square_header_small_square.png
+    renderer::Texture m_texGearReverse;          // Red button_square_header_small_square.png
+    renderer::Texture m_texBadgeTurbo;           // Red button_square_header_small_rectangle.png
+    renderer::Texture m_texBadgeDrift;           // Yellow button_square_header_small_rectangle.png
+    renderer::Texture m_texBadgeOffroad;         // Grey button_square_header_small_rectangle.png
+
+    // Marcos de notificacion de vuelta
+    renderer::Texture m_texLapNoticeNormal;      // Blue button_square_header_blade_rectangle_screws.png
+    renderer::Texture m_texLapNoticeRecord;      // Yellow button_square_header_blade_rectangle_screws.png
+
+    // Modal de Pausa y Configuración interactiva
+    renderer::Texture m_texPauseModalFrame;      // Blue button_square_header_large_rectangle_screws.png
+    renderer::Texture m_texPauseBtnIdle;         // Blue button_rectangle_depth_flat.png
+    renderer::Texture m_texPauseBtnHover;        // Yellow button_rectangle_depth_gradient.png
+    renderer::Texture m_texArrowPointer;         // Yellow arrow_decorative_e.png
+    renderer::Texture m_texCheckOn;              // Yellow check_square_color_checkmark.png
+    renderer::Texture m_texCheckOff;             // Grey check_square_grey.png
 
     bool m_initialized{false};
     float m_pulseTimer{0.0f};

@@ -19,9 +19,18 @@ public:
     [[nodiscard]] int getLapsCompleted() const { return m_lapsCompleted; }
     [[nodiscard]] float getCurrentLapTime() const { return m_currentLapTime; }
     [[nodiscard]] float getBestLapTime() const { return m_bestLapTime; }
+    [[nodiscard]] bool isPaused() const { return m_isPaused; }
+    void setPaused(bool paused) { m_isPaused = paused; }
+    [[nodiscard]] int getPauseSelectedOption() const { return m_pauseSelectedOption; }
+    void setPauseSelectedOption(int opt) { m_pauseSelectedOption = opt; }
 
 private:
     core::GameContext& m_ctx;
+
+    // Estado de pausa interactiva y modal de configuración
+    bool m_isPaused{false};
+    int m_pauseSelectedOption{0};
+    float m_pauseAnimTimer{0.0f};
 
     // Telemetría y vueltas
     float m_finishLineCooldown{8.0f};

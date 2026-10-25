@@ -91,10 +91,23 @@ public:
     void drawText(float x, float y, const std::string& text, float scale = 2.0f,
                   const glm::vec4& color = glm::vec4(1.0f));
 
+    // Dibuja texto digital con sombra proyectada para asegurar contraste
+    void drawTextWithShadow(float x, float y, const std::string& text, float scale,
+                            const glm::vec4& color,
+                            const glm::vec4& shadowColor = glm::vec4(0.0f, 0.0f, 0.0f, 0.85f),
+                            float shadowOffset = 1.5f);
+
     // Dibuja texto centrado horizontalmente dentro de un cuadro
     void drawTextCentered(float boxX, float boxY, float boxWidth, float boxHeight,
                           const std::string& text, float scale = 2.0f,
                           const glm::vec4& color = glm::vec4(1.0f));
+
+    // Dibuja texto centrado con sombra proyectada dentro de un cuadro
+    void drawTextCenteredWithShadow(float x, float y, float width, float height,
+                                    const std::string& text, float scale,
+                                    const glm::vec4& color,
+                                    const glm::vec4& shadowColor = glm::vec4(0.0f, 0.0f, 0.0f, 0.85f),
+                                    float shadowOffset = 1.5f);
 
     // Utilidades de métricas de texto
     float getTextWidth(const std::string& text, float scale = 2.0f) const;

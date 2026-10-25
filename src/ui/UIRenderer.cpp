@@ -605,6 +605,16 @@ void UIRenderer::drawText(float x, float y, const std::string& text, float scale
     }
 }
 
+void UIRenderer::drawTextWithShadow(float x, float y, const std::string& text, float scale,
+                                    const glm::vec4& color, const glm::vec4& shadowColor,
+                                    float shadowOffset) {
+    if (!m_initialized || !m_inBegin) return;
+    if (scale <= 0.0f || text.empty()) return;
+
+    drawText(x + shadowOffset, y + shadowOffset, text, scale, shadowColor);
+    drawText(x, y, text, scale, color);
+}
+
 void UIRenderer::drawTextCentered(float boxX, float boxY, float boxWidth, float boxHeight,
                                   const std::string& text, float scale,
                                   const glm::vec4& color) {
@@ -614,6 +624,21 @@ void UIRenderer::drawTextCentered(float boxX, float boxY, float boxWidth, float 
     float textX = boxX + (boxWidth - textW) * 0.5f;
     float textY = boxY + (boxHeight - textH) * 0.5f;
     drawText(textX, textY, text, scale, color);
+}
+
+void UIRenderer::drawTextCenteredWithShadow(float x, float y, float width, float height,
+                                            const std::string& text, float scale,
+                                            const glm::vec4& color, const glm::vec4& shadowColor,
+                                            float shadowOffset) {
+    if (!m_initialized || !m_inBegin) return;
+    if (scale <= 0.0f || text.empty()) return;
+
+    float textW = getTextWidth(text, scale);
+    float textH = getTextHeight(scale);
+    float textX = x + (width - textW) * 0.5f;
+    float textY = y + (height - textH) * 0.5f;
+
+    drawTextWithShadow(textX, textY, text, scale, color, shadowColor, shadowOffset);
 }
 
 float UIRenderer::getTextWidth(const std::string& text, float scale) const {

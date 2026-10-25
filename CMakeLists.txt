@@ -571,7 +571,40 @@ add_custom_command(TARGET test_main_menu_ui POST_BUILD
 )
 
 # ==============================================================================
-# 21. Target de Empaquetado para Entrega UCV
+# 21. Ejecutable de Pruebas: Showroom UI y Selección de Piloto/Auto/Pista (ShowroomUI)
+# ==============================================================================
+set(SHOWROOM_TEST_SOURCES ${ENGINE_SOURCES})
+list(REMOVE_ITEM SHOWROOM_TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
+
+add_executable(test_showroom_ui
+    tests/test_showroom_ui.cpp
+    ${SHOWROOM_TEST_SOURCES}
+)
+
+target_include_directories(test_showroom_ui PUBLIC
+    ${PROJECT_INCLUDE_DIRS}
+)
+
+target_link_libraries(test_showroom_ui PRIVATE
+    OpenGL::GL
+    glad
+    glfw
+    glm::glm
+    ${CMAKE_DL_LIBS}
+)
+
+add_custom_command(TARGET test_showroom_ui POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
+        $<TARGET_FILE_DIR:test_showroom_ui>/shaders
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/assets
+        $<TARGET_FILE_DIR:test_showroom_ui>/assets
+    COMMENT "Copiando shaders y assets al directorio de salida de test_showroom_ui..."
+)
+
+# ==============================================================================
+# 22. Target de Empaquetado para Entrega UCV
 # ==============================================================================
 find_package(Python3 QUIET COMPONENTS Interpreter)
 if(Python3_FOUND)

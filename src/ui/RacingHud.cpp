@@ -47,6 +47,19 @@ RacingHud::RacingHud(RacingHud&& other) noexcept
     , m_texLapTimerFrame(std::move(other.m_texLapTimerFrame))
     , m_texLapBadge(std::move(other.m_texLapBadge))
     , m_texTurboBoostBanner(std::move(other.m_texTurboBoostBanner))
+    , m_texGearDrive(std::move(other.m_texGearDrive))
+    , m_texGearReverse(std::move(other.m_texGearReverse))
+    , m_texBadgeTurbo(std::move(other.m_texBadgeTurbo))
+    , m_texBadgeDrift(std::move(other.m_texBadgeDrift))
+    , m_texBadgeOffroad(std::move(other.m_texBadgeOffroad))
+    , m_texLapNoticeNormal(std::move(other.m_texLapNoticeNormal))
+    , m_texLapNoticeRecord(std::move(other.m_texLapNoticeRecord))
+    , m_texPauseModalFrame(std::move(other.m_texPauseModalFrame))
+    , m_texPauseBtnIdle(std::move(other.m_texPauseBtnIdle))
+    , m_texPauseBtnHover(std::move(other.m_texPauseBtnHover))
+    , m_texArrowPointer(std::move(other.m_texArrowPointer))
+    , m_texCheckOn(std::move(other.m_texCheckOn))
+    , m_texCheckOff(std::move(other.m_texCheckOff))
     , m_initialized(other.m_initialized)
     , m_pulseTimer(other.m_pulseTimer)
 {
@@ -73,6 +86,19 @@ RacingHud& RacingHud::operator=(RacingHud&& other) noexcept {
         m_texLapTimerFrame = std::move(other.m_texLapTimerFrame);
         m_texLapBadge = std::move(other.m_texLapBadge);
         m_texTurboBoostBanner = std::move(other.m_texTurboBoostBanner);
+        m_texGearDrive = std::move(other.m_texGearDrive);
+        m_texGearReverse = std::move(other.m_texGearReverse);
+        m_texBadgeTurbo = std::move(other.m_texBadgeTurbo);
+        m_texBadgeDrift = std::move(other.m_texBadgeDrift);
+        m_texBadgeOffroad = std::move(other.m_texBadgeOffroad);
+        m_texLapNoticeNormal = std::move(other.m_texLapNoticeNormal);
+        m_texLapNoticeRecord = std::move(other.m_texLapNoticeRecord);
+        m_texPauseModalFrame = std::move(other.m_texPauseModalFrame);
+        m_texPauseBtnIdle = std::move(other.m_texPauseBtnIdle);
+        m_texPauseBtnHover = std::move(other.m_texPauseBtnHover);
+        m_texArrowPointer = std::move(other.m_texArrowPointer);
+        m_texCheckOn = std::move(other.m_texCheckOn);
+        m_texCheckOff = std::move(other.m_texCheckOff);
         m_initialized = other.m_initialized;
         m_pulseTimer = other.m_pulseTimer;
 
@@ -143,8 +169,44 @@ bool RacingHud::init(const std::string& vertPath, const std::string& fragPath) {
     loadTexture(m_texSpeedBarFillYellow, "Yellow/Default/bar_round_gloss_large.png");
     loadTexture(m_texSpeedBarFillRed, "Red/Default/bar_round_gloss_large.png");
 
+    // Insignias Sci-Fi de marcha y telemetria (Kenney Space Expansion)
+    loadTexture(m_texGearDrive, "Blue/Default/button_square_header_small_square.png");
+    loadTexture(m_texGearReverse, "Red/Default/button_square_header_small_square.png");
+    loadTexture(m_texBadgeTurbo, "Red/Default/button_square_header_small_rectangle.png");
+    loadTexture(m_texBadgeDrift, "Yellow/Default/button_square_header_small_rectangle.png");
+    loadTexture(m_texBadgeOffroad, "Grey/Default/button_square_header_small_rectangle.png");
+
+    // Marcos de notificacion de vuelta (Kenney Space Expansion)
+    loadTexture(m_texLapNoticeNormal, "Blue/Default/button_square_header_blade_rectangle_screws.png");
+    loadTexture(m_texLapNoticeRecord, "Yellow/Default/button_square_header_blade_rectangle_screws.png");
+
+    // Marco exterior para modal de pausa (Kenney Space Expansion)
+    loadTexture(m_texPauseModalFrame, "Blue/Default/button_square_header_large_rectangle_screws.png");
+
+    // Texturas para botones, controles y selectores del Modal de Pausa (Kenney UI Pack estándar)
+    const std::string uiPackBasePath = "assets/kenney_ui-pack/PNG/";
+    auto loadUiTexture = [&](renderer::Texture& tex, const std::string& relPath) -> bool {
+        std::string doubleRel = relPath;
+        size_t idx = doubleRel.find("/Default/");
+        if (idx != std::string::npos) {
+            doubleRel.replace(idx, 9, "/Double/");
+        }
+        std::string resolvedDouble = resolveAssetPath(uiPackBasePath + doubleRel);
+        if (tex.loadFromFile(resolvedDouble, false)) {
+            return true;
+        }
+        std::string resolvedDefault = resolveAssetPath(uiPackBasePath + relPath);
+        return tex.loadFromFile(resolvedDefault, false);
+    };
+
+    loadUiTexture(m_texPauseBtnIdle, "Blue/Default/button_rectangle_depth_flat.png");
+    loadUiTexture(m_texPauseBtnHover, "Yellow/Default/button_rectangle_depth_gradient.png");
+    loadUiTexture(m_texArrowPointer, "Yellow/Default/arrow_decorative_e.png");
+    loadUiTexture(m_texCheckOn, "Yellow/Default/check_square_color_checkmark.png");
+    loadUiTexture(m_texCheckOff, "Grey/Default/check_square_grey.png");
+
     m_initialized = true;
-    std::cout << "[OK] [RacingHud] HUD de Carreras (Kenney Space Expansion Pack - Modular 3-Slice & 9-Slice) inicializado exitosamente."
+    std::cout << "[OK] [RacingHud] HUD de Carreras y Modal de Pausa (Kenney Space Expansion & UI Pack) inicializados exitosamente."
               << std::endl;
     return true;
 }
@@ -159,7 +221,20 @@ bool RacingHud::areTexturesLoaded() const {
            m_texSpeedBarFillYellowR.isLoaded() &&
            m_texLapTimerFrame.isLoaded() &&
            m_texLapBadge.isLoaded() &&
-           m_texTurboBoostBanner.isLoaded();
+           m_texTurboBoostBanner.isLoaded() &&
+           m_texGearDrive.isLoaded() &&
+           m_texGearReverse.isLoaded() &&
+           m_texBadgeTurbo.isLoaded() &&
+           m_texBadgeDrift.isLoaded() &&
+           m_texBadgeOffroad.isLoaded() &&
+           m_texLapNoticeNormal.isLoaded() &&
+           m_texLapNoticeRecord.isLoaded() &&
+           m_texPauseModalFrame.isLoaded() &&
+           m_texPauseBtnIdle.isLoaded() &&
+           m_texPauseBtnHover.isLoaded() &&
+           m_texArrowPointer.isLoaded() &&
+           m_texCheckOn.isLoaded() &&
+           m_texCheckOff.isLoaded();
 }
 
 void RacingHud::flush() {
@@ -380,31 +455,38 @@ void RacingHud::renderSpeedometer(float screenWidth, float screenHeight, const T
     m_uiRenderer.drawText(digStartX + 3.0f * (digW + digGap) + 10.0f, digStartY + 14.0f, "KM/H", 2.0f,
                           glm::vec4(0.0f, 0.85f, 1.0f, 0.95f));
 
-    // 6. Selector de Marcha [ D ] / [ R ] e insignias de estado
-    float badgeY = innerY + 86.0f;
+    // 6. Selector de Marcha [ D ] / [ R ] e insignias de estado con piezas modulares Kenney
+    float badgeY = innerY + 84.0f;
 
-    // Marcha
-    if (t.isReversing) {
-        m_uiRenderer.drawRect(innerX + 18.0f, badgeY, 32.0f, 22.0f, glm::vec4(0.85f, 0.15f, 0.15f, 0.85f));
-        m_uiRenderer.drawText(innerX + 27.0f, badgeY + 4.0f, "R", 2.0f, glm::vec4(1.0f));
-    } else {
-        m_uiRenderer.drawRect(innerX + 18.0f, badgeY, 32.0f, 22.0f, glm::vec4(0.0f, 0.50f, 0.75f, 0.85f));
-        m_uiRenderer.drawText(innerX + 27.0f, badgeY + 4.0f, "D", 2.0f, glm::vec4(1.0f));
-    }
+    // Marcha con insignia Kenney
+    float gearW = 32.0f;
+    float gearH = 24.0f;
+    const auto& gearTex = t.isReversing ? m_texGearReverse : m_texGearDrive;
+    m_uiRenderer.drawNineSlice(gearTex, innerX + 16.0f, badgeY, gearW, gearH, 8.0f, 8.0f);
+    m_uiRenderer.drawTextCentered(innerX + 16.0f, badgeY, gearW, gearH, t.isReversing ? "R" : "D", 2.0f, glm::vec4(1.0f));
 
-    // Insignia TURBO
+    // Insignia TURBO con marco Kenney
     if (t.isBoosting) {
-        m_uiRenderer.drawRect(innerX + 58.0f, badgeY, 68.0f, 22.0f, glm::vec4(1.0f, 0.45f, 0.0f, 0.90f));
-        m_uiRenderer.drawText(innerX + 64.0f, badgeY + 4.0f, "TURBO", 1.8f, glm::vec4(1.0f));
+        float turboW = 72.0f;
+        float turboH = 24.0f;
+        float turboX = innerX + 54.0f;
+        m_uiRenderer.drawNineSlice(m_texBadgeTurbo, turboX, badgeY, turboW, turboH, 8.0f, 8.0f);
+        m_uiRenderer.drawTextCentered(turboX, badgeY, turboW, turboH, "TURBO", 1.8f, glm::vec4(1.0f));
     }
 
-    // Insignia DERRAPE / OFFROAD
+    // Insignia DERRAPE / OFFROAD con marco Kenney
     if (t.isSkidding) {
-        m_uiRenderer.drawRect(innerX + 134.0f, badgeY, 68.0f, 22.0f, glm::vec4(0.95f, 0.75f, 0.0f, 0.90f));
-        m_uiRenderer.drawText(innerX + 140.0f, badgeY + 4.0f, "DRIFT", 1.8f, glm::vec4(0.05f, 0.05f, 0.05f, 1.0f));
+        float driftW = 72.0f;
+        float driftH = 24.0f;
+        float driftX = innerX + 132.0f;
+        m_uiRenderer.drawNineSlice(m_texBadgeDrift, driftX, badgeY, driftW, driftH, 8.0f, 8.0f);
+        m_uiRenderer.drawTextCentered(driftX, badgeY, driftW, driftH, "DRIFT", 1.8f, glm::vec4(0.12f, 0.12f, 0.14f, 1.0f));
     } else if (t.isOffRoad) {
-        m_uiRenderer.drawRect(innerX + 134.0f, badgeY, 82.0f, 22.0f, glm::vec4(0.65f, 0.35f, 0.15f, 0.85f));
-        m_uiRenderer.drawText(innerX + 138.0f, badgeY + 4.0f, "OFFROAD", 1.5f, glm::vec4(1.0f));
+        float offroadW = 86.0f;
+        float offroadH = 24.0f;
+        float offroadX = innerX + 132.0f;
+        m_uiRenderer.drawNineSlice(m_texBadgeOffroad, offroadX, badgeY, offroadW, offroadH, 8.0f, 8.0f);
+        m_uiRenderer.drawTextCentered(offroadX, badgeY, offroadW, offroadH, "OFFROAD", 1.5f, glm::vec4(1.0f));
     }
 
     // 7. Banner pulsante de alerta "¡TURBO BOOST!" sobre el velocimetro
@@ -488,29 +570,159 @@ void RacingHud::renderLapTimer(float screenWidth, float screenHeight, const LapT
 void RacingHud::renderLapNotice(float screenWidth, float screenHeight, const LapTimingData& timing) {
     if (timing.lapNoticeTimer <= 0.0f) return;
 
-    float w = 480.0f;
-    float h = 68.0f;
+    float w = 500.0f;
+    float h = 76.0f;
     float x = (screenWidth - w) * 0.5f;
-    float y = screenHeight * 0.18f;
+    float y = screenHeight * 0.16f;
 
     float alpha = std::clamp(timing.lapNoticeTimer / 0.5f, 0.0f, 1.0f);
-    glm::vec4 bgCol(0.02f, 0.04f, 0.08f, 0.92f * alpha);
-    glm::vec4 borderCol = timing.isNewRecord ? glm::vec4(1.0f, 0.80f, 0.10f, alpha)
-                                            : glm::vec4(0.0f, 0.85f, 1.0f, alpha);
 
-    m_uiRenderer.drawRect(x, y, w, h, bgCol);
-    m_uiRenderer.drawBorder(x, y, w, h, 2.5f, borderCol);
+    // 1. Capa de fondo oscura ahumada para maximo contraste
+    m_uiRenderer.drawRect(x + 4.0f, y + 4.0f, w - 8.0f, h - 8.0f, glm::vec4(0.02f, 0.04f, 0.08f, 0.88f * alpha));
 
+    // 2. Marco Sci-Fi 9-Slice Kenney (Amarillo/Dorado para nuevo récord, Azul/Cian para vuelta completada)
+    const auto& frameTex = timing.isNewRecord ? m_texLapNoticeRecord : m_texLapNoticeNormal;
+    glm::vec4 frameTint = timing.isNewRecord ? glm::vec4(1.0f, 0.95f, 0.30f, alpha)
+                                            : glm::vec4(0.40f, 0.75f, 1.0f, alpha);
+    m_uiRenderer.drawNineSlice(frameTex, x, y, w, h, 28.0f, 28.0f, frameTint);
+
+    // 3. Insignia decorativa Kenney en el lateral izquierdo
+    float badgeSize = 34.0f;
+    m_uiRenderer.drawSprite(m_texLapBadge, x + 16.0f, y + (h - badgeSize) * 0.5f, badgeSize, badgeSize,
+                            glm::vec4(1.0f, 1.0f, 1.0f, alpha));
+
+    // 4. Texto principal y cronómetro digital
     if (timing.isNewRecord) {
-        m_uiRenderer.drawText(x + 55.0f, y + 14.0f, "! NUEVO RECORD DE VUELTA !", 2.2f,
-                              glm::vec4(1.0f, 0.85f, 0.15f, alpha));
+        m_uiRenderer.drawText(x + 64.0f, y + 14.0f, "! NUEVO RECORD DE VUELTA !", 2.2f,
+                              glm::vec4(1.0f, 0.88f, 0.20f, alpha));
     } else {
-        m_uiRenderer.drawText(x + 80.0f, y + 14.0f, "! VUELTA COMPLETADA !", 2.2f,
+        m_uiRenderer.drawText(x + 64.0f, y + 14.0f, "! VUELTA COMPLETADA !", 2.2f,
                               glm::vec4(0.0f, 0.90f, 1.0f, alpha));
     }
 
-    m_uiRenderer.drawText(x + 105.0f, y + 42.0f, "TIEMPO: ", 1.8f, glm::vec4(0.85f, 0.90f, 0.95f, alpha));
-    draw7SegmentTime(x + 205.0f, y + 36.0f, timing.lastLapTime, 0.90f, borderCol);
+    m_uiRenderer.drawText(x + 85.0f, y + 44.0f, "TIEMPO: ", 1.8f, glm::vec4(0.85f, 0.92f, 0.98f, alpha));
+    draw7SegmentTime(x + 185.0f, y + 38.0f, timing.lastLapTime, 0.90f,
+                     timing.isNewRecord ? glm::vec4(1.0f, 0.85f, 0.15f, alpha)
+                                        : glm::vec4(0.0f, 0.85f, 1.0f, alpha));
+}
+
+void RacingHud::renderPauseModal(float screenWidth, float screenHeight, const PauseMenuData& data) {
+    if (!m_initialized) return;
+
+    m_uiRenderer.begin(screenWidth, screenHeight);
+
+    // 1. Oscurecimiento de fondo (alpha = 0.70f)
+    m_uiRenderer.drawRect(0.0f, 0.0f, screenWidth, screenHeight, glm::vec4(0.0f, 0.0f, 0.0f, 0.70f));
+
+    // 2. Cuadro de diálogo modal centrado
+    float modalW = 680.0f;
+    float modalH = 500.0f;
+    float modalX = (screenWidth - modalW) * 0.5f;
+    float modalY = (screenHeight - modalH) * 0.5f;
+
+    // Fondo solido azul profundo
+    m_uiRenderer.drawRect(modalX + 6.0f, modalY + 6.0f, modalW - 12.0f, modalH - 12.0f, glm::vec4(0.05f, 0.08f, 0.15f, 0.96f));
+    // Marco exterior con textura Kenney mediante 9-Slice para remaches y esquinas nítidas
+    m_uiRenderer.drawNineSlice(m_texPauseModalFrame, modalX, modalY, modalW, modalH, 28.0f, 28.0f);
+    // Borde brillante de acento
+    m_uiRenderer.drawBorder(modalX, modalY, modalW, modalH, 2.0f, glm::vec4(0.35f, 0.65f, 0.95f, 0.85f));
+
+    // 3. Titulo de la ventana modal
+    m_uiRenderer.drawTextCentered(modalX, modalY + 18.0f, modalW, 30.0f,
+                                 "CARRERA EN PAUSA", 2.8f, glm::vec4(1.0f, 0.88f, 0.20f, 1.0f));
+
+    // Linea divisoria estetica
+    m_uiRenderer.drawRect(modalX + 30.0f, modalY + 54.0f, modalW - 60.0f, 2.0f, glm::vec4(0.3f, 0.5f, 0.8f, 0.6f));
+
+    // 4. Filas de Opciones de Pausa / Configuración (7 opciones)
+    float optStartY = modalY + 66.0f;
+    float rowHeight = 48.0f;
+    float rowW = modalW - 48.0f;
+    float rowX = modalX + 24.0f;
+
+    for (int i = 0; i < 7; ++i) {
+        float rowY = optStartY + static_cast<float>(i) * rowHeight;
+        bool isSelected = (data.selectedOption == i);
+
+        // Boton 9-slice con Kenney UI Pack
+        const auto& btnTex = isSelected ? m_texPauseBtnHover : m_texPauseBtnIdle;
+        m_uiRenderer.drawNineSlice(btnTex, rowX, rowY, rowW, rowHeight - 6.0f, 16.0f, 16.0f);
+
+        // Flecha animada pulsante al seleccionar
+        if (isSelected) {
+            float arrowBounce = std::sin(data.animTimer * 6.0f) * 4.0f;
+            m_uiRenderer.drawSprite(m_texArrowPointer, rowX - 30.0f + arrowBounce,
+                                    rowY + (rowHeight - 6.0f - 24.0f) * 0.5f, 24.0f, 24.0f);
+        }
+
+        glm::vec4 textColor = isSelected ? glm::vec4(0.12f, 0.12f, 0.14f, 1.0f)
+                                         : glm::vec4(0.92f, 0.95f, 1.0f, 1.0f);
+
+        switch (i) {
+            case 0: { // 1) CONTINUAR CARRERA (Resume)
+                m_uiRenderer.drawTextCentered(rowX, rowY, rowW, rowHeight - 6.0f,
+                                              "CONTINUAR CARRERA", 2.0f, textColor);
+                break;
+            }
+            case 1: { // 2) MODELO DE ILUMINACIÓN (Flat / Lambert / Blinn-Phong)
+                m_uiRenderer.drawText(rowX + 20.0f, rowY + 11.0f, "MODELO DE ILUMINACION", 1.8f, textColor);
+                std::string modelStr = "< " + data.lightingModel + " >";
+                for (auto& c : modelStr) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+                m_uiRenderer.drawText(rowX + rowW - 250.0f, rowY + 11.0f, modelStr, 1.8f,
+                                      isSelected ? glm::vec4(0.10f, 0.35f, 0.15f, 1.0f)
+                                                 : glm::vec4(0.35f, 1.0f, 0.65f, 1.0f));
+                break;
+            }
+            case 2: { // 3) CICLO DÍA / NOCHE (Toggle)
+                m_uiRenderer.drawText(rowX + 20.0f, rowY + 11.0f, "CICLO DIA / NOCHE", 1.8f, textColor);
+                const auto& chkTex = data.isNight ? m_texCheckOn : m_texCheckOff;
+                float chkSize = 24.0f;
+                float chkX = rowX + rowW - 170.0f;
+                float chkY = rowY + (rowHeight - 6.0f - chkSize) * 0.5f;
+                m_uiRenderer.drawSprite(chkTex, chkX, chkY, chkSize, chkSize);
+                m_uiRenderer.drawText(chkX + chkSize + 10.0f, rowY + 11.0f, data.isNight ? "NOCHE" : "DIA", 1.8f,
+                                      isSelected ? glm::vec4(0.12f, 0.12f, 0.14f, 1.0f)
+                                                 : (data.isNight ? glm::vec4(0.4f, 0.8f, 1.0f, 1.0f)
+                                                                 : glm::vec4(1.0f, 0.9f, 0.4f, 1.0f)));
+                break;
+            }
+            case 3: { // 4) FAROS DEL KART (ON / OFF)
+                m_uiRenderer.drawText(rowX + 20.0f, rowY + 11.0f, "FAROS DEL KART (SPOT)", 1.8f, textColor);
+                const auto& chkTex = data.areHeadlightsOn ? m_texCheckOn : m_texCheckOff;
+                float chkSize = 24.0f;
+                float chkX = rowX + rowW - 170.0f;
+                float chkY = rowY + (rowHeight - 6.0f - chkSize) * 0.5f;
+                m_uiRenderer.drawSprite(chkTex, chkX, chkY, chkSize, chkSize);
+                m_uiRenderer.drawText(chkX + chkSize + 10.0f, rowY + 11.0f, data.areHeadlightsOn ? "ON" : "OFF", 1.8f,
+                                      isSelected ? glm::vec4(0.12f, 0.12f, 0.14f, 1.0f)
+                                                 : (data.areHeadlightsOn ? glm::vec4(0.35f, 1.0f, 0.65f, 1.0f)
+                                                                         : glm::vec4(0.7f, 0.7f, 0.7f, 0.8f)));
+                break;
+            }
+            case 4: { // 5) REINICIAR CARRERA (Restart)
+                m_uiRenderer.drawTextCentered(rowX, rowY, rowW, rowHeight - 6.0f,
+                                              "REINICIAR CARRERA", 2.0f, textColor);
+                break;
+            }
+            case 5: { // 6) VOLVER AL MENÚ PRINCIPAL (Return to Main Menu)
+                m_uiRenderer.drawTextCentered(rowX, rowY, rowW, rowHeight - 6.0f,
+                                              "VOLVER AL MENU PRINCIPAL", 2.0f, textColor);
+                break;
+            }
+            case 6: { // 7) SALIR AL ESCRITORIO (Quit)
+                m_uiRenderer.drawTextCentered(rowX, rowY, rowW, rowHeight - 6.0f,
+                                              "SALIR AL ESCRITORIO", 2.0f, textColor);
+                break;
+            }
+        }
+    }
+
+    // 5. Pie de pagina con atajos de navegacion dentro del modal
+    m_uiRenderer.drawTextCentered(modalX, modalY + modalH - 32.0f, modalW, 20.0f,
+                                  "[W/S/FLECHAS] Navegar | [ENTER/A/D] Modificar | [ESC] Continuar",
+                                  1.6f, glm::vec4(0.80f, 0.88f, 0.98f, 0.85f));
+
+    m_uiRenderer.end();
 }
 
 void RacingHud::render(float screenWidth, float screenHeight,

@@ -62,17 +62,24 @@ int main() {
         std::cout << "  [CHECK 1] Inicializacion de VAO/VBO/Shader y metricas de texto OK." << std::endl;
 
         // ---------------------------------------------------------------------
-        // 4. Pase 2D con geometrias solidas (drawRect, drawBorder, drawText)
+        // 4. Pase 2D con geometrias solidas (drawRect, drawBorder, drawText, drawTextWithShadow)
         // ---------------------------------------------------------------------
         renderer.begin(1280.0f, 720.0f);
         renderer.drawRect(100.0f, 100.0f, 300.0f, 150.0f, glm::vec4(0.1f, 0.2f, 0.4f, 0.85f));
         renderer.drawBorder(100.0f, 100.0f, 300.0f, 150.0f, 3.0f, glm::vec4(1.0f, 0.8f, 0.0f, 1.0f));
         renderer.drawText(120.0f, 120.0f, "MARIO KART CGI", 2.0f, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
         renderer.drawTextCentered(100.0f, 180.0f, 300.0f, 40.0f, "PULSA START", 1.5f, glm::vec4(0.0f, 1.0f, 0.8f, 1.0f));
+
+        // Verificacion de texto con sombra proyectada (drop shadow estandar y personalizada)
+        renderer.drawTextWithShadow(120.0f, 210.0f, "SHADOW TEXT", 2.0f, glm::vec4(1.0f, 0.88f, 0.20f, 1.0f));
+        renderer.drawTextWithShadow(120.0f, 230.0f, "CUSTOM SHADOW", 1.8f,
+                                    glm::vec4(0.0f, 0.90f, 1.0f, 1.0f), glm::vec4(0.1f, 0.1f, 0.1f, 0.9f), 2.5f);
+        renderer.drawTextCenteredWithShadow(100.0f, 260.0f, 300.0f, 30.0f, "CENTERED SHADOW", 1.6f,
+                                            glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
         renderer.end();
 
         assert(glGetError() == GL_NO_ERROR && "Pase de rectangulos y texto sin errores de OpenGL");
-        std::cout << "  [CHECK 2] Pase de renderizado de rectangulos, bordes y texto digital OK." << std::endl;
+        std::cout << "  [CHECK 2] Pase de renderizado de rectangulos, bordes, texto digital y texto con sombra OK." << std::endl;
 
         // ---------------------------------------------------------------------
         // 5. Pase 2D con sprites texturizados y barras de progreso
