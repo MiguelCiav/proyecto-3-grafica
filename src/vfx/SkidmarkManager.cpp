@@ -6,43 +6,6 @@
 
 namespace vfx {
 
-namespace {
-
-const char* SKID_VERT_FALLBACK = R"(#version 330 core
-layout(location = 0) in vec3 aPos;
-layout(location = 1) in vec4 aColor;
-layout(location = 2) in vec2 aUV;
-
-uniform mat4 u_View;
-uniform mat4 u_Projection;
-
-out vec4 vColor;
-out vec2 vUV;
-
-void main() {
-    vColor = aColor;
-    vUV = aUV;
-    gl_Position = u_Projection * u_View * vec4(aPos, 1.0);
-}
-)";
-
-const char* SKID_FRAG_FALLBACK = R"(#version 330 core
-in vec4 vColor;
-in vec2 vUV;
-
-out vec4 FragColor;
-
-void main() {
-    float edgeDist = abs(vUV.x - 0.5) * 2.0;
-    float edgeAlpha = smoothstep(1.0, 0.62, edgeDist);
-    float tread = 0.86 + 0.14 * cos(vUV.x * 25.1327);
-    float alpha = vColor.a * edgeAlpha * tread;
-    FragColor = vec4(vColor.rgb, alpha);
-}
-)";
-
-} // namespace
-
 SkidmarkManager::SkidmarkManager(size_t maxSegments)
     : m_maxSegments(maxSegments) {
     m_vertexCache.reserve(maxSegments * 4);
@@ -59,10 +22,9 @@ bool SkidmarkManager::init(const std::string& vertPath, const std::string& fragP
     if (m_initialized) return true;
 
     if (!m_shader.loadFromFiles(vertPath, fragPath)) {
-        if (!m_shader.loadFromSource(SKID_VERT_FALLBACK, SKID_FRAG_FALLBACK)) {
-            std::cerr << "[ERROR] [SkidmarkManager] Error cargando shader de marcas de derrape." << std::endl;
-            return false;
-        }
+        std::cerr << "[ERROR] [SkidmarkManager] Error cargando shaders desde: "
+                  << vertPath << " y " << fragPath << std::endl;
+        return false;
     }
 
     glGenVertexArrays(1, &m_vao);

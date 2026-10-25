@@ -9,29 +9,6 @@ namespace ui {
 
 namespace {
 
-const char* HUD_VERT_SRC = R"(#version 330 core
-layout(location = 0) in vec2 aPos;
-layout(location = 1) in vec4 aColor;
-
-uniform mat4 u_OrthoProj;
-
-out vec4 vColor;
-
-void main() {
-    vColor = aColor;
-    gl_Position = u_OrthoProj * vec4(aPos, 0.0, 1.0);
-}
-)";
-
-const char* HUD_FRAG_SRC = R"(#version 330 core
-in vec4 vColor;
-out vec4 FragColor;
-
-void main() {
-    FragColor = vColor;
-}
-)";
-
 // Fuente matricial 5x7 para caracteres ASCII 32 (' ') hasta 90 ('Z')
 const uint8_t FONT_5X7[][7] = {
     // 32 ' '
@@ -169,10 +146,9 @@ bool RacingHud::init(const std::string& vertPath, const std::string& fragPath) {
     if (m_initialized) return true;
 
     if (!m_shader.loadFromFiles(vertPath, fragPath)) {
-        if (!m_shader.loadFromSource(HUD_VERT_SRC, HUD_FRAG_SRC)) {
-            std::cerr << "[ERROR] [RacingHud] Error cargando shader de interfaz 2D." << std::endl;
-            return false;
-        }
+        std::cerr << "[ERROR] [RacingHud] Error cargando shaders desde: "
+                  << vertPath << " y " << fragPath << std::endl;
+        return false;
     }
 
     glGenVertexArrays(1, &m_vao);
