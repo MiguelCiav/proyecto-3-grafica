@@ -79,15 +79,15 @@ def build_desert_track():
     for x in range(5, 13):
         grid[(x, 11)] = (1, 90.0)
         
-    # 18. Horquilla del oasis: giro sur (X=13, Y=11) -> Corner Small 0 deg
-    grid[(13, 11)] = (2, 0.0)
+    # 18. Horquilla del oasis: giro sur (X=13, Y=11) -> Corner Small 90 deg (conecta Oeste y Sur)
+    grid[(13, 11)] = (2, 90.0)
     
     # 19. Tramo sur (X=13, Y=12 a 15)
     for y in range(12, 16):
         grid[(13, y)] = (1, 0.0)
         
-    # 20. Giro oeste (X=13, Y=16) -> Corner Small 90 deg
-    grid[(13, 16)] = (2, 90.0)
+    # 20. Giro oeste (X=13, Y=16) -> Corner Small 0 deg (conecta Norte y Oeste)
+    grid[(13, 16)] = (2, 0.0)
     
     # 21. Recta oeste (X=12 a 5, Y=16)
     for x in range(5, 13):

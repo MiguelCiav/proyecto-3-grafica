@@ -291,56 +291,6 @@ void Application::loadCatalog() {
             26, 24,
             false, // isNight
             TrackTheme::DESERT_DUNES
-        },
-        {
-            "track-oval",
-            "Ovalo Clasico UCV",
-            "Facil ★☆☆",
-            "Circuito tradicional de alta velocidad con rectas largas y 4 curvas.",
-            "assets/levels/track_oval.txt",
-            12, 12,
-            false,
-            TrackTheme::DAY_GRASSLAND
-        },
-        {
-            "track-gp",
-            "Chicana Grand Prix",
-            "Media ★★☆",
-            "Circuito tecnico F1 con chicanas en 'S' y curvas que exigen frenado.",
-            "assets/levels/track_grand_prix.txt",
-            14, 14,
-            false,
-            TrackTheme::DAY_GRASSLAND
-        },
-        {
-            "track-karto",
-            "Kartodromo Compacto",
-            "Tecnico ★★☆",
-            "Trazado corto y frenetico de karts con curvas cerradas continuas.",
-            "assets/levels/track_kartodromo.txt",
-            10, 10,
-            false,
-            TrackTheme::DAY_GRASSLAND
-        },
-        {
-            "track-spd",
-            "Super Speedway UCV",
-            "Extremo ★★★",
-            "Mega circuito gigante de 54 tramos disenado para maxima aceleracion.",
-            "assets/levels/track_speedway.txt",
-            17, 16,
-            false,
-            TrackTheme::DAY_GRASSLAND
-        },
-        {
-            "track-tech",
-            "Desafio Doble Chicana",
-            "Experto ★★★",
-            "Trazado complejo con multiples curvas consecutivas y zonas estrechas.",
-            "assets/levels/track_technical.txt",
-            14, 14,
-            false,
-            TrackTheme::DAY_GRASSLAND
         }
     };
 }
