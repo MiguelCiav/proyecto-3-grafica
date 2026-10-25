@@ -1612,10 +1612,15 @@ void Application::update(float deltaTime) {
     // Actualizar emisor de particulas (humo de escape y turbo del kart)
     m_kartEmitter.update(deltaTime, m_kartPhysics, accel);
 
-    // Actualizar marcas de derrape en el asfalto (ruedas traseras)
+    // Actualizar marcas de derrape en el asfalto (directamente en el contacto de las ruedas traseras)
     bool isBraking = brake && (m_kartPhysics.getSpeed() > 1.5f);
-    m_skidmarkManager.update(deltaTime, m_kartPhysics.getPosition(), m_kartPhysics.getYaw(),
-                             m_kartPhysics.getSpeed(), steer, isBraking, m_kartPhysics.isBoosting());
+    glm::vec3 leftTireContact = m_kartEntity.getWheelBLWorldPos();
+    glm::vec3 rightTireContact = m_kartEntity.getWheelBRWorldPos();
+    leftTireContact.y = 0.012f;
+    rightTireContact.y = 0.012f;
+
+    m_skidmarkManager.updateWithWheelPositions(deltaTime, leftTireContact, rightTireContact,
+                                              m_kartPhysics.getSpeed(), steer, isBraking, m_kartPhysics.isBoosting());
 
     // Sincronizar faros moviles del kart (SpotLight) con la posicion y giro del morro
     m_lightingController.update(m_kartPhysics.getPosition(), m_kartPhysics.getForwardVector(), deltaTime);

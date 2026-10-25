@@ -38,6 +38,20 @@ public:
     [[nodiscard]] const glm::vec3& getPosition() const { return m_rootNode->getTransform().position; }
     [[nodiscard]] float getYaw() const { return m_rootNode->getTransform().rotationEuler.y; }
 
+    [[nodiscard]] glm::vec3 getWheelBLWorldPos() const {
+        if (m_wheelBLNode) {
+            return glm::vec3(m_wheelBLNode->getWorldMatrix()[3]);
+        }
+        return getPosition();
+    }
+
+    [[nodiscard]] glm::vec3 getWheelBRWorldPos() const {
+        if (m_wheelBRNode) {
+            return glm::vec3(m_wheelBRNode->getWorldMatrix()[3]);
+        }
+        return getPosition();
+    }
+
 private:
     std::unique_ptr<scene::SceneNode> m_rootNode;
 

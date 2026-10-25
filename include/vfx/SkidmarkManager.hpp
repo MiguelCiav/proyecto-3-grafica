@@ -3,6 +3,7 @@
 #include <glm/glm.hpp>
 #include <vector>
 #include <deque>
+#include <string>
 #include "renderer/Shader.hpp"
 
 namespace vfx {
@@ -10,23 +11,31 @@ namespace vfx {
 struct SkidVertex {
     glm::vec3 position;
     glm::vec4 color;
+    glm::vec2 uv;
 };
 
 struct SkidSegment {
     SkidVertex v[4];
-    float lifetime{14.0f}; // Segundos antes de desvanecerse por completo
+    float lifetime{12.0f}; // Segundos antes de desvanecerse por completo
     float age{0.0f};
     float maxAlpha{0.75f};
 };
 
+struct WheelTrailState {
+    bool hasLastEdge{false};
+    glm::vec3 lastLeftEdge{0.0f};
+    glm::vec3 lastRightEdge{0.0f};
+    glm::vec3 lastPos{0.0f};
+};
+
 /**
  * @brief Gestor procedural de marcas de neumaticos y derrape en el asfalto.
- * Genera cintas de cuadrilateros translucidas detrás de las ruedas traseras
- * cuando el vehiculo derrapa, gira bruscamente o frena a alta velocidad.
+ * Genera cintas de cuadrilateros continuas y suavizadas directamente en el punto
+ * exacto de contacto de las ruedas traseras con la pista.
  */
 class SkidmarkManager {
 public:
-    explicit SkidmarkManager(size_t maxSegments = 1200);
+    explicit SkidmarkManager(size_t maxSegments = 1600);
     ~SkidmarkManager();
 
     SkidmarkManager(const SkidmarkManager&) = delete;
@@ -34,8 +43,17 @@ public:
 
     bool init(const std::string& vertPath = "shaders/skidmark.vert",
               const std::string& fragPath = "shaders/skidmark.frag");
+
+    // Actualizacion pasando posicion y orientacion global del vehiculo
     void update(float deltaTime, const glm::vec3& kartPos, float kartYawDeg,
                 float speed, float steerInput, bool isBraking, bool isBoosting);
+
+    // Actualizacion de maxima precision pasando las coordenadas de contacto exactas de las ruedas
+    void updateWithWheelPositions(float deltaTime,
+                                  const glm::vec3& leftTirePos,
+                                  const glm::vec3& rightTirePos,
+                                  float speed, float steerInput, bool isBraking, bool isBoosting);
+
     void render(const glm::mat4& view, const glm::mat4& projection);
     void clear();
 
@@ -43,14 +61,13 @@ public:
     [[nodiscard]] size_t getActiveSegmentCount() const { return m_segments.size(); }
 
 private:
-    void addWheelSegment(int wheelIdx, const glm::vec3& currentPos, float intensity);
+    void addWheelPoint(int wheelIdx, const glm::vec3& currentPos, float intensity);
 
-    size_t m_maxSegments{1200};
+    size_t m_maxSegments{1600};
     std::deque<SkidSegment> m_segments;
 
     bool m_currentlySkidding{false};
-    bool m_hasLastPos[2]{false, false};
-    glm::vec3 m_lastPos[2]{glm::vec3(0.0f), glm::vec3(0.0f)};
+    WheelTrailState m_wheelTrails[2];
 
     // Geometria GPU dinamica
     unsigned int m_vao{0};

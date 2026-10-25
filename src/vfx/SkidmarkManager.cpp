@@ -8,27 +8,36 @@ namespace vfx {
 
 namespace {
 
-const char* SKID_VERT_SRC = R"(#version 330 core
+const char* SKID_VERT_FALLBACK = R"(#version 330 core
 layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec4 aColor;
+layout(location = 2) in vec2 aUV;
 
 uniform mat4 u_View;
 uniform mat4 u_Projection;
 
 out vec4 vColor;
+out vec2 vUV;
 
 void main() {
     vColor = aColor;
+    vUV = aUV;
     gl_Position = u_Projection * u_View * vec4(aPos, 1.0);
 }
 )";
 
-const char* SKID_FRAG_SRC = R"(#version 330 core
+const char* SKID_FRAG_FALLBACK = R"(#version 330 core
 in vec4 vColor;
+in vec2 vUV;
+
 out vec4 FragColor;
 
 void main() {
-    FragColor = vColor;
+    float edgeDist = abs(vUV.x - 0.5) * 2.0;
+    float edgeAlpha = smoothstep(1.0, 0.62, edgeDist);
+    float tread = 0.86 + 0.14 * cos(vUV.x * 25.1327);
+    float alpha = vColor.a * edgeAlpha * tread;
+    FragColor = vec4(vColor.rgb, alpha);
 }
 )";
 
@@ -50,7 +59,7 @@ bool SkidmarkManager::init(const std::string& vertPath, const std::string& fragP
     if (m_initialized) return true;
 
     if (!m_shader.loadFromFiles(vertPath, fragPath)) {
-        if (!m_shader.loadFromSource(SKID_VERT_SRC, SKID_FRAG_SRC)) {
+        if (!m_shader.loadFromSource(SKID_VERT_FALLBACK, SKID_FRAG_FALLBACK)) {
             std::cerr << "[ERROR] [SkidmarkManager] Error cargando shader de marcas de derrape." << std::endl;
             return false;
         }
@@ -69,11 +78,18 @@ bool SkidmarkManager::init(const std::string& vertPath, const std::string& fragP
 
     // Atributo 0: Posicion 3D (x, y, z)
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(SkidVertex), reinterpret_cast<void*>(offsetof(SkidVertex, position)));
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(SkidVertex),
+                          reinterpret_cast<void*>(offsetof(SkidVertex, position)));
 
     // Atributo 1: Color y Alpha (r, g, b, a)
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(SkidVertex), reinterpret_cast<void*>(offsetof(SkidVertex, color)));
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(SkidVertex),
+                          reinterpret_cast<void*>(offsetof(SkidVertex, color)));
+
+    // Atributo 2: Coordenadas UV (u, v) para suavizado de bordes y estriado de neumático
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(SkidVertex),
+                          reinterpret_cast<void*>(offsetof(SkidVertex, uv)));
 
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -81,64 +97,90 @@ bool SkidmarkManager::init(const std::string& vertPath, const std::string& fragP
 
     m_initialized = true;
     std::cout << "[OK] [SkidmarkManager] Sistema de marcas de derrape inicializado (capacidad: "
-              << m_maxSegments << " segmentos)." << std::endl;
+              << m_maxSegments << " segmentos continuos)." << std::endl;
     return true;
 }
 
 void SkidmarkManager::clear() {
     m_segments.clear();
-    m_hasLastPos[0] = false;
-    m_hasLastPos[1] = false;
+    m_wheelTrails[0] = WheelTrailState{};
+    m_wheelTrails[1] = WheelTrailState{};
     m_currentlySkidding = false;
 }
 
-void SkidmarkManager::addWheelSegment(int wheelIdx, const glm::vec3& currentPos, float intensity) {
-    if (!m_hasLastPos[wheelIdx]) {
-        m_lastPos[wheelIdx] = currentPos;
-        m_hasLastPos[wheelIdx] = true;
+void SkidmarkManager::addWheelPoint(int wheelIdx, const glm::vec3& currentPos, float intensity) {
+    auto& trail = m_wheelTrails[wheelIdx];
+
+    // Primer punto del rastro: guardar posición y esperar siguiente fotograma
+    if (!trail.hasLastEdge && trail.lastPos == glm::vec3(0.0f)) {
+        trail.lastPos = currentPos;
         return;
     }
 
-    float dist = glm::distance(currentPos, m_lastPos[wheelIdx]);
-    if (dist < 0.18f) {
-        // Demasiado cerca, esperar siguiente fotograma para evitar sobrecarga de geometria
+    float dist = glm::distance(currentPos, trail.lastPos);
+    if (dist < 0.12f) {
+        // La distancia recorrida aún es muy pequeña para formar un nuevo cuadrilátero
         return;
     }
-    if (dist > 3.0f) {
-        // Teletransporte o salto brusco: reiniciar rastro
-        m_lastPos[wheelIdx] = currentPos;
+    if (dist > 2.5f) {
+        // Salto brusco, reset o respawn del vehículo: romper la cinta limpiamente
+        trail.hasLastEdge = false;
+        trail.lastPos = currentPos;
         return;
     }
 
-    glm::vec3 delta = currentPos - m_lastPos[wheelIdx];
-    glm::vec3 dir = glm::normalize(delta);
-    const float tireWidth = 0.23f;
-    glm::vec3 perp = glm::cross(dir, glm::vec3(0.0f, 1.0f, 0.0f)) * (tireWidth * 0.5f);
+    glm::vec3 delta = currentPos - trail.lastPos;
+    glm::vec3 travelDir = glm::normalize(delta);
 
-    float alpha = std::clamp(intensity * 0.75f, 0.25f, 0.85f);
-    glm::vec4 rubberColor(0.06f, 0.06f, 0.07f, alpha);
+    // Vector perpendicular en el plano horizontal (XZ)
+    const float tireWidth = 0.19f;
+    glm::vec3 perp = glm::cross(travelDir, glm::vec3(0.0f, 1.0f, 0.0f));
+    if (glm::dot(perp, perp) > 0.0001f) {
+        perp = glm::normalize(perp) * (tireWidth * 0.5f);
+    } else {
+        perp = glm::vec3(tireWidth * 0.5f, 0.0f, 0.0f);
+    }
+
+    // Extremos del segmento actual
+    glm::vec3 curLeft = currentPos - perp;
+    glm::vec3 curRight = currentPos + perp;
+
+    // Extremos del segmento previo: si ya venía derrapando, se enlaza directamente
+    // con los vértices finales del segmento anterior para formar una cinta 100% continua
+    glm::vec3 prevLeft = trail.hasLastEdge ? trail.lastLeftEdge : (trail.lastPos - perp);
+    glm::vec3 prevRight = trail.hasLastEdge ? trail.lastRightEdge : (trail.lastPos + perp);
+
+    float alpha = std::clamp(intensity * 0.72f, 0.28f, 0.85f);
+    glm::vec4 rubberColor(0.04f, 0.04f, 0.05f, alpha); // Negro carbón de caucho caliente
 
     SkidSegment seg;
-    seg.lifetime = 12.0f; // 12 segundos de desvanecimiento suave
+    seg.lifetime = 12.0f;
     seg.age = 0.0f;
     seg.maxAlpha = alpha;
 
-    seg.v[0] = {m_lastPos[wheelIdx] - perp, rubberColor};
-    seg.v[1] = {m_lastPos[wheelIdx] + perp, rubberColor};
-    seg.v[2] = {currentPos + perp, rubberColor};
-    seg.v[3] = {currentPos - perp, rubberColor};
+    // Cuadrilátero continuo con mapeo UV para antialiasing de bordes
+    seg.v[0] = {prevLeft, rubberColor, glm::vec2(0.0f, 0.0f)};
+    seg.v[1] = {prevRight, rubberColor, glm::vec2(1.0f, 0.0f)};
+    seg.v[2] = {curRight, rubberColor, glm::vec2(1.0f, 1.0f)};
+    seg.v[3] = {curLeft, rubberColor, glm::vec2(0.0f, 1.0f)};
 
     if (m_segments.size() >= m_maxSegments) {
         m_segments.pop_front();
     }
     m_segments.push_back(seg);
 
-    m_lastPos[wheelIdx] = currentPos;
+    // Actualizar extremos para la siguiente iteración
+    trail.lastLeftEdge = curLeft;
+    trail.lastRightEdge = curRight;
+    trail.lastPos = currentPos;
+    trail.hasLastEdge = true;
 }
 
-void SkidmarkManager::update(float deltaTime, const glm::vec3& kartPos, float kartYawDeg,
-                             float speed, float steerInput, bool isBraking, bool isBoosting) {
-    // 1. Envejecimiento y desvanecimiento de marcas existentes
+void SkidmarkManager::updateWithWheelPositions(float deltaTime,
+                                              const glm::vec3& leftTirePos,
+                                              const glm::vec3& rightTirePos,
+                                              float speed, float steerInput, bool isBraking, bool isBoosting) {
+    // 1. Envejecimiento y desvanecimiento progresivo de las marcas en pista
     while (!m_segments.empty() && m_segments.front().age >= m_segments.front().lifetime) {
         m_segments.pop_front();
     }
@@ -153,38 +195,49 @@ void SkidmarkManager::update(float deltaTime, const glm::vec3& kartPos, float ka
         seg.v[3].color.a = currentAlpha;
     }
 
-    // 2. Evaluacion de derrape y friccion limite
-    bool hardTurn = (std::abs(steerInput) > 0.25f && speed > 5.0f);
-    bool brakeSkid = (isBraking && speed > 3.0f);
-    bool boostDrift = (isBoosting && std::abs(steerInput) > 0.12f && speed > 4.0f);
+    // 2. Detección física natural de derrape y pérdida de tracción
+    float absSteer = std::abs(steerInput);
+    bool hardTurn = (absSteer > 0.28f && speed > 5.2f);
+    bool brakeSkid = (isBraking && speed > 1.8f);
+    bool boostDrift = (isBoosting && absSteer > 0.10f && speed > 3.8f);
 
     m_currentlySkidding = (hardTurn || brakeSkid || boostDrift);
 
     if (m_currentlySkidding) {
-        float rad = glm::radians(kartYawDeg);
-        glm::vec3 fwd(std::sin(rad), 0.0f, -std::cos(rad));
-        glm::vec3 right(std::cos(rad), 0.0f, std::sin(rad));
+        float intensity = 0.55f;
+        if (hardTurn) intensity += std::min(absSteer * 0.45f, 0.45f);
+        if (brakeSkid) intensity += 0.40f;
+        if (boostDrift) intensity += 0.45f;
 
-        float backOffset = 0.65f;
-        float halfTrack = 0.45f;
-        float groundY = 0.015f; // Ligeramente elevado sobre y=0 para evitar Z-fighting
-
-        glm::vec3 leftTirePos = kartPos - fwd * backOffset - right * halfTrack;
-        glm::vec3 rightTirePos = kartPos - fwd * backOffset + right * halfTrack;
-        leftTirePos.y = groundY;
-        rightTirePos.y = groundY;
-
-        float intensity = 0.6f;
-        if (hardTurn) intensity += std::min(std::abs(steerInput) * 0.4f, 0.4f);
-        if (brakeSkid) intensity += 0.35f;
-        if (boostDrift) intensity += 0.40f;
-
-        addWheelSegment(0, leftTirePos, intensity);
-        addWheelSegment(1, rightTirePos, intensity);
+        addWheelPoint(0, leftTirePos, intensity);
+        addWheelPoint(1, rightTirePos, intensity);
     } else {
-        m_hasLastPos[0] = false;
-        m_hasLastPos[1] = false;
+        // Cortar la continuidad de la cinta al dejar de derrapar
+        m_wheelTrails[0].hasLastEdge = false;
+        m_wheelTrails[0].lastPos = glm::vec3(0.0f);
+        m_wheelTrails[1].hasLastEdge = false;
+        m_wheelTrails[1].lastPos = glm::vec3(0.0f);
     }
+}
+
+void SkidmarkManager::update(float deltaTime, const glm::vec3& kartPos, float kartYawDeg,
+                             float speed, float steerInput, bool isBraking, bool isBoosting) {
+    // Conversión matemáticamente rigurosa desde la orientación y posición del vehículo
+    // hacia los puntos de contacto al suelo de las ruedas traseras (Z = -0.361m, X = +/-0.382m)
+    float rad = glm::radians(kartYawDeg);
+    float cosY = std::cos(rad);
+    float sinY = std::sin(rad);
+
+    auto localToWorld = [&](float lx, float lz) {
+        float wx = lx * cosY + lz * sinY;
+        float wz = -lx * sinY + lz * cosY;
+        return kartPos + glm::vec3(wx, 0.012f, wz);
+    };
+
+    glm::vec3 leftTirePos = localToWorld(0.3823f, -0.3606f);
+    glm::vec3 rightTirePos = localToWorld(-0.3823f, -0.3606f);
+
+    updateWithWheelPositions(deltaTime, leftTirePos, rightTirePos, speed, steerInput, isBraking, isBoosting);
 }
 
 void SkidmarkManager::render(const glm::mat4& view, const glm::mat4& projection) {
@@ -210,17 +263,16 @@ void SkidmarkManager::render(const glm::mat4& view, const glm::mat4& projection)
         baseIdx += 4;
     }
 
-    // Subir geometria dinamica
     glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
     glBufferSubData(GL_ARRAY_BUFFER, 0, m_vertexCache.size() * sizeof(SkidVertex), m_vertexCache.data());
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, m_indexCache.size() * sizeof(unsigned int), m_indexCache.data());
 
-    // Configurar estado OpenGL para calcomanias sobre el asfalto
+    // Configuración de renderizado para calcomanías sobre el asfalto
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glDepthMask(GL_FALSE); // Translucidez sin ocluir objetos posteriores
+    glDepthMask(GL_FALSE);
     glEnable(GL_POLYGON_OFFSET_FILL);
     glPolygonOffset(-2.0f, -2.0f);
 
