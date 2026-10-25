@@ -394,6 +394,43 @@ bool PropSpawner::init(const std::string& obstaclesDir) {
         renderer::MeshGL seaPearl;
         seaPearl.setup(createStarSubMesh(0.40f, 0.22f, 0.20f));
         m_propMeshes["seaPearl"] = std::move(seaPearl);
+
+        // Elementos procedurales del Bioma Volcánico (Basalto negro, magma, chimeneas y braseros de fuego)
+        renderer::MeshGL volcanoArchPillar;
+        volcanoArchPillar.setup(createBoxSubMesh(0.24f, 2.60f, 0.24f));
+        m_propMeshes["volcanoArchPillar"] = std::move(volcanoArchPillar);
+
+        renderer::MeshGL volcanoArchBeam;
+        volcanoArchBeam.setup(createBoxSubMesh(2.80f, 0.25f, 0.32f));
+        m_propMeshes["volcanoArchBeam"] = std::move(volcanoArchBeam);
+
+        renderer::MeshGL volcanoArchTrimLava;
+        volcanoArchTrimLava.setup(createBoxSubMesh(2.80f, 0.08f, 0.36f));
+        m_propMeshes["volcanoArchTrimLava"] = std::move(volcanoArchTrimLava);
+
+        renderer::MeshGL basaltColumn;
+        basaltColumn.setup(createBoxSubMesh(0.35f, 1.60f, 0.35f));
+        m_propMeshes["basaltColumn"] = std::move(basaltColumn);
+
+        renderer::MeshGL volcanoRock;
+        volcanoRock.setup(createBoxSubMesh(0.65f, 0.50f, 0.65f));
+        m_propMeshes["volcanoRock"] = std::move(volcanoRock);
+
+        renderer::MeshGL lavaChimney;
+        lavaChimney.setup(createBoxSubMesh(0.26f, 1.10f, 0.26f));
+        m_propMeshes["lavaChimney"] = std::move(lavaChimney);
+
+        renderer::MeshGL lavaVent;
+        lavaVent.setup(createBoxSubMesh(0.40f, 0.08f, 0.40f));
+        m_propMeshes["lavaVent"] = std::move(lavaVent);
+
+        renderer::MeshGL fireBrazier;
+        fireBrazier.setup(createBoxSubMesh(0.22f, 0.70f, 0.22f));
+        m_propMeshes["fireBrazier"] = std::move(fireBrazier);
+
+        renderer::MeshGL flameOrb;
+        flameOrb.setup(createStarSubMesh(0.38f, 0.20f, 0.22f));
+        m_propMeshes["flameOrb"] = std::move(flameOrb);
     }
 
     m_initialized = !m_propMeshes.empty();
@@ -500,6 +537,21 @@ void PropSpawner::addProp(const std::string& type, const glm::vec3& pos, float r
     } else if (type == "coralBrain") {
         inst.aabbMin = glm::vec3(pos.x - 0.52f * scale.x, 0.0f, pos.z - 0.52f * scale.z);
         inst.aabbMax = glm::vec3(pos.x + 0.52f * scale.x, 0.55f * scale.y, pos.z + 0.52f * scale.z);
+    } else if (type == "volcanoArchPillar") {
+        inst.aabbMin = glm::vec3(pos.x - 0.26f, 0.0f, pos.z - 0.26f);
+        inst.aabbMax = glm::vec3(pos.x + 0.26f, 5.20f * scale.y, pos.z + 0.26f);
+    } else if (type == "basaltColumn") {
+        inst.aabbMin = glm::vec3(pos.x - 0.38f * scale.x, 0.0f, pos.z - 0.38f * scale.z);
+        inst.aabbMax = glm::vec3(pos.x + 0.38f * scale.x, 3.20f * scale.y, pos.z + 0.38f * scale.z);
+    } else if (type == "volcanoRock") {
+        inst.aabbMin = glm::vec3(pos.x - 0.68f * scale.x, 0.0f, pos.z - 0.68f * scale.z);
+        inst.aabbMax = glm::vec3(pos.x + 0.68f * scale.x, 1.05f * scale.y, pos.z + 0.68f * scale.z);
+    } else if (type == "lavaChimney") {
+        inst.aabbMin = glm::vec3(pos.x - 0.28f * scale.x, 0.0f, pos.z - 0.28f * scale.z);
+        inst.aabbMax = glm::vec3(pos.x + 0.28f * scale.x, 2.20f * scale.y, pos.z + 0.28f * scale.z);
+    } else if (type == "fireBrazier") {
+        inst.aabbMin = glm::vec3(pos.x - 0.24f * scale.x, 0.0f, pos.z - 0.24f * scale.z);
+        inst.aabbMax = glm::vec3(pos.x + 0.24f * scale.x, 1.40f * scale.y, pos.z + 0.24f * scale.z);
     } else {
         // Elementos suspendidos (vigas a 4m de altura, luces, letrero de meta):
         glm::vec3 halfSize = scale * 0.5f;
@@ -517,9 +569,9 @@ void PropSpawner::update(float dt) {
         m_starRotation -= 360.0f;
     }
 
-    // Animar giro 3D continuo y levitación vertical armónica de las estrellas flotantes y perlas marinas
+    // Animar giro 3D continuo y levitación vertical armónica de las estrellas flotantes, perlas marinas y orbes de fuego
     for (auto& prop : m_props) {
-        if (prop.type == "floatingStar" || prop.type == "seaPearl") {
+        if (prop.type == "floatingStar" || prop.type == "seaPearl" || prop.type == "flameOrb") {
             float bob = std::sin(m_animTime * 2.8f + prop.position.x * 0.4f + prop.position.z * 0.4f) * 0.08f;
             glm::vec3 animatedPos = prop.position + glm::vec3(0.0f, bob, 0.0f);
 
@@ -531,7 +583,7 @@ void PropSpawner::update(float dt) {
     }
 }
 
-void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDesert, bool isSpace, bool isAquatic) {
+void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDesert, bool isSpace, bool isAquatic, bool isVolcano) {
     m_props.clear();
     m_lampPositions.clear();
 
@@ -548,6 +600,103 @@ void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDe
         } else if (tile.type == TileType::ROAD_STRAIGHT) {
             straightTiles.push_back(&tile);
         }
+    }
+
+    if (isVolcano) {
+        // =========================================================
+        // GENERACION BIOMA VOLCANICO: Caldera del Volcán UCV (Inferno Magma)
+        // =========================================================
+
+        // 1. Gran Portal del Dragón en Basalto y Magma en la Salida / Meta
+        if (startFinishTile) {
+            bool isHorizontal = (startFinishTile->rotationDegrees == 90.0f || startFinishTile->rotationDegrees == 270.0f);
+            float beamRot = isHorizontal ? 90.0f : 0.0f;
+            float pillarOffset = 2.65f;
+            glm::vec3 sideDir = isHorizontal ? glm::vec3(0.0f, 0.0f, 1.0f) : glm::vec3(1.0f, 0.0f, 0.0f);
+            glm::vec3 pillarAOffset = sideDir * pillarOffset;
+            glm::vec3 pillarBOffset = -sideDir * pillarOffset;
+
+            glm::vec3 posA = startFinishTile->worldPos + pillarAOffset;
+            glm::vec3 posB = startFinishTile->worldPos + pillarBOffset;
+
+            // Pilares de basalto volcánico negro
+            addProp("volcanoArchPillar", glm::vec3(posA.x, 2.60f, posA.z), beamRot, glm::vec3(1.0f), true);
+            addProp("volcanoArchPillar", glm::vec3(posB.x, 2.60f, posB.z), beamRot, glm::vec3(1.0f), true);
+
+            // Viga superior con vena de magma incandescente
+            glm::vec3 beamPos = (posA + posB) * 0.5f + glm::vec3(0.0f, 5.20f, 0.0f);
+            addProp("volcanoArchBeam", beamPos, beamRot, glm::vec3(1.0f), false);
+            addProp("volcanoArchTrimLava", beamPos - glm::vec3(0.0f, 0.20f, 0.0f), beamRot, glm::vec3(1.0f), false);
+
+            // Rocas de lava y braseros de fuego en las bases
+            addProp("volcanoRock", posA + sideDir * 1.2f, 35.0f, glm::vec3(1.2f), true);
+            addProp("volcanoRock", posB - sideDir * 1.2f, 65.0f, glm::vec3(1.2f), true);
+
+            addProp("fireBrazier", posA + sideDir * 1.8f + glm::vec3(0.0f, 0.70f, 0.0f), 0.0f, glm::vec3(1.0f), true);
+            addProp("flameOrb", posA + sideDir * 1.8f + glm::vec3(0.0f, 1.60f, 0.0f), 0.0f, glm::vec3(1.0f), false);
+
+            addProp("fireBrazier", posB - sideDir * 1.8f + glm::vec3(0.0f, 0.70f, 0.0f), 0.0f, glm::vec3(1.0f), true);
+            addProp("flameOrb", posB - sideDir * 1.8f + glm::vec3(0.0f, 1.60f, 0.0f), 0.0f, glm::vec3(1.0f), false);
+
+            m_lampPositions.push_back(posA + sideDir * 1.8f + glm::vec3(0.0f, 1.60f, 0.0f));
+            m_lampPositions.push_back(posB - sideDir * 1.8f + glm::vec3(0.0f, 1.60f, 0.0f));
+        }
+
+        // 2. Obstáculos y Decoraciones Volcánicas en Curvas
+        for (const auto& tile : grid.getAllTiles()) {
+            if (tile.type == TileType::ROAD_CORNER_SMALL || tile.type == TileType::ROAD_CORNER_LARGE) {
+                float rotRad = glm::radians(tile.rotationDegrees);
+                glm::vec3 outerDir(std::cos(rotRad + 0.785f), 0.0f, std::sin(rotRad + 0.785f));
+
+                addProp("debris-tire", tile.worldPos + outerDir * 2.40f, tile.rotationDegrees, glm::vec3(1.3f), true);
+                addProp("cone", tile.worldPos - outerDir * 1.85f, tile.rotationDegrees + 45.0f, glm::vec3(1.15f), true);
+
+                addProp("basaltColumn", tile.worldPos + outerDir * 3.8f + glm::vec3(0.0f, 1.60f, 0.0f), tile.rotationDegrees + 20.0f, glm::vec3(1.0f), true);
+                addProp("volcanoRock", tile.worldPos + outerDir * 5.2f, tile.rotationDegrees + 70.0f, glm::vec3(1.3f), true);
+                addProp("lavaVent", tile.worldPos + outerDir * 2.8f + glm::vec3(0.0f, 0.05f, 0.0f), tile.rotationDegrees, glm::vec3(1.0f), false);
+            }
+        }
+
+        // 3. Columnas de Basalto, Chimeneas de Fumarolas y Braseros en las Rectas
+        int flameCount = 0;
+        for (size_t i = 0; i < straightTiles.size(); ++i) {
+            const auto* tile = straightTiles[i];
+            bool isHorizontal = (tile->rotationDegrees == 90.0f || tile->rotationDegrees == 270.0f);
+            float sideSign = (i % 2 == 0) ? 1.0f : -1.0f;
+            glm::vec3 sideDir = isHorizontal ? glm::vec3(0.0f, 0.0f, sideSign) : glm::vec3(sideSign, 0.0f, 0.0f);
+
+            if (i % 2 == 0) {
+                float bDist = 3.6f + (i % 3) * 0.7f;
+                glm::vec3 bPos = tile->worldPos + sideDir * bDist;
+                float bRot = static_cast<float>((i * 51) % 360);
+                addProp("basaltColumn", bPos + glm::vec3(0.0f, 1.60f, 0.0f), bRot, glm::vec3(1.0f), true);
+                addProp("volcanoRock", bPos + glm::vec3(0.4f, 0.0f, 0.3f), bRot + 30.0f, glm::vec3(0.9f), true);
+            } else {
+                float cDist = 3.8f + (i % 2) * 0.6f;
+                glm::vec3 cPos = tile->worldPos - sideDir * cDist;
+                float cRot = static_cast<float>((i * 37) % 360);
+                addProp("lavaChimney", cPos + glm::vec3(0.0f, 1.10f, 0.0f), cRot, glm::vec3(1.0f), true);
+                addProp("lavaVent", cPos + glm::vec3(0.2f, 0.05f, 0.2f), cRot, glm::vec3(0.9f), false);
+            }
+
+            // Braseros de Fuego Incandescente cada 5 losas (emiten luz puntual de fuego cálido)
+            if (i % 5 == 1 && flameCount < 6) {
+                float brazierDist = 2.65f;
+                glm::vec3 bPos = tile->worldPos + sideDir * brazierDist;
+                addProp("fireBrazier", bPos + glm::vec3(0.0f, 0.70f, 0.0f), 0.0f, glm::vec3(1.0f), true);
+
+                glm::vec3 flamePos = bPos + glm::vec3(0.0f, 1.60f, 0.0f);
+                addProp("flameOrb", flamePos, 0.0f, glm::vec3(1.0f), false);
+
+                m_lampPositions.push_back(flamePos);
+                flameCount++;
+            }
+        }
+
+        std::cout << "[OK] [PropSpawner] Total de elementos generados: "
+                  << m_props.size() << " (Arco del Dragon, " << flameCount
+                  << " braseros de fuego, columnas de basalto y chimeneas volcanicas)." << std::endl;
+        return;
     }
 
     if (isAquatic) {
@@ -1289,6 +1438,38 @@ void PropSpawner::render(const renderer::Shader& shader) const {
                 // Perla marina con brillo turquesa bioluminiscente intenso
                 shader.setBool("u_UseTexture", false);
                 shader.setVec4("u_Color", glm::vec4(0.20f, 0.98f, 0.88f, 1.0f));
+            } else if (prop.type == "volcanoArchPillar" || prop.type == "volcanoArchBeam") {
+                // Basalto volcánico negro
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(0.12f, 0.11f, 0.13f, 1.0f));
+            } else if (prop.type == "volcanoArchTrimLava") {
+                // Vena de magma ardiente naranja incandescente
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(1.0f, 0.40f, 0.05f, 1.0f));
+            } else if (prop.type == "basaltColumn") {
+                // Obsidiana/basalto gris carbón
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(0.16f, 0.15f, 0.18f, 1.0f));
+            } else if (prop.type == "volcanoRock") {
+                // Roca volcánica porosa con matiz rojizo
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(0.24f, 0.16f, 0.14f, 1.0f));
+            } else if (prop.type == "lavaChimney") {
+                // Chimenea de escoria volcánica
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(0.20f, 0.14f, 0.12f, 1.0f));
+            } else if (prop.type == "lavaVent") {
+                // Respiradero de magma amarillo-naranja ardiente
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(1.0f, 0.55f, 0.08f, 1.0f));
+            } else if (prop.type == "fireBrazier") {
+                // Soporte de hierro forjado volcánico
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(0.18f, 0.18f, 0.20f, 1.0f));
+            } else if (prop.type == "flameOrb") {
+                // Núcleo de fuego ardiente incandescente
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(1.0f, 0.35f, 0.05f, 1.0f));
             } else {
                 // Mallas texturizadas con la paleta de Kenney
                 shader.setBool("u_UseTexture", true);

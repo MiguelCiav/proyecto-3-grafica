@@ -311,6 +311,16 @@ void Application::loadCatalog() {
             26, 26,
             false, // isNight
             TrackTheme::AQUATIC_REEF
+        },
+        {
+            "track-volcano",
+            "Caldera del Volcan UCV (Inferno Magma Crater)",
+            "Infernal ★★★",
+            "Circuito de alta adrenalina al borde de un crater de lava con chimeneas de humo, columnas de basalto y braseros.",
+            "assets/levels/track_volcano_caldera.txt",
+            26, 26,
+            false, // isNight
+            TrackTheme::VOLCANO_CALDERA
         }
     };
 }
@@ -363,15 +373,18 @@ void Application::selectTrack(int index) {
     // Cargar nuevo archivo de pista modular
     world::LevelLoader::loadFromFile(track.filePath, m_trackGrid);
 
-    // Regenerar obstaculos y triggers para la nueva pista (con props diurnos, nocturnos, deserticos, espaciales o acuaticos)
+    // Regenerar obstaculos y triggers para la nueva pista (con props diurnos, nocturnos, deserticos, espaciales, acuaticos o volcanicos)
     bool isDesert = (track.theme == TrackTheme::DESERT_DUNES);
     bool isSpace = (track.theme == TrackTheme::COSMIC_SPACE);
     bool isAquatic = (track.theme == TrackTheme::AQUATIC_REEF);
-    m_propSpawner.generateForGrid(m_trackGrid, track.isNight, isDesert, isSpace, isAquatic);
+    bool isVolcano = (track.theme == TrackTheme::VOLCANO_CALDERA);
+    m_propSpawner.generateForGrid(m_trackGrid, track.isNight, isDesert, isSpace, isAquatic, isVolcano);
     m_zoneManager.autoGenerateFromGrid(m_trackGrid);
 
     // Ajustar color del terreno segun el bioma
-    if (isSpace) {
+    if (isVolcano) {
+        m_trackRenderer.setGroundColor(glm::vec4(0.09f, 0.08f, 0.09f, 1.0f)); // Basalto volcanico y ceniza oscura
+    } else if (isSpace) {
         m_trackRenderer.setGroundColor(glm::vec4(0.012f, 0.010f, 0.024f, 1.0f)); // Vacio cosmico abisal
     } else if (isAquatic) {
         m_trackRenderer.setGroundColor(glm::vec4(0.04f, 0.16f, 0.22f, 1.0f)); // Fondo marino / lecho abisal turquesa
@@ -522,6 +535,9 @@ const renderer::Skybox& Application::getSkybox() const {
         if (track.theme == TrackTheme::AQUATIC_REEF && m_skyboxAquatic.isLoaded()) {
             return m_skyboxAquatic;
         }
+        if (track.theme == TrackTheme::VOLCANO_CALDERA && m_skyboxVolcano.isLoaded()) {
+            return m_skyboxVolcano;
+        }
         if (track.theme == TrackTheme::DESERT_DUNES) {
             if (m_lightingController.isNight() && m_skyboxNight.isLoaded()) {
                 return m_skyboxNight;
@@ -547,6 +563,8 @@ void Application::setupTrackLighting() {
                     ? (m_tracks[m_selectedTrackIndex].theme == TrackTheme::COSMIC_SPACE) : false;
     bool isAquatic = (!m_tracks.empty() && m_selectedTrackIndex >= 0 && static_cast<size_t>(m_selectedTrackIndex) < m_tracks.size())
                     ? (m_tracks[m_selectedTrackIndex].theme == TrackTheme::AQUATIC_REEF) : false;
+    bool isVolcano = (!m_tracks.empty() && m_selectedTrackIndex >= 0 && static_cast<size_t>(m_selectedTrackIndex) < m_tracks.size())
+                    ? (m_tracks[m_selectedTrackIndex].theme == TrackTheme::VOLCANO_CALDERA) : false;
 
     // 1. Registrar fuentes de luz puntual según el bioma
     if (isSpace) {
@@ -579,6 +597,22 @@ void Application::setupTrackLighting() {
             pearl.quadratic = 0.016f;
             pearl.enabled   = true;
             m_lightManager.addPointLight(pearl);
+        }
+    } else if (isVolcano) {
+        // En la caldera del volcan, los braseros y orbes de fuego emiten una potente luz naranja/rojo fuego
+        const auto& lampPositions = m_propSpawner.getLampPositions();
+        for (const auto& pos : lampPositions) {
+            if (m_lightManager.getPointLightCount() >= lighting::LightManager::MAX_POINT_LIGHTS) break;
+            lighting::PointLight fire;
+            fire.position  = pos;
+            fire.ambient   = glm::vec3(0.18f, 0.06f, 0.01f);
+            fire.diffuse   = glm::vec3(2.80f, 1.20f, 0.25f); // Fuego naranja incandescente de alta intensidad
+            fire.specular  = glm::vec3(2.20f, 0.90f, 0.15f);
+            fire.constant  = 1.0f;
+            fire.linear    = 0.055f;
+            fire.quadratic = 0.014f;
+            fire.enabled   = true;
+            m_lightManager.addPointLight(fire);
         }
     } else if (!isDesert) {
         // En circuitos urbanos/GP, extraer posiciones exactas de las farolas 3D generadas por PropSpawner
@@ -616,6 +650,66 @@ void Application::applyDayNightState(bool isNight) {
     auto& points = m_lightManager.getPointLights();
 
     switch (theme) {
+        case TrackTheme::VOLCANO_CALDERA: {
+            if (isNight) {
+                // Modo Erupción Nocturna / Noche de Magma Incandescente
+                sun.direction = glm::normalize(glm::vec3(-0.35f, -0.65f, -0.45f));
+                sun.ambient   = glm::vec3(0.10f, 0.04f, 0.02f); // Resplandor nocturno de lava ardiente
+                sun.diffuse   = glm::vec3(0.35f, 0.12f, 0.05f);
+                sun.specular  = glm::vec3(0.40f, 0.15f, 0.05f);
+
+                for (auto& p : points) {
+                    p.ambient   = glm::vec3(0.18f, 0.06f, 0.01f);
+                    p.diffuse   = glm::vec3(3.20f, 1.40f, 0.28f); // Braseros y chimeneas de fuego al máximo
+                    p.specular  = glm::vec3(2.40f, 1.00f, 0.18f);
+                    p.constant  = 1.0f;
+                    p.linear    = 0.055f;
+                    p.quadratic = 0.014f;
+                    p.enabled   = true;
+                }
+
+                spot.diffuse     = glm::vec3(2.40f, 2.00f, 1.60f); // Faros penetrando la ceniza volcánica
+                spot.specular    = glm::vec3(1.80f, 1.40f, 1.00f);
+                spot.cutOff      = 0.9135f;
+                spot.outerCutOff = 0.8480f;
+                m_lightingController.setHeadlights(true);
+
+                m_trackRenderer.setGroundColor(glm::vec4(0.06f, 0.05f, 0.06f, 1.0f));
+
+                std::cout << "\n>>> [ILUMINACION - CALDERA DEL VOLCAN]: Modo [ERUPCION NOCTURNA (Tecla N)]"
+                          << "\n    -> Resplandor infernal de magma, braseros de fuego y faros penetrantes en ceniza. <<<\n" << std::endl;
+            } else {
+                // Modo Sol de Ceniza Diurno (Cielo volcánico cubierto con sol anaranjado y vapores)
+                sun.direction = glm::normalize(glm::vec3(0.20f, -0.80f, 0.30f));
+                sun.ambient   = glm::vec3(0.32f, 0.20f, 0.15f); // Atmósfera cargada de ceniza cálida
+                sun.diffuse   = glm::vec3(1.10f, 0.65f, 0.35f); // Luz solar tamizada por humo rojizo-ámbar
+                sun.specular  = glm::vec3(0.80f, 0.45f, 0.20f);
+
+                for (auto& p : points) {
+                    p.ambient   = glm::vec3(0.12f, 0.05f, 0.01f);
+                    p.diffuse   = glm::vec3(2.40f, 1.05f, 0.20f);
+                    p.specular  = glm::vec3(1.80f, 0.75f, 0.12f);
+                    p.constant  = 1.0f;
+                    p.linear    = 0.055f;
+                    p.quadratic = 0.014f;
+                    p.enabled   = true;
+                }
+
+                spot.diffuse     = glm::vec3(0.80f, 0.60f, 0.40f);
+                spot.specular    = glm::vec3(0.50f, 0.35f, 0.20f);
+                spot.cutOff      = 0.9135f;
+                spot.outerCutOff = 0.8480f;
+                m_lightingController.setHeadlights(false);
+
+                m_trackRenderer.setGroundColor(glm::vec4(0.09f, 0.08f, 0.09f, 1.0f));
+
+                std::cout << "\n>>> [ILUMINACION - CALDERA DEL VOLCAN]: Modo [CALDERA DIURNA (Tecla N)]"
+                          << "\n    -> Luz de sol filtrada por ceniza volcanica y braseros de fuego activos. <<<\n" << std::endl;
+            }
+            sun.enabled = true;
+            break;
+        }
+
         case TrackTheme::AQUATIC_REEF: {
             if (isNight) {
                 // Modo Abismo Nocturno / Fosa Marina Océano Profundo
@@ -891,6 +985,25 @@ void Application::toggleTrackPointLights() {
                   << (turnOn ? "[ENCENDIDAS (Tecla P)] - Estrellas neon brillando en sus colores unicos (cian, magenta, oro, verde, violeta)"
                              : "[APAGADAS (Tecla P)] - Estrellas neon en reposo estelar")
                   << " <<<\n" << std::endl;
+    } else if (theme == TrackTheme::VOLCANO_CALDERA) {
+        for (auto& p : points) {
+            p.enabled = turnOn;
+            if (turnOn) {
+                p.ambient   = glm::vec3(0.18f, 0.06f, 0.01f);
+                p.diffuse   = glm::vec3(2.80f, 1.20f, 0.25f);
+                p.specular  = glm::vec3(2.20f, 0.90f, 0.15f);
+                p.constant  = 1.0f;
+                p.linear    = 0.055f;
+                p.quadratic = 0.014f;
+            } else {
+                p.ambient  = glm::vec3(0.0f);
+                p.diffuse  = glm::vec3(0.0f);
+                p.specular = glm::vec3(0.0f);
+            }
+        }
+        std::cout << "\n>>> [BRASEROS Y FUEGO VOLCANICO]: "
+                  << (turnOn ? "[ENCENDIDOS (Tecla P)] - Fuego de magma incandescente" : "[APAGADOS (Tecla P)] - Fuego en braseros sofocado")
+                  << " <<<\n" << std::endl;
     } else if (theme == TrackTheme::AQUATIC_REEF) {
         for (auto& p : points) {
             p.enabled = turnOn;
@@ -1082,6 +1195,11 @@ bool Application::init() {
     if (!m_skyboxAquatic.loadShader("shaders/skybox.vert", "shaders/skybox.frag") ||
         !m_skyboxAquatic.loadFromDirectory("assets/textures/skybox_aquatic", ".tga")) {
         std::cerr << "[AVISO] [Application] No se pudo cargar el Skybox acuatico." << std::endl;
+    }
+
+    if (!m_skyboxVolcano.loadShader("shaders/skybox.vert", "shaders/skybox.frag") ||
+        !m_skyboxVolcano.loadFromDirectory("assets/textures/skybox_volcanic", ".tga")) {
+        std::cerr << "[AVISO] [Application] No se pudo cargar el Skybox volcanico." << std::endl;
     }
 
     if (!m_kartEmitter.init() || !m_kartEmitter.loadShaders("shaders/particle.vert", "shaders/particle.frag")) {
@@ -1503,8 +1621,13 @@ void Application::render() {
                         ? (m_tracks[m_selectedTrackIndex].theme == TrackTheme::DESERT_DUNES) : false;
         bool isAquatic = (!m_tracks.empty() && m_selectedTrackIndex >= 0 && static_cast<size_t>(m_selectedTrackIndex) < m_tracks.size())
                         ? (m_tracks[m_selectedTrackIndex].theme == TrackTheme::AQUATIC_REEF) : false;
+        bool isVolcano = (!m_tracks.empty() && m_selectedTrackIndex >= 0 && static_cast<size_t>(m_selectedTrackIndex) < m_tracks.size())
+                        ? (m_tracks[m_selectedTrackIndex].theme == TrackTheme::VOLCANO_CALDERA) : false;
 
-        if (isSpace) {
+        if (isVolcano) {
+            if (isNight) m_window->clear(0.05f, 0.02f, 0.02f, 1.0f);
+            else         m_window->clear(0.18f, 0.08f, 0.05f, 1.0f);
+        } else if (isSpace) {
             m_window->clear(0.008f, 0.006f, 0.016f, 1.0f);
         } else if (isAquatic) {
             if (isNight) m_window->clear(0.01f, 0.04f, 0.08f, 1.0f);
@@ -1626,8 +1749,13 @@ void Application::render() {
                     ? (m_tracks[m_selectedTrackIndex].theme == TrackTheme::DESERT_DUNES) : false;
     bool isAquatic = (!m_tracks.empty() && m_selectedTrackIndex >= 0 && static_cast<size_t>(m_selectedTrackIndex) < m_tracks.size())
                     ? (m_tracks[m_selectedTrackIndex].theme == TrackTheme::AQUATIC_REEF) : false;
+    bool isVolcano = (!m_tracks.empty() && m_selectedTrackIndex >= 0 && static_cast<size_t>(m_selectedTrackIndex) < m_tracks.size())
+                    ? (m_tracks[m_selectedTrackIndex].theme == TrackTheme::VOLCANO_CALDERA) : false;
 
-    if (isSpace) {
+    if (isVolcano) {
+        if (isNight) m_window->clear(0.04f, 0.02f, 0.02f, 1.0f);
+        else         m_window->clear(0.16f, 0.07f, 0.04f, 1.0f);
+    } else if (isSpace) {
         m_window->clear(0.006f, 0.004f, 0.012f, 1.0f);
     } else if (isAquatic) {
         if (isNight) m_window->clear(0.01f, 0.04f, 0.07f, 1.0f);
