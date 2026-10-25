@@ -72,7 +72,8 @@ struct VehicleProfile {
 enum class TrackTheme {
     DAY_GRASSLAND,
     NIGHT_NEON,
-    DESERT_DUNES
+    DESERT_DUNES,
+    COSMIC_SPACE
 };
 
 struct TrackProfile {
@@ -157,6 +158,7 @@ private:
     renderer::Skybox m_skyboxDay;
     renderer::Skybox m_skyboxNight;
     renderer::Skybox m_skyboxDesert;
+    renderer::Skybox m_skyboxCosmic;
 
     // Mundo y Circuito Modular
     world::TrackGrid m_trackGrid;

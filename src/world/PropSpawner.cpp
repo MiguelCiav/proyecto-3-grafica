@@ -191,6 +191,43 @@ bool PropSpawner::init(const std::string& obstaclesDir) {
         renderer::MeshGL desertArchBeam;
         desertArchBeam.setup(createBoxSubMesh(2.90f, 0.35f, 0.45f));
         m_propMeshes["desertArchBeam"] = std::move(desertArchBeam);
+
+        // Elementos procedurales del Bioma Espacial (Warp Rings, Satélites y Balizas Galácticas)
+        renderer::MeshGL spaceWarpPillar;
+        spaceWarpPillar.setup(createBoxSubMesh(0.18f, 2.40f, 0.18f));
+        m_propMeshes["spaceWarpPillar"] = std::move(spaceWarpPillar);
+
+        renderer::MeshGL spaceWarpBeam;
+        spaceWarpBeam.setup(createBoxSubMesh(2.65f, 0.15f, 0.20f));
+        m_propMeshes["spaceWarpBeam"] = std::move(spaceWarpBeam);
+
+        renderer::MeshGL spaceWarpTrimCyan;
+        spaceWarpTrimCyan.setup(createBoxSubMesh(2.65f, 0.08f, 0.24f));
+        m_propMeshes["spaceWarpTrimCyan"] = std::move(spaceWarpTrimCyan);
+
+        renderer::MeshGL spaceWarpTrimMagenta;
+        spaceWarpTrimMagenta.setup(createBoxSubMesh(2.65f, 0.08f, 0.24f));
+        m_propMeshes["spaceWarpTrimMagenta"] = std::move(spaceWarpTrimMagenta);
+
+        renderer::MeshGL satelliteBody;
+        satelliteBody.setup(createBoxSubMesh(0.40f, 0.40f, 0.40f));
+        m_propMeshes["satelliteBody"] = std::move(satelliteBody);
+
+        renderer::MeshGL satellitePanel;
+        satellitePanel.setup(createBoxSubMesh(1.10f, 0.04f, 0.35f));
+        m_propMeshes["satellitePanel"] = std::move(satellitePanel);
+
+        renderer::MeshGL satelliteAntenna;
+        satelliteAntenna.setup(createBoxSubMesh(0.04f, 0.70f, 0.04f));
+        m_propMeshes["satelliteAntenna"] = std::move(satelliteAntenna);
+
+        renderer::MeshGL spaceBeacon;
+        spaceBeacon.setup(createBoxSubMesh(0.16f, 0.45f, 0.16f));
+        m_propMeshes["spaceBeacon"] = std::move(spaceBeacon);
+
+        renderer::MeshGL spaceBeaconTop;
+        spaceBeaconTop.setup(createBoxSubMesh(0.20f, 0.14f, 0.20f));
+        m_propMeshes["spaceBeaconTop"] = std::move(spaceBeaconTop);
     }
 
     m_initialized = !m_propMeshes.empty();
@@ -263,6 +300,12 @@ void PropSpawner::addProp(const std::string& type, const glm::vec3& pos, float r
     } else if (type == "desertArchPillar") {
         inst.aabbMin = glm::vec3(pos.x - 0.42f, 0.0f, pos.z - 0.42f);
         inst.aabbMax = glm::vec3(pos.x + 0.42f, 5.0f * scale.y, pos.z + 0.42f);
+    } else if (type == "spaceWarpPillar") {
+        inst.aabbMin = glm::vec3(pos.x - 0.20f, 0.0f, pos.z - 0.20f);
+        inst.aabbMax = glm::vec3(pos.x + 0.20f, 4.80f * scale.y, pos.z + 0.20f);
+    } else if (type == "spaceBeacon") {
+        inst.aabbMin = glm::vec3(pos.x - 0.18f, 0.0f, pos.z - 0.18f);
+        inst.aabbMax = glm::vec3(pos.x + 0.18f, 0.90f * scale.y, pos.z + 0.18f);
     } else {
         // Elementos suspendidos (vigas a 4m de altura, luces, letrero de meta):
         glm::vec3 halfSize = scale * 0.5f;
@@ -273,7 +316,7 @@ void PropSpawner::addProp(const std::string& type, const glm::vec3& pos, float r
     m_props.push_back(inst);
 }
 
-void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDesert) {
+void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDesert, bool isSpace) {
     m_props.clear();
     m_lampPositions.clear();
 
@@ -290,6 +333,86 @@ void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDe
         } else if (tile.type == TileType::ROAD_STRAIGHT) {
             straightTiles.push_back(&tile);
         }
+    }
+
+    if (isSpace) {
+        // =========================================================
+        // GENERACION BIOMA ESPACIAL: Rainbow Cosmic Highway
+        // =========================================================
+
+        // 1. Gran Portal de Lanzamiento Orbital en la Salida / Meta
+        if (startFinishTile) {
+            bool isHorizontal = (startFinishTile->rotationDegrees == 90.0f || startFinishTile->rotationDegrees == 270.0f);
+            float beamRot = isHorizontal ? 90.0f : 0.0f;
+            float pillarOffset = 2.45f;
+            glm::vec3 pillarAOffset = isHorizontal ? glm::vec3(0.0f, 0.0f,  pillarOffset) : glm::vec3( pillarOffset, 0.0f, 0.0f);
+            glm::vec3 pillarBOffset = isHorizontal ? glm::vec3(0.0f, 0.0f, -pillarOffset) : glm::vec3(-pillarOffset, 0.0f, 0.0f);
+
+            glm::vec3 posA = startFinishTile->worldPos + pillarAOffset;
+            glm::vec3 posB = startFinishTile->worldPos + pillarBOffset;
+
+            addProp("spaceWarpPillar", glm::vec3(posA.x, 2.40f, posA.z), beamRot);
+            addProp("spaceWarpPillar", glm::vec3(posB.x, 2.40f, posB.z), beamRot);
+
+            glm::vec3 beamPos = (posA + posB) * 0.5f + glm::vec3(0.0f, 4.80f, 0.0f);
+            addProp("spaceWarpBeam", beamPos, beamRot);
+            addProp("spaceWarpTrimCyan", beamPos + glm::vec3(0.0f, 0.18f, 0.0f), beamRot);
+            addProp("spaceWarpTrimMagenta", beamPos - glm::vec3(0.0f, 0.18f, 0.0f), beamRot);
+        }
+
+        // 2. Anillos de Hipervelocidad (Warp Rings) a lo largo de las grandes rectas
+        for (size_t i = 0; i < straightTiles.size(); ++i) {
+            const auto* tile = straightTiles[i];
+            bool isHorizontal = (tile->rotationDegrees == 90.0f || tile->rotationDegrees == 270.0f);
+            float beamRot = isHorizontal ? 90.0f : 0.0f;
+
+            // Cada 6 losas de recta, desplegar un pórtico Warp Ring completo
+            if (i % 6 == 2) {
+                float pillarOffset = 2.40f;
+                glm::vec3 sideDir = isHorizontal ? glm::vec3(0.0f, 0.0f, 1.0f) : glm::vec3(1.0f, 0.0f, 0.0f);
+                glm::vec3 posA = tile->worldPos + sideDir * pillarOffset;
+                glm::vec3 posB = tile->worldPos - sideDir * pillarOffset;
+
+                addProp("spaceWarpPillar", glm::vec3(posA.x, 2.40f, posA.z), beamRot);
+                addProp("spaceWarpPillar", glm::vec3(posB.x, 2.40f, posB.z), beamRot);
+
+                glm::vec3 beamPos = (posA + posB) * 0.5f + glm::vec3(0.0f, 4.70f, 0.0f);
+                addProp("spaceWarpBeam", beamPos, beamRot);
+                if (i % 12 == 2) {
+                    addProp("spaceWarpTrimCyan", beamPos + glm::vec3(0.0f, 0.15f, 0.0f), beamRot);
+                } else {
+                    addProp("spaceWarpTrimMagenta", beamPos + glm::vec3(0.0f, 0.15f, 0.0f), beamRot);
+                }
+            }
+
+            // Satélites flotantes de comunicación orbital a los lados
+            if (i % 8 == 4) {
+                float sideSign = (i % 16 == 4) ? 1.0f : -1.0f;
+                glm::vec3 sideDir = isHorizontal ? glm::vec3(0.0f, 0.0f, sideSign) : glm::vec3(sideSign, 0.0f, 0.0f);
+                glm::vec3 satPos = tile->worldPos + sideDir * 5.5f + glm::vec3(0.0f, 3.8f, 0.0f);
+                float satRot = static_cast<float>((i * 67) % 360);
+
+                addProp("satelliteBody", satPos, satRot);
+                addProp("satellitePanel", satPos, satRot);
+                addProp("satelliteAntenna", satPos + glm::vec3(0.0f, 0.55f, 0.0f), satRot);
+            }
+        }
+
+        // 3. Balizas de Navegación Estelar en los bordes de todas las curvas
+        for (const auto& tile : grid.getAllTiles()) {
+            if (tile.type == TileType::ROAD_CORNER_SMALL || tile.type == TileType::ROAD_CORNER_LARGE) {
+                float rotRad = glm::radians(tile.rotationDegrees);
+                glm::vec3 outerDir(std::cos(rotRad + 0.785f), 0.0f, std::sin(rotRad + 0.785f));
+
+                glm::vec3 bPos = tile.worldPos + outerDir * 2.30f;
+                addProp("spaceBeacon", bPos, tile.rotationDegrees);
+                addProp("spaceBeaconTop", bPos + glm::vec3(0.0f, 0.45f, 0.0f), tile.rotationDegrees);
+            }
+        }
+
+        std::cout << "[OK] [PropSpawner] Total de elementos generados: "
+                  << m_props.size() << " (Portales Warp hiperespaciales, satelites orbitales y balizas estelares)." << std::endl;
+        return;
     }
 
     if (isDesert) {
@@ -728,6 +851,34 @@ void PropSpawner::render(const renderer::Shader& shader) const {
                 // Arco de piedra natural arenisca tallada
                 shader.setBool("u_UseTexture", false);
                 shader.setVec4("u_Color", glm::vec4(0.70f, 0.42f, 0.25f, 1.0f));
+            } else if (prop.type == "spaceWarpTrimCyan") {
+                // Emisivo cian hiperespacial brillante
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(0.0f, 0.95f, 1.0f, 1.0f));
+            } else if (prop.type == "spaceWarpTrimMagenta") {
+                // Emisivo magenta hiperespacial brillante
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(1.0f, 0.15f, 0.85f, 1.0f));
+            } else if (prop.type == "spaceWarpPillar" || prop.type == "spaceWarpBeam") {
+                // Estructura de aleacion espacial blanca/gris metalizado pulido
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(0.85f, 0.88f, 0.94f, 1.0f));
+            } else if (prop.type == "satellitePanel") {
+                // Panel solar azul cobalto fotovoltaico
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(0.10f, 0.35f, 0.85f, 1.0f));
+            } else if (prop.type == "satelliteBody" || prop.type == "satelliteAntenna") {
+                // Chasis de satelite dorado termico (manta de mylar oro)
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(0.95f, 0.80f, 0.25f, 1.0f));
+            } else if (prop.type == "spaceBeaconTop") {
+                // Baliza estroboscopica cian de curva
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(0.10f, 0.90f, 1.0f, 1.0f));
+            } else if (prop.type == "spaceBeacon") {
+                // Base metalica de baliza
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(0.20f, 0.22f, 0.28f, 1.0f));
             } else {
                 // Mallas texturizadas con la paleta de Kenney
                 shader.setBool("u_UseTexture", true);

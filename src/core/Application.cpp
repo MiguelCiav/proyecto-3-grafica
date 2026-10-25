@@ -291,6 +291,16 @@ void Application::loadCatalog() {
             26, 24,
             false, // isNight
             TrackTheme::DESERT_DUNES
+        },
+        {
+            "track-cosmic",
+            "Circuito Espacial UCV (Rainbow Cosmic Highway)",
+            "Extremo ★★★",
+            "Pista orbital suspendida sobre el vacio cosmico con nebulosas purpuras, anillos warp y satelites.",
+            "assets/levels/track_cosmic_space.txt",
+            26, 26,
+            true, // isNight
+            TrackTheme::COSMIC_SPACE
         }
     };
 }
@@ -343,13 +353,16 @@ void Application::selectTrack(int index) {
     // Cargar nuevo archivo de pista modular
     world::LevelLoader::loadFromFile(track.filePath, m_trackGrid);
 
-    // Regenerar obstaculos y triggers para la nueva pista (con props diurnos, nocturnos o deserticos)
+    // Regenerar obstaculos y triggers para la nueva pista (con props diurnos, nocturnos, deserticos o espaciales)
     bool isDesert = (track.theme == TrackTheme::DESERT_DUNES);
-    m_propSpawner.generateForGrid(m_trackGrid, track.isNight, isDesert);
+    bool isSpace = (track.theme == TrackTheme::COSMIC_SPACE);
+    m_propSpawner.generateForGrid(m_trackGrid, track.isNight, isDesert, isSpace);
     m_zoneManager.autoGenerateFromGrid(m_trackGrid);
 
     // Ajustar color del terreno segun el bioma
-    if (isDesert) {
+    if (isSpace) {
+        m_trackRenderer.setGroundColor(glm::vec4(0.012f, 0.010f, 0.024f, 1.0f)); // Vacio cosmico abisal
+    } else if (isDesert) {
         m_trackRenderer.setGroundColor(glm::vec4(0.89f, 0.74f, 0.48f, 1.0f)); // Arena dorada cálida del Sahara
     } else if (track.isNight) {
         m_trackRenderer.setGroundColor(glm::vec4(0.08f, 0.12f, 0.10f, 1.0f)); // Asfalto / césped nocturno
@@ -489,6 +502,9 @@ void Application::setupColliders() {
 const renderer::Skybox& Application::getSkybox() const {
     if (!m_tracks.empty() && m_selectedTrackIndex >= 0 && static_cast<size_t>(m_selectedTrackIndex) < m_tracks.size()) {
         const auto& track = m_tracks[m_selectedTrackIndex];
+        if (track.theme == TrackTheme::COSMIC_SPACE && m_skyboxCosmic.isLoaded()) {
+            return m_skyboxCosmic;
+        }
         if (track.theme == TrackTheme::DESERT_DUNES && m_skyboxDesert.isLoaded()) {
             return m_skyboxDesert;
         }
@@ -505,10 +521,18 @@ void Application::setupTrackLighting() {
                     ? m_tracks[m_selectedTrackIndex].isNight : false;
     bool isDesert = (!m_tracks.empty() && m_selectedTrackIndex >= 0 && static_cast<size_t>(m_selectedTrackIndex) < m_tracks.size())
                     ? (m_tracks[m_selectedTrackIndex].theme == TrackTheme::DESERT_DUNES) : false;
+    bool isSpace = (!m_tracks.empty() && m_selectedTrackIndex >= 0 && static_cast<size_t>(m_selectedTrackIndex) < m_tracks.size())
+                    ? (m_tracks[m_selectedTrackIndex].theme == TrackTheme::COSMIC_SPACE) : false;
 
     // 1. Luz Direccional (Sol en el día o Luna en la noche)
     lighting::DirectionalLight sun;
-    if (isNight) {
+    if (isSpace) {
+        // Iluminación cósmica: estrella distante brillante con halo azulado y luz ambiental de nebulosa
+        sun.direction = glm::normalize(glm::vec3(-0.45f, -0.60f, -0.65f));
+        sun.ambient   = glm::vec3(0.12f, 0.08f, 0.20f);
+        sun.diffuse   = glm::vec3(0.95f, 0.90f, 1.15f);
+        sun.specular  = glm::vec3(1.10f, 1.05f, 1.30f);
+    } else if (isNight) {
         sun.direction = glm::normalize(glm::vec3(-0.25f, -0.65f, -0.50f));
         sun.ambient   = glm::vec3(0.06f, 0.07f, 0.10f);
         sun.diffuse   = glm::vec3(0.08f, 0.08f, 0.12f);
@@ -528,7 +552,11 @@ void Application::setupTrackLighting() {
     sun.enabled = true;
     m_lightManager.setDirectionalLight(sun);
 
-    // En el desierto salvaje no hay postes electricos
+    // En el espacio y en el desierto salvaje no hay farolas electricas convencionales
+    if (isSpace) {
+        std::cout << "[OK] [Lighting] Circuito configurado: BIOMA ESPACIAL (Nebulosas purpuras, luz estelar)." << std::endl;
+        return;
+    }
     if (isDesert) {
         std::cout << "[OK] [Lighting] Circuito configurado: BIOMA DESIERTO (Sol abrasador, dunas doradas)." << std::endl;
         return;
@@ -740,6 +768,11 @@ bool Application::init() {
     if (!m_skyboxDesert.loadShader("shaders/skybox.vert", "shaders/skybox.frag") ||
         !m_skyboxDesert.loadFromDirectory("assets/textures/skybox_desert", ".tga")) {
         std::cerr << "[AVISO] [Application] No se pudo cargar el Skybox del desierto." << std::endl;
+    }
+
+    if (!m_skyboxCosmic.loadShader("shaders/skybox.vert", "shaders/skybox.frag") ||
+        !m_skyboxCosmic.loadFromDirectory("assets/textures/skybox_cosmic", ".tga")) {
+        std::cerr << "[AVISO] [Application] No se pudo cargar el Skybox cosmico." << std::endl;
     }
 
     if (!m_kartEmitter.init() || !m_kartEmitter.loadShaders("shaders/particle.vert", "shaders/particle.frag")) {
