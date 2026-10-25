@@ -553,9 +553,12 @@ void Application::setupTrackLighting() {
             for (const auto& pos : lampPositions) {
                 lighting::PointLight lamp;
                 lamp.position  = pos;
+                lamp.ambient   = glm::vec3(0.12f, 0.09f, 0.04f);
+                lamp.diffuse   = glm::vec3(2.60f, 2.20f, 1.20f); // Luz cálida dorada de vapor de sodio potente
+                lamp.specular  = glm::vec3(1.80f, 1.50f, 0.80f);
                 lamp.constant  = 1.0f;
-                lamp.linear    = 0.09f;
-                lamp.quadratic = 0.030f;
+                lamp.linear    = 0.055f; // Mayor alcance radial sobre la calzada
+                lamp.quadratic = 0.014f;
                 lamp.enabled   = isNight;
                 m_lightManager.addPointLight(lamp);
             }
@@ -705,10 +708,13 @@ void Application::applyDayNightState(bool isNight) {
                 sun.specular  = glm::vec3(0.06f);
 
                 for (auto& p : points) {
-                    p.ambient  = glm::vec3(0.04f, 0.03f, 0.01f);
-                    p.diffuse  = glm::vec3(1.20f, 1.00f, 0.45f);
-                    p.specular = glm::vec3(0.70f, 0.60f, 0.30f);
-                    p.enabled  = true;
+                    p.ambient   = glm::vec3(0.12f, 0.09f, 0.04f);
+                    p.diffuse   = glm::vec3(2.60f, 2.20f, 1.20f);
+                    p.specular  = glm::vec3(1.80f, 1.50f, 0.80f);
+                    p.constant  = 1.0f;
+                    p.linear    = 0.055f;
+                    p.quadratic = 0.014f;
+                    p.enabled   = true;
                 }
 
                 spot.diffuse     = glm::vec3(1.80f, 1.70f, 1.45f);
@@ -795,9 +801,12 @@ void Application::toggleTrackPointLights() {
         for (auto& p : points) {
             p.enabled = turnOn;
             if (turnOn) {
-                p.ambient  = glm::vec3(0.04f, 0.03f, 0.01f);
-                p.diffuse  = glm::vec3(1.20f, 1.00f, 0.45f);
-                p.specular = glm::vec3(0.70f, 0.60f, 0.30f);
+                p.ambient   = glm::vec3(0.12f, 0.09f, 0.04f);
+                p.diffuse   = glm::vec3(2.60f, 2.20f, 1.20f);
+                p.specular  = glm::vec3(1.80f, 1.50f, 0.80f);
+                p.constant  = 1.0f;
+                p.linear    = 0.055f;
+                p.quadratic = 0.014f;
             } else {
                 p.ambient  = glm::vec3(0.0f);
                 p.diffuse  = glm::vec3(0.0f);

@@ -135,10 +135,13 @@ void LightingController::setDayNight(bool night) {
         sun.specular = glm::vec3(0.06f);
 
         for (auto& p : points) {
-            p.ambient  = glm::vec3(0.06f, 0.05f, 0.02f);
-            p.diffuse  = glm::vec3(2.2f, 1.8f, 0.75f);
-            p.specular = glm::vec3(1.5f, 1.2f, 0.5f);
-            p.enabled  = true;
+            p.ambient   = glm::vec3(0.12f, 0.09f, 0.04f);
+            p.diffuse   = glm::vec3(2.60f, 2.20f, 1.20f);
+            p.specular  = glm::vec3(1.80f, 1.50f, 0.80f);
+            p.constant  = 1.0f;
+            p.linear    = 0.055f;
+            p.quadratic = 0.014f;
+            p.enabled   = true;
         }
 
         spot.diffuse  = glm::vec3(1.20f, 1.15f, 1.00f);
