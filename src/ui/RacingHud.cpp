@@ -165,12 +165,14 @@ RacingHud::~RacingHud() {
     if (m_vbo) glDeleteBuffers(1, &m_vbo);
 }
 
-bool RacingHud::init() {
+bool RacingHud::init(const std::string& vertPath, const std::string& fragPath) {
     if (m_initialized) return true;
 
-    if (!m_shader.loadFromSource(HUD_VERT_SRC, HUD_FRAG_SRC)) {
-        std::cerr << "[ERROR] [RacingHud] Error compilando shader procedural de interfaz 2D." << std::endl;
-        return false;
+    if (!m_shader.loadFromFiles(vertPath, fragPath)) {
+        if (!m_shader.loadFromSource(HUD_VERT_SRC, HUD_FRAG_SRC)) {
+            std::cerr << "[ERROR] [RacingHud] Error cargando shader de interfaz 2D." << std::endl;
+            return false;
+        }
     }
 
     glGenVertexArrays(1, &m_vao);

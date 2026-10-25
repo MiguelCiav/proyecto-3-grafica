@@ -46,12 +46,14 @@ SkidmarkManager::~SkidmarkManager() {
     if (m_ebo) glDeleteBuffers(1, &m_ebo);
 }
 
-bool SkidmarkManager::init() {
+bool SkidmarkManager::init(const std::string& vertPath, const std::string& fragPath) {
     if (m_initialized) return true;
 
-    if (!m_shader.loadFromSource(SKID_VERT_SRC, SKID_FRAG_SRC)) {
-        std::cerr << "[ERROR] [SkidmarkManager] Error compilando shader procedural de marcas de derrape." << std::endl;
-        return false;
+    if (!m_shader.loadFromFiles(vertPath, fragPath)) {
+        if (!m_shader.loadFromSource(SKID_VERT_SRC, SKID_FRAG_SRC)) {
+            std::cerr << "[ERROR] [SkidmarkManager] Error cargando shader de marcas de derrape." << std::endl;
+            return false;
+        }
     }
 
     glGenVertexArrays(1, &m_vao);

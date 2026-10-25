@@ -48,7 +48,8 @@ public:
     RacingHud(const RacingHud&) = delete;
     RacingHud& operator=(const RacingHud&) = delete;
 
-    bool init();
+    bool init(const std::string& vertPath = "shaders/hud.vert",
+              const std::string& fragPath = "shaders/hud.frag");
     void render(float screenWidth, float screenHeight,
                 const TelemetryData& telemetry,
                 const LapTimingData& timing);

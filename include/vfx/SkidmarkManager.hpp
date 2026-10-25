@@ -32,7 +32,8 @@ public:
     SkidmarkManager(const SkidmarkManager&) = delete;
     SkidmarkManager& operator=(const SkidmarkManager&) = delete;
 
-    bool init();
+    bool init(const std::string& vertPath = "shaders/skidmark.vert",
+              const std::string& fragPath = "shaders/skidmark.frag");
     void update(float deltaTime, const glm::vec3& kartPos, float kartYawDeg,
                 float speed, float steerInput, bool isBraking, bool isBoosting);
     void render(const glm::mat4& view, const glm::mat4& projection);

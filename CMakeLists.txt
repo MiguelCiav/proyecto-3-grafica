@@ -488,6 +488,13 @@ target_link_libraries(test_hud_and_skidmarks PRIVATE
     ${CMAKE_DL_LIBS}
 )
 
+add_custom_command(TARGET test_hud_and_skidmarks POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
+        $<TARGET_FILE_DIR:test_hud_and_skidmarks>/shaders
+    COMMENT "Copiando shaders al directorio de salida de test_hud_and_skidmarks..."
+)
+
 # ==============================================================================
 # 19. Target de Empaquetado para Entrega UCV
 # ==============================================================================
