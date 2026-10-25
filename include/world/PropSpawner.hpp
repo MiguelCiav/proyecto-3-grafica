@@ -1,6 +1,7 @@
 #pragma once
 
 #include "world/TrackGrid.hpp"
+#include "world/Biome.hpp"
 #include "renderer/Shader.hpp"
 #include "renderer/MeshGL.hpp"
 #include <string>
@@ -36,7 +37,10 @@ public:
     // Carga los modelos 3D de los obstáculos y decoraciones
     bool init(const std::string& obstaclesDir = "assets/models/obstacles");
 
-    // Genera automáticamente barreras y conos alrededor del circuito
+    // Genera automáticamente barreras y decoraciones según el bioma del circuito
+    void generateForGrid(const TrackGrid& grid, BiomeType biome);
+
+    // Compatibilidad hacia atrás con flags booleanos
     void generateForGrid(const TrackGrid& grid, bool isNight = false, bool isDesert = false, bool isSpace = false, bool isAquatic = false, bool isVolcano = false);
 
     // Actualiza animaciones de props dinámicos (giro y levitación de estrellas)

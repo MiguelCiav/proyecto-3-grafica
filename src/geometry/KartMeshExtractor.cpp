@@ -1,18 +1,6 @@
 #include "geometry/KartMeshExtractor.hpp"
 #include "geometry/MeshProcessor.hpp"
-
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable: 4456 4505 4100 4189)
-#endif
-
-#define TINYOBJLOADER_IMPLEMENTATION
-#include <tiny_obj_loader.h>
-
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
-
+#include "geometry/OBJLoader.hpp"
 #include <iostream>
 #include <algorithm>
 #include <map>
@@ -31,79 +19,11 @@ void KartMeshExtractor::appendSubMesh(SubMesh& target, const SubMesh& source) {
 }
 
 bool KartMeshExtractor::extractFromFile(const std::string& objFilePath, KartAssembly& outAssembly) {
-    tinyobj::ObjReaderConfig readerConfig;
-    readerConfig.triangulate = true;
-
-    // Directorio base para mtl si aplica
-    size_t lastSlash = objFilePath.find_last_of("/\\");
-    if (lastSlash != std::string::npos) {
-        readerConfig.mtl_search_path = objFilePath.substr(0, lastSlash + 1);
-    }
-
-    tinyobj::ObjReader reader;
-    if (!reader.ParseFromFile(objFilePath, readerConfig)) {
-        if (!reader.Error().empty()) {
-            std::cerr << "[ERROR] [KartMeshExtractor] TinyObjLoader: " << reader.Error() << std::endl;
-        }
+    ModelData modelData;
+    if (!OBJLoader::load(objFilePath, modelData)) {
+        std::cerr << "[ERROR] [KartMeshExtractor] Error cargando modelo OBJ: " << objFilePath << std::endl;
         return false;
     }
-
-    const auto& attrib = reader.GetAttrib();
-    const auto& shapes = reader.GetShapes();
-
-    ModelData modelData;
-    modelData.name = objFilePath;
-
-    for (const auto& shape : shapes) {
-        SubMesh submesh;
-        submesh.name = shape.name;
-
-        std::map<std::tuple<int, int, int>, uint32_t> uniqueVertices;
-
-        for (const auto& index : shape.mesh.indices) {
-            auto key = std::make_tuple(index.vertex_index, index.normal_index, index.texcoord_index);
-
-            if (uniqueVertices.find(key) == uniqueVertices.end()) {
-                Vertex vertex;
-
-                // Posición
-                if (index.vertex_index >= 0) {
-                    vertex.position = glm::vec3(
-                        attrib.vertices[3 * index.vertex_index + 0],
-                        attrib.vertices[3 * index.vertex_index + 1],
-                        attrib.vertices[3 * index.vertex_index + 2]
-                    );
-                }
-
-                // Normal
-                if (index.normal_index >= 0 && !attrib.normals.empty()) {
-                    vertex.normal = glm::vec3(
-                        attrib.normals[3 * index.normal_index + 0],
-                        attrib.normals[3 * index.normal_index + 1],
-                        attrib.normals[3 * index.normal_index + 2]
-                    );
-                }
-
-                // UV
-                if (index.texcoord_index >= 0 && !attrib.texcoords.empty()) {
-                    vertex.texCoords = glm::vec2(
-                        attrib.texcoords[2 * index.texcoord_index + 0],
-                        attrib.texcoords[2 * index.texcoord_index + 1]
-                    );
-                }
-
-                uint32_t newIndex = static_cast<uint32_t>(submesh.vertices.size());
-                uniqueVertices[key] = newIndex;
-                submesh.vertices.push_back(vertex);
-            }
-
-            submesh.indices.push_back(uniqueVertices[key]);
-        }
-
-        MeshProcessor::updateSubMeshAABB(submesh);
-        modelData.submeshes.push_back(std::move(submesh));
-    }
-
     return extractFromModelData(modelData, outAssembly);
 }
 

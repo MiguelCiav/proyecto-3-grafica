@@ -77,7 +77,6 @@ private:
     bool m_initialized{false};
 
     std::vector<SkidVertex> m_vertexCache;
-    std::vector<unsigned int> m_indexCache;
 };
 
 } // namespace vfx

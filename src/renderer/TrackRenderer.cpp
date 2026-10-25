@@ -27,8 +27,8 @@ void TrackRenderer::createGroundPlane() {
     };
 
     ground.indices = {
-        0, 1, 2,
-        2, 3, 0
+        0, 3, 2,
+        2, 1, 0
     };
 
     m_meshGround.setup(ground);
@@ -81,9 +81,6 @@ void TrackRenderer::render(const world::TrackGrid& grid, const Shader& shader) c
     // 2. Activar texturizado para las piezas de asfalto
     shader.setBool("u_UseTexture", true);
     shader.setVec4("u_Color", glm::vec4(1.0f));
-
-    // 2. Dibujar las piezas de asfalto del circuito
-    shader.setVec4("u_Color", glm::vec4(1.0f)); // Color original de textura
 
     for (const auto& tile : grid.getAllTiles()) {
         if (tile.type == world::TileType::EMPTY) continue;

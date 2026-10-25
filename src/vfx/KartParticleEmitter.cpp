@@ -1,4 +1,5 @@
 #include "vfx/KartParticleEmitter.hpp"
+#include "physics/KartPhysics.hpp"
 #include <glm/gtc/constants.hpp>
 #include <random>
 #include <cmath>
@@ -31,6 +32,7 @@ KartParticleEmitter::KartParticleEmitter(size_t maxSmokeParticles, size_t maxBoo
 bool KartParticleEmitter::init() {
     bool okSmoke = m_smokeSystem.init();
     bool okBoost = m_boostSystem.init();
+    loadShaders("shaders/particle.vert", "shaders/particle.frag");
     return okSmoke && okBoost;
 }
 
@@ -90,6 +92,16 @@ void KartParticleEmitter::triggerBoostBurst(const glm::vec3& kartPos, float kart
 }
 
 void KartParticleEmitter::update(float deltaTime, const Engine::Physics::KartPhysics& physics, bool isAccelerating) {
+    KartMotionState motion;
+    motion.position = physics.getPosition();
+    motion.yawDegrees = physics.getYaw();
+    motion.speed = physics.getSpeed();
+    motion.isBoosting = physics.isBoosting();
+    motion.isAccelerating = isAccelerating;
+    update(deltaTime, motion);
+}
+
+void KartParticleEmitter::update(float deltaTime, const KartMotionState& motion) {
     if (deltaTime <= 0.0f) return;
 
     // Configurar flotabilidad del sistema de partículas según si está sumergido en agua o en tierra firme
@@ -101,10 +113,11 @@ void KartParticleEmitter::update(float deltaTime, const Engine::Physics::KartPhy
         m_smokeSystem.setSizeGrowth(0.55f);
     }
 
-    const glm::vec3 kartPos = physics.getPosition();
-    const float kartYaw = physics.getYaw();
-    const float speed = physics.getSpeed();
-    const bool isBoosting = physics.isBoosting();
+    const glm::vec3 kartPos = motion.position;
+    const float kartYaw = motion.yawDegrees;
+    const float speed = motion.speed;
+    const bool isBoosting = motion.isBoosting;
+    const bool isAccelerating = motion.isAccelerating;
 
     float rad = glm::radians(kartYaw);
     glm::vec3 forward(std::sin(rad), 0.0f, std::cos(rad));

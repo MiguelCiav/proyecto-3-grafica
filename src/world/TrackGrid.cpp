@@ -99,4 +99,90 @@ void TrackGrid::updateModelMatrices() {
     }
 }
 
+std::vector<TrackGrid::BoosterPlacement> TrackGrid::computeOptimalBoosterPlacements(float initialYaw, size_t maxBoosters) const {
+    std::vector<BoosterPlacement> placements;
+
+    const TileData* startTile = nullptr;
+    for (const auto& tile : m_tiles) {
+        if (tile.type == TileType::START_FINISH) {
+            startTile = &tile;
+            break;
+        }
+    }
+    if (!startTile) return placements;
+
+    std::vector<const TileData*> circuitPath;
+    std::vector<bool> visited(m_cols * m_rows, false);
+
+    const TileData* curr = startTile;
+    while (curr != nullptr) {
+        circuitPath.push_back(curr);
+        int idx = curr->row * m_cols + curr->col;
+        visited[idx] = true;
+
+        const TileData* next = nullptr;
+        static const glm::ivec2 offsets[4] = { {1, 0}, {0, 1}, {-1, 0}, {0, -1} };
+
+        if (circuitPath.size() == 1) {
+            float rad = glm::radians(initialYaw);
+            glm::vec2 forward(std::sin(rad), std::cos(rad));
+            float bestDot = -1.0f;
+            for (const auto& off : offsets) {
+                const auto* neighbor = getTile(curr->col + off.x, curr->row + off.y);
+                if (neighbor && neighbor->type != TileType::EMPTY) {
+                    glm::vec2 dir(off.x, off.y);
+                    float d = glm::dot(glm::normalize(forward), glm::normalize(dir));
+                    if (d > bestDot) {
+                        bestDot = d;
+                        next = neighbor;
+                    }
+                }
+            }
+        } else {
+            for (const auto& off : offsets) {
+                const auto* neighbor = getTile(curr->col + off.x, curr->row + off.y);
+                if (neighbor && neighbor->type != TileType::EMPTY) {
+                    int nIdx = neighbor->row * m_cols + neighbor->col;
+                    if (!visited[nIdx]) {
+                        next = neighbor;
+                        break;
+                    }
+                }
+            }
+        }
+        curr = next;
+    }
+
+    struct StraightData {
+        glm::vec3 worldPos;
+        float trafficYaw;
+    };
+    std::vector<StraightData> straights;
+
+    for (size_t i = 0; i < circuitPath.size(); ++i) {
+        const auto* tile = circuitPath[i];
+        if (tile->type == TileType::ROAD_STRAIGHT) {
+            size_t nextIdx = (i + 1) % circuitPath.size();
+            const auto* nextTile = circuitPath[nextIdx];
+            glm::vec3 dir = nextTile->worldPos - tile->worldPos;
+            float yawDeg = glm::degrees(std::atan2(dir.x, dir.z));
+            if (yawDeg < 0.0f) yawDeg += 360.0f;
+            straights.push_back({ tile->worldPos, yawDeg });
+        }
+    }
+
+    if (!straights.empty()) {
+        size_t count = std::min<size_t>(maxBoosters, straights.size());
+        size_t step = straights.size() / count;
+
+        for (size_t i = 0; i < count; ++i) {
+            size_t idx = (i * step + 1) % straights.size();
+            const auto& item = straights[idx];
+            placements.push_back({ item.worldPos, item.trafficYaw, 2.6f, 3.8f });
+        }
+    }
+
+    return placements;
+}
+
 } // namespace world

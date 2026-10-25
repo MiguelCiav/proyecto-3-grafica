@@ -505,6 +505,7 @@ void RacingHud::render(float screenWidth, float screenHeight,
 
     // Configurar estado 2D
     glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -520,6 +521,7 @@ void RacingHud::render(float screenWidth, float screenHeight,
     glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(m_vertices.size()));
     glBindVertexArray(0);
 
+    glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
 }
 

@@ -117,6 +117,7 @@ add_custom_command(TARGET mario_kart POST_BUILD
 # ==============================================================================
 add_executable(test_mesh_preprocessing
     tests/test_mesh_preprocessing.cpp
+    src/geometry/OBJLoader.cpp
     src/geometry/MeshProcessor.cpp
     src/geometry/KartMeshExtractor.cpp
     src/geometry/KartPreprocessor.cpp

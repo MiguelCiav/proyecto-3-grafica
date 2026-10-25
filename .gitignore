@@ -33,6 +33,12 @@ PROY3_*.zip
 
 # Source pack unzipped folders
 kenney_car-kit/
+assets/kenney_ui-pack/
+assets/kenney_ui-pack-space-expansion/
 *.zip
 scratch/
 __pycache__/
+
+# Agent and AI workflow local tools
+.agents/
+
