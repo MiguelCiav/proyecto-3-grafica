@@ -110,6 +110,69 @@ static geometry::SubMesh createStarSubMesh(float outerRadius, float innerRadius,
     return mesh;
 }
 
+static geometry::SubMesh createFacetedDomeSubMesh(float radius, float height, int rings = 3, int segments = 8) {
+    geometry::SubMesh mesh;
+    mesh.name = "Procedural_Faceted_Dome";
+    const float PI = 3.14159265358979323846f;
+
+    glm::vec3 apex(0.0f, height, 0.0f);
+
+    std::vector<std::vector<glm::vec3>> ringVerts(rings);
+    for (int r = 0; r < rings; ++r) {
+        float phi = ((r + 1.0f) / static_cast<float>(rings + 1)) * (PI * 0.5f);
+        float y = height * std::cos(phi);
+        float ringRad = radius * std::sin(phi);
+        for (int s = 0; s < segments; ++s) {
+            float theta = (static_cast<float>(s) / static_cast<float>(segments)) * (2.0f * PI);
+            float bump = 1.0f + 0.07f * std::sin(theta * 4.0f) * std::cos(phi * 3.0f);
+            ringVerts[r].push_back(glm::vec3(
+                ringRad * bump * std::cos(theta),
+                y,
+                ringRad * bump * std::sin(theta)
+            ));
+        }
+    }
+
+    auto addTri = [&](const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2) {
+        glm::vec3 norm = glm::normalize(glm::cross(v1 - v0, v2 - v0));
+        uint32_t base = static_cast<uint32_t>(mesh.vertices.size());
+        auto uv = [&](const glm::vec3& p) {
+            return glm::vec2(0.5f + p.x / (radius * 2.0f), 0.5f + p.z / (radius * 2.0f));
+        };
+        mesh.vertices.push_back({ v0, norm, uv(v0) });
+        mesh.vertices.push_back({ v1, norm, uv(v1) });
+        mesh.vertices.push_back({ v2, norm, uv(v2) });
+        mesh.indices.push_back(base + 0);
+        mesh.indices.push_back(base + 1);
+        mesh.indices.push_back(base + 2);
+    };
+
+    // Apex to ring 0
+    for (int s = 0; s < segments; ++s) {
+        int next = (s + 1) % segments;
+        addTri(apex, ringVerts[0][s], ringVerts[0][next]);
+    }
+
+    // Between rings
+    for (int r = 0; r < rings - 1; ++r) {
+        for (int s = 0; s < segments; ++s) {
+            int next = (s + 1) % segments;
+            addTri(ringVerts[r][s], ringVerts[r+1][s], ringVerts[r+1][next]);
+            addTri(ringVerts[r][s], ringVerts[r+1][next], ringVerts[r][next]);
+        }
+    }
+
+    // Bottom flat cap at y = 0
+    glm::vec3 bottomCenter(0.0f, 0.0f, 0.0f);
+    int last = rings - 1;
+    for (int s = 0; s < segments; ++s) {
+        int next = (s + 1) % segments;
+        addTri(bottomCenter, ringVerts[last][next], ringVerts[last][s]);
+    }
+
+    return mesh;
+}
+
 PropSpawner::PropSpawner() = default;
 PropSpawner::~PropSpawner() = default;
 
@@ -297,7 +360,7 @@ bool PropSpawner::init(const std::string& obstaclesDir) {
         m_propMeshes["coralBranchSide"] = std::move(coralBranchSide);
 
         renderer::MeshGL coralBrain;
-        coralBrain.setup(createBoxSubMesh(0.48f, 0.40f, 0.48f));
+        coralBrain.setup(createFacetedDomeSubMesh(0.52f, 0.45f, 3, 8));
         m_propMeshes["coralBrain"] = std::move(coralBrain);
 
         renderer::MeshGL kelpSegment;
@@ -431,12 +494,12 @@ void PropSpawner::addProp(const std::string& type, const glm::vec3& pos, float r
     } else if (type == "seaPedestal") {
         inst.aabbMin = glm::vec3(pos.x - 0.24f, 0.0f, pos.z - 0.24f);
         inst.aabbMax = glm::vec3(pos.x + 0.24f, 1.50f * scale.y, pos.z + 0.24f);
-    } else if (type == "coralBranchTall") {
-        inst.aabbMin = glm::vec3(pos.x - 0.16f, 0.0f, pos.z - 0.16f);
-        inst.aabbMax = glm::vec3(pos.x + 0.16f, 2.20f * scale.y, pos.z + 0.16f);
+    } else if (type == "coralBranchTall" || type == "coralBranchSide") {
+        inst.aabbMin = glm::vec3(pos.x - 0.20f * scale.x, 0.0f, pos.z - 0.20f * scale.z);
+        inst.aabbMax = glm::vec3(pos.x + 0.20f * scale.x, 2.20f * scale.y, pos.z + 0.20f * scale.z);
     } else if (type == "coralBrain") {
-        inst.aabbMin = glm::vec3(pos.x - 0.50f * scale.x, 0.0f, pos.z - 0.50f * scale.z);
-        inst.aabbMax = glm::vec3(pos.x + 0.50f * scale.x, 0.80f * scale.y, pos.z + 0.50f * scale.z);
+        inst.aabbMin = glm::vec3(pos.x - 0.52f * scale.x, 0.0f, pos.z - 0.52f * scale.z);
+        inst.aabbMax = glm::vec3(pos.x + 0.52f * scale.x, 0.55f * scale.y, pos.z + 0.52f * scale.z);
     } else {
         // Elementos suspendidos (vigas a 4m de altura, luces, letrero de meta):
         glm::vec3 halfSize = scale * 0.5f;
@@ -559,14 +622,14 @@ void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDe
             addProp("kelpSegment", kelpPos + glm::vec3(0.0f, 2.35f, 0.0f), kelpRot + 25.0f, glm::vec3(0.9f, 0.85f, 0.9f), false);
             addProp("kelpSegment", kelpPos + glm::vec3(0.0f, 3.75f, 0.0f), kelpRot + 50.0f, glm::vec3(0.8f, 0.80f, 0.8f), false);
 
-            // Racimos de coral 3D
+            // Racimos de coral 3D (todos con colisión sólida física activa)
             if (i % 2 == 0) {
                 glm::vec3 coralPos = tile->worldPos - sideDir * (3.8f + (i % 2) * 0.6f);
                 float coralRot = static_cast<float>((i * 63) % 360);
                 addProp("coralBranchTall", coralPos + glm::vec3(0.0f, 1.10f, 0.0f), coralRot, glm::vec3(1.0f), true);
-                addProp("coralBranchSide", coralPos + glm::vec3(0.25f, 0.75f, 0.0f), coralRot + 45.0f, glm::vec3(1.0f), false);
-                addProp("coralBranchSide", coralPos + glm::vec3(-0.25f, 0.95f, 0.0f), coralRot - 45.0f, glm::vec3(1.0f), false);
-                addProp("coralBrain", coralPos + glm::vec3(0.6f, 0.40f, 0.3f), coralRot + 90.0f, glm::vec3(0.9f), false);
+                addProp("coralBranchSide", coralPos + glm::vec3(0.25f, 0.75f, 0.0f), coralRot + 45.0f, glm::vec3(1.0f), true);
+                addProp("coralBranchSide", coralPos + glm::vec3(-0.25f, 0.95f, 0.0f), coralRot - 45.0f, glm::vec3(1.0f), true);
+                addProp("coralBrain", coralPos + glm::vec3(0.6f, 0.40f, 0.3f), coralRot + 90.0f, glm::vec3(0.9f), true);
             }
 
             // Pedestales con Perlas Bioluminiscentes cada 5 losas (emiten luz puntual acuática)
