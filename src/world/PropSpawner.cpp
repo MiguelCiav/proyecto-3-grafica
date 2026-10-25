@@ -282,9 +282,9 @@ bool PropSpawner::init(const std::string& obstaclesDir) {
         spaceBeaconTop.setup(createBoxSubMesh(0.20f, 0.14f, 0.20f));
         m_propMeshes["spaceBeaconTop"] = std::move(spaceBeaconTop);
 
-        // Estrella 3D Neón procedural para el bioma espacial
+        // Estrella 3D Neón procedural para el bioma espacial (joya estelar facetada)
         renderer::MeshGL starMesh;
-        starMesh.setup(createStarSubMesh(0.42f, 0.18f, 0.15f));
+        starMesh.setup(createStarSubMesh(0.55f, 0.22f, 0.18f));
         m_propMeshes["floatingStar"] = std::move(starMesh);
     }
 
@@ -531,11 +531,18 @@ void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDe
             }
             const auto* sTile = straightTiles[tileIdx];
 
-            // Flotan sobre el centro del carril a 1.15m de altura
-            glm::vec3 starPos = sTile->worldPos + glm::vec3(0.0f, 1.15f, 0.0f);
+            bool isHorizontal = (sTile->rotationDegrees == 90.0f || sTile->rotationDegrees == 270.0f);
+            glm::vec3 sideDir = isHorizontal ? glm::vec3(0.0f, 0.0f, 1.0f) : glm::vec3(1.0f, 0.0f, 0.0f);
+
+            // Posicionar en los laterales de la pista (bermas), alternando izquierda y derecha
+            float sideSign = (starCount % 2 == 0) ? 1.0f : -1.0f;
+            float lateralOffset = 2.45f; // Completamente fuera de la calzada de rodadura (ancho de vía ~4.0m)
+            float hoverHeight = 1.65f;   // Flotando a altura de visibilidad lateral del piloto
+
+            glm::vec3 starPos = sTile->worldPos + sideDir * (sideSign * lateralOffset) + glm::vec3(0.0f, hoverHeight, 0.0f);
             const auto& theme = neonThemes[starCount % neonThemes.size()];
 
-            // Se agregan sin colisión física para no trabar al vehículo al atravesarlas
+            // Se agregan en los laterales sin colisión física para no obstaculizar al kart
             addProp("floatingStar", starPos, static_cast<float>(starCount * 45), glm::vec3(1.0f),
                     false /*hasCollision*/, theme.meshColor, true /*useCustomColor*/);
 

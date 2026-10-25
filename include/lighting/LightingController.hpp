@@ -47,6 +47,11 @@ public:
         m_onDayNightChanged = std::move(callback);
     }
 
+    // Callback temático para cuando se alternan las luces de pista (Tecla P)
+    void setOnPointLightsToggled(std::function<void()> callback) {
+        m_onPointLightsToggled = std::move(callback);
+    }
+
     // Control de modelo de sombreado
     void setLightingModel(LightingModel model);
     LightingModel getLightingModel() const;
@@ -64,6 +69,7 @@ private:
     bool m_headlightsOn{true};
     bool m_isNight{false};
     std::function<void(bool)> m_onDayNightChanged;
+    std::function<void()> m_onPointLightsToggled;
 };
 
 } // namespace lighting

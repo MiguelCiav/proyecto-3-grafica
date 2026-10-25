@@ -532,17 +532,17 @@ void Application::setupTrackLighting() {
 
     // 1. Registrar fuentes de luz puntual según el bioma
     if (isSpace) {
-        // En el espacio, registrar las estrellas flotantes como fuentes de luz puntual neón no-blancas
+        // En el espacio, registrar las estrellas flotantes en los laterales como fuentes de luz puntual neón no-blancas
         for (const auto& star : m_propSpawner.getStarLights()) {
             if (m_lightManager.getPointLightCount() >= lighting::LightManager::MAX_POINT_LIGHTS) break;
             lighting::PointLight pl;
             pl.position  = star.position;
-            pl.ambient   = star.diffuseColor * 0.12f;
-            pl.diffuse   = star.diffuseColor * 2.4f;
-            pl.specular  = star.diffuseColor * 1.8f;
+            pl.ambient   = star.diffuseColor * 0.25f;
+            pl.diffuse   = star.diffuseColor * 4.2f; // Emisión neón potenciada de alto impacto
+            pl.specular  = star.diffuseColor * 3.2f;
             pl.constant  = 1.0f;
-            pl.linear    = 0.12f;
-            pl.quadratic = 0.045f;
+            pl.linear    = 0.07f;                     // Mayor radio de iluminación hacia la calzada
+            pl.quadratic = 0.020f;
             pl.enabled   = true;
             m_lightManager.addPointLight(pl);
         }
@@ -587,13 +587,16 @@ void Application::applyDayNightState(bool isNight) {
                 sun.diffuse   = glm::vec3(0.28f, 0.22f, 0.45f);
                 sun.specular  = glm::vec3(0.35f, 0.30f, 0.50f);
 
-                // Las estrellas flotantes neón brillan con intensidad máxima en el vacío
+                // Las estrellas flotantes laterales brillan con intensidad neón máxima en el vacío
                 const auto& stars = m_propSpawner.getStarLights();
                 for (size_t i = 0; i < points.size() && i < stars.size(); ++i) {
-                    points[i].ambient  = stars[i].diffuseColor * 0.18f;
-                    points[i].diffuse  = stars[i].diffuseColor * 3.0f;
-                    points[i].specular = stars[i].diffuseColor * 2.2f;
-                    points[i].enabled  = true;
+                    points[i].ambient   = stars[i].diffuseColor * 0.28f;
+                    points[i].diffuse   = stars[i].diffuseColor * 4.8f; // Emisión potente
+                    points[i].specular  = stars[i].diffuseColor * 3.6f;
+                    points[i].constant  = 1.0f;
+                    points[i].linear    = 0.07f;
+                    points[i].quadratic = 0.020f;
+                    points[i].enabled   = true;
                 }
 
                 // Faros del kart con haz azulado proyectado en el espacio
@@ -602,7 +605,7 @@ void Application::applyDayNightState(bool isNight) {
                 m_lightingController.setHeadlights(true);
 
                 std::cout << "\n>>> [ILUMINACION - ESPACIO COSMICO]: Modo [PENUMBRA / ECLIPSE ESTELAR (Tecla N)]"
-                          << "\n    -> Estrellas neon flotantes resplandecen en el vacio cosmico."
+                          << "\n    -> Estrellas neon laterales resplandecen con maxima potencia en el vacio cosmico."
                           << "\n    -> Faros del kart encendidos proyector xenon. <<<\n" << std::endl;
             } else {
                 // Modo Radiación Estelar / Supernova cercana
@@ -611,13 +614,16 @@ void Application::applyDayNightState(bool isNight) {
                 sun.diffuse   = glm::vec3(1.05f, 0.98f, 1.25f); // Estrella radiante
                 sun.specular  = glm::vec3(1.20f, 1.10f, 1.40f);
 
-                // Estrellas flotantes con brillo neón vivo
+                // Estrellas flotantes laterales con brillo neón vivo potenciado
                 const auto& stars = m_propSpawner.getStarLights();
                 for (size_t i = 0; i < points.size() && i < stars.size(); ++i) {
-                    points[i].ambient  = stars[i].diffuseColor * 0.12f;
-                    points[i].diffuse  = stars[i].diffuseColor * 2.2f;
-                    points[i].specular = stars[i].diffuseColor * 1.6f;
-                    points[i].enabled  = true;
+                    points[i].ambient   = stars[i].diffuseColor * 0.22f;
+                    points[i].diffuse   = stars[i].diffuseColor * 3.8f;
+                    points[i].specular  = stars[i].diffuseColor * 2.8f;
+                    points[i].constant  = 1.0f;
+                    points[i].linear    = 0.07f;
+                    points[i].quadratic = 0.020f;
+                    points[i].enabled   = true;
                 }
 
                 spot.diffuse  = glm::vec3(0.35f, 0.35f, 0.40f);
@@ -626,7 +632,7 @@ void Application::applyDayNightState(bool isNight) {
 
                 std::cout << "\n>>> [ILUMINACION - ESPACIO COSMICO]: Modo [RADIACION ESTELAR / SUPERNOVA (Tecla N)]"
                           << "\n    -> Luz brillante de estrella cercana y resplandor de nebulosa cosmica."
-                          << "\n    -> Estrellas neon flotantes activas con sus tonalidades unicas. <<<\n" << std::endl;
+                          << "\n    -> Estrellas neon laterales activas con sus tonalidades unicas. <<<\n" << std::endl;
             }
             sun.enabled = true;
             m_trackRenderer.setGroundColor(glm::vec4(0.012f, 0.010f, 0.024f, 1.0f));
@@ -733,6 +739,62 @@ void Application::applyDayNightState(bool isNight) {
             sun.enabled = true;
             break;
         }
+    }
+}
+
+void Application::toggleTrackPointLights() {
+    TrackTheme theme = TrackTheme::DAY_GRASSLAND;
+    if (!m_tracks.empty() && m_selectedTrackIndex >= 0 && static_cast<size_t>(m_selectedTrackIndex) < m_tracks.size()) {
+        theme = m_tracks[m_selectedTrackIndex].theme;
+    }
+
+    auto& points = m_lightManager.getPointLights();
+    if (points.empty()) return;
+
+    bool wasOn = points[0].enabled && (glm::length(points[0].diffuse) > 0.01f);
+    bool turnOn = !wasOn;
+
+    if (theme == TrackTheme::COSMIC_SPACE) {
+        const auto& stars = m_propSpawner.getStarLights();
+        bool isNight = m_lightingController.isNight();
+        float intensityMult = isNight ? 4.8f : 3.8f;
+
+        for (size_t i = 0; i < points.size() && i < stars.size(); ++i) {
+            points[i].enabled = turnOn;
+            if (turnOn) {
+                // Conservar SIEMPRE el color neón original de cada estrella flotante (cian, magenta, oro, verde, violeta)
+                points[i].ambient   = stars[i].diffuseColor * 0.25f;
+                points[i].diffuse   = stars[i].diffuseColor * intensityMult;
+                points[i].specular  = stars[i].diffuseColor * (intensityMult * 0.75f);
+                points[i].constant  = 1.0f;
+                points[i].linear    = 0.07f;
+                points[i].quadratic = 0.020f;
+            } else {
+                points[i].ambient  = glm::vec3(0.0f);
+                points[i].diffuse  = glm::vec3(0.0f);
+                points[i].specular = glm::vec3(0.0f);
+            }
+        }
+        std::cout << "\n>>> [LUCES NEON ESPACIALES]: "
+                  << (turnOn ? "[ENCENDIDAS (Tecla P)] - Estrellas neon brillando en sus colores unicos (cian, magenta, oro, verde, violeta)"
+                             : "[APAGADAS (Tecla P)] - Estrellas neon en reposo estelar")
+                  << " <<<\n" << std::endl;
+    } else {
+        for (auto& p : points) {
+            p.enabled = turnOn;
+            if (turnOn) {
+                p.ambient  = glm::vec3(0.04f, 0.03f, 0.01f);
+                p.diffuse  = glm::vec3(1.20f, 1.00f, 0.45f);
+                p.specular = glm::vec3(0.70f, 0.60f, 0.30f);
+            } else {
+                p.ambient  = glm::vec3(0.0f);
+                p.diffuse  = glm::vec3(0.0f);
+                p.specular = glm::vec3(0.0f);
+            }
+        }
+        std::cout << "\n>>> [FAROLAS DE PISTA]: "
+                  << (turnOn ? "[ENCENDIDAS (Tecla P)]" : "[APAGADAS (Tecla P)]")
+                  << " <<<\n" << std::endl;
     }
 }
 
@@ -910,6 +972,9 @@ bool Application::init() {
     m_lightingController.init(&m_lightManager);
     m_lightingController.setOnDayNightChanged([this](bool isNight) {
         applyDayNightState(isNight);
+    });
+    m_lightingController.setOnPointLightsToggled([this]() {
+        toggleTrackPointLights();
     });
 
     // 4. Cargar la primera pista por defecto (Ovalo Clasico)

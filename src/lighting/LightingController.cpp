@@ -97,6 +97,11 @@ void LightingController::setHeadlights(bool enabled) {
 }
 
 void LightingController::togglePointLights() {
+    if (m_onPointLightsToggled) {
+        m_onPointLightsToggled();
+        return;
+    }
+
     if (!m_lightManager) return;
     auto& points = m_lightManager->getPointLights();
     if (points.empty()) return;

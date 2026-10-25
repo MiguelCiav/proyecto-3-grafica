@@ -127,6 +127,7 @@ private:
     void setupColliders();
     void setupTrackLighting();
     void applyDayNightState(bool isNight);
+    void toggleTrackPointLights();
     void setupBoosterPads();
     void loadCatalog();
     void selectDriver(int index);
