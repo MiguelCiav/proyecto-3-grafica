@@ -33,6 +33,15 @@ public:
 
     void updateModelMatrices();
 
+    // Trazado de circuito y ubicaciones optimas para pads de aceleracion (Boosters)
+    struct BoosterPlacement {
+        glm::vec3 worldPos;
+        float trafficYaw;
+        float width{2.6f};
+        float length{3.8f};
+    };
+    [[nodiscard]] std::vector<BoosterPlacement> computeOptimalBoosterPlacements(float initialYaw = 0.0f, size_t maxBoosters = 8) const;
+
 private:
     int m_cols{12};
     int m_rows{12};

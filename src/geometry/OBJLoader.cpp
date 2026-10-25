@@ -6,6 +6,7 @@
 #pragma warning(disable: 4456 4505 4100 4189)
 #endif
 
+#define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
 #if defined(_MSC_VER)

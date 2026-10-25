@@ -2,7 +2,11 @@
 
 #include <glm/glm.hpp>
 #include "vfx/ParticleSystem.hpp"
-#include "physics/KartPhysics.hpp"
+#include "vfx/KartMotionState.hpp"
+
+namespace Engine::Physics {
+    class KartPhysics;
+}
 
 namespace vfx {
 
@@ -19,7 +23,10 @@ public:
     bool loadShaders(const std::string& vertPath = "shaders/particle.vert",
                      const std::string& fragPath = "shaders/particle.frag");
 
-    // Actualización conectada con el estado cinemático y físico del kart
+    // Actualización desacoplada mediante Value Object plano
+    void update(float deltaTime, const KartMotionState& motion);
+
+    // Adaptador de compatibilidad para KartPhysics
     void update(float deltaTime, const Engine::Physics::KartPhysics& physics, bool isAccelerating);
 
     // Renderizado en dos fases: humo translúcido y ráfaga aditiva luminosa

@@ -117,6 +117,7 @@ add_custom_command(TARGET mario_kart POST_BUILD
 # ==============================================================================
 add_executable(test_mesh_preprocessing
     tests/test_mesh_preprocessing.cpp
+    src/geometry/OBJLoader.cpp
     src/geometry/MeshProcessor.cpp
     src/geometry/KartMeshExtractor.cpp
     src/geometry/KartPreprocessor.cpp
@@ -496,7 +497,117 @@ add_custom_command(TARGET test_hud_and_skidmarks POST_BUILD
 )
 
 # ==============================================================================
-# 19. Target de Empaquetado para Entrega UCV
+# 19. Ejecutable de Pruebas: Input y Escenas (Fase 4 - Scene Architecture)
+# ==============================================================================
+add_executable(test_scene_and_input
+    tests/test_scene_and_input.cpp
+    src/core/Window.cpp
+    src/core/Input.cpp
+    src/core/SceneManager.cpp
+    src/core/GameContext.cpp
+    src/scenes/MainMenuScene.cpp
+    src/scenes/ShowroomScene.cpp
+    src/scenes/RacingScene.cpp
+    src/world/TrackEnvironmentRegistry.cpp
+    src/world/TrackGrid.cpp
+    src/world/LevelLoader.cpp
+    src/world/PropSpawner.cpp
+    src/world/BoosterPad.cpp
+    src/world/ZoneTrigger.cpp
+    src/renderer/TrackRenderer.cpp
+    src/renderer/Shader.cpp
+    src/renderer/MeshGL.cpp
+    src/renderer/Texture.cpp
+    src/renderer/Skybox.cpp
+    src/physics/KartPhysics.cpp
+    src/physics/CollisionSystem.cpp
+    src/animation/WheelAnimator.cpp
+    src/vehicle/KartEntity.cpp
+    src/scene/SceneNode.cpp
+    src/lighting/LightManager.cpp
+    src/lighting/LightingController.cpp
+    src/vfx/KartParticleEmitter.cpp
+    src/vfx/ParticleSystem.cpp
+    src/vfx/SkidmarkManager.cpp
+    src/ui/RacingHud.cpp
+    src/camera/Camera.cpp
+    src/camera/ChaseCamera.cpp
+    src/geometry/OBJLoader.cpp
+    src/geometry/MeshProcessor.cpp
+    src/geometry/ProceduralGeometry.cpp
+)
+
+target_include_directories(test_scene_and_input PUBLIC
+    ${PROJECT_INCLUDE_DIRS}
+)
+
+target_link_libraries(test_scene_and_input PRIVATE
+    OpenGL::GL
+    glad
+    glfw
+    glm::glm
+    ${CMAKE_DL_LIBS}
+)
+
+add_custom_command(TARGET test_scene_and_input POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
+        $<TARGET_FILE_DIR:test_scene_and_input>/shaders
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/assets
+        $<TARGET_FILE_DIR:test_scene_and_input>/assets
+    COMMENT "Copiando shaders y assets al directorio de salida de test_scene_and_input..."
+)
+
+# ==============================================================================
+# 20. Ejecutable de Pruebas Unitarias - Cull Face, Particulas y Animaciones
+# ==============================================================================
+add_executable(test_cull_face_and_animations
+    tests/test_cull_face_and_animations.cpp
+    src/renderer/Shader.cpp
+    src/renderer/Texture.cpp
+    src/renderer/Skybox.cpp
+    src/renderer/TrackRenderer.cpp
+    src/renderer/MeshGL.cpp
+    src/world/BoosterPad.cpp
+    src/world/ZoneTrigger.cpp
+    src/world/PropSpawner.cpp
+    src/world/TrackGrid.cpp
+    src/geometry/ProceduralGeometry.cpp
+    src/geometry/OBJLoader.cpp
+    src/geometry/MeshProcessor.cpp
+    src/vfx/KartParticleEmitter.cpp
+    src/vfx/ParticleSystem.cpp
+    src/vfx/SkidmarkManager.cpp
+    src/ui/RacingHud.cpp
+    src/physics/KartPhysics.cpp
+    src/physics/CollisionSystem.cpp
+)
+
+target_include_directories(test_cull_face_and_animations PUBLIC
+    ${PROJECT_INCLUDE_DIRS}
+)
+
+target_link_libraries(test_cull_face_and_animations PRIVATE
+    OpenGL::GL
+    glad
+    glfw
+    glm::glm
+    ${CMAKE_DL_LIBS}
+)
+
+add_custom_command(TARGET test_cull_face_and_animations POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
+        $<TARGET_FILE_DIR:test_cull_face_and_animations>/shaders
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/assets
+        $<TARGET_FILE_DIR:test_cull_face_and_animations>/assets
+    COMMENT "Copiando shaders y assets al directorio de salida de test_cull_face_and_animations..."
+)
+
+# ==============================================================================
+# 21. Target de Empaquetado para Entrega UCV
 # ==============================================================================
 find_package(Python3 QUIET COMPONENTS Interpreter)
 if(Python3_FOUND)

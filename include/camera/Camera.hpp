@@ -1,5 +1,6 @@
 #pragma once
 
+#include "camera/ICamera.hpp"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -18,16 +19,16 @@ enum class CameraMovement {
     DOWN
 };
 
-class Camera {
+class Camera : public ICamera {
 public:
     explicit Camera(glm::vec3 position = glm::vec3(0.0f, 2.5f, 6.0f),
                     glm::vec3 worldUp = glm::vec3(0.0f, 1.0f, 0.0f),
                     float yaw = -90.0f,
                     float pitch = -15.0f);
 
-    // Matrices de transformacion
-    glm::mat4 getViewMatrix() const;
-    glm::mat4 getProjectionMatrix(float aspectRatio) const;
+    // Matrices de transformacion (ICamera)
+    [[nodiscard]] glm::mat4 getViewMatrix() const override;
+    [[nodiscard]] glm::mat4 getProjectionMatrix(float aspectRatio) const override;
 
     // Control de movimiento interactivo FPS
     void processKeyboard(CameraMovement direction, float deltaTime);
@@ -38,15 +39,18 @@ public:
     // Resolucion de colision contra obstaculos (PDF Requisito Minimo)
     void resolveCollision(const Engine::Physics::CollisionSystem& collisionSystem);
 
-    // Getters y Setters
-    const glm::vec3& getPosition() const { return m_position; }
+    // Getters polimorficos (ICamera)
+    [[nodiscard]] const glm::vec3& getPosition() const override { return m_position; }
+    [[nodiscard]] glm::vec3 getForwardVector() const override { return m_front; }
+    [[nodiscard]] float getFOV() const override { return m_fov; }
+
+    // Getters y Setters especificos FPS
     const glm::vec3& getFront() const { return m_front; }
     const glm::vec3& getUp() const { return m_up; }
     const glm::vec3& getRight() const { return m_right; }
 
     float getYaw() const { return m_yaw; }
     float getPitch() const { return m_pitch; }
-    float getFOV() const { return m_fov; }
     float getSpeed() const { return m_movementSpeed; }
     float getSensitivity() const { return m_mouseSensitivity; }
     float getCollisionRadius() const { return m_collisionRadius; }

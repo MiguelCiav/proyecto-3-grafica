@@ -289,6 +289,7 @@ void ParticleSystem::render(const renderer::Shader& shader, const glm::mat4& vie
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
     glDepthMask(GL_FALSE);
+    glDisable(GL_CULL_FACE);
 
     shader.use();
     shader.setMat4("u_View", view);
@@ -300,6 +301,7 @@ void ParticleSystem::render(const renderer::Shader& shader, const glm::mat4& vie
     glBindVertexArray(0);
 
     // Restaurar estado del pipeline grafico
+    glEnable(GL_CULL_FACE);
     glDepthMask(GL_TRUE);
     glDisable(GL_BLEND);
 }

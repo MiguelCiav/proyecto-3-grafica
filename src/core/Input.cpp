@@ -86,6 +86,10 @@ bool Input::isCursorVisible() {
     return s_cursorVisible;
 }
 
+void Input::simulateKey(int key, int action) {
+    keyCallback(s_window, key, 0, action, 0);
+}
+
 void Input::keyCallback(GLFWwindow* /*window*/, int key, int /*scancode*/, int action, int /*mods*/) {
     if (key >= 0 && static_cast<size_t>(key) < MAX_KEYS) {
         if (action == GLFW_PRESS) {

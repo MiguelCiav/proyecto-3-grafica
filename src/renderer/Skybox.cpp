@@ -199,10 +199,8 @@ void Skybox::draw(const glm::mat4& view, const glm::mat4& projection) const {
 void Skybox::draw(const glm::mat4& view, const glm::mat4& projection, const Shader& shader) const {
     if (!isLoaded() || !shader.isValid()) return;
 
-    GLint prevDepthFunc = GL_LESS;
-    glGetIntegerv(GL_DEPTH_FUNC, &prevDepthFunc);
-
     glDepthFunc(GL_LEQUAL);
+    glDisable(GL_CULL_FACE);
 
     shader.use();
     shader.setMat4("u_View", view);
@@ -217,7 +215,8 @@ void Skybox::draw(const glm::mat4& view, const glm::mat4& projection, const Shad
     glDrawArrays(GL_TRIANGLES, 0, 36);
     glBindVertexArray(0);
 
-    glDepthFunc(static_cast<GLenum>(prevDepthFunc));
+    glEnable(GL_CULL_FACE);
+    glDepthFunc(GL_LESS);
 }
 
 void Skybox::destroy() {

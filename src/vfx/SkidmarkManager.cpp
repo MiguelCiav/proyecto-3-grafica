@@ -3,13 +3,13 @@
 #include <cmath>
 #include <algorithm>
 #include <iostream>
+#include <cstring>
 
 namespace vfx {
 
 SkidmarkManager::SkidmarkManager(size_t maxSegments)
     : m_maxSegments(maxSegments) {
     m_vertexCache.reserve(maxSegments * 4);
-    m_indexCache.reserve(maxSegments * 6);
 }
 
 SkidmarkManager::~SkidmarkManager() {
@@ -34,9 +34,22 @@ bool SkidmarkManager::init(const std::string& vertPath, const std::string& fragP
     glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
     glBufferData(GL_ARRAY_BUFFER, m_maxSegments * 4 * sizeof(SkidVertex), nullptr, GL_DYNAMIC_DRAW);
 
+    // Pre-poblar índices EBO estáticos una sola vez (0,1,2, 0,2,3 para cada quad)
+    std::vector<unsigned int> staticIndices;
+    staticIndices.reserve(m_maxSegments * 6);
+    for (size_t i = 0; i < m_maxSegments; ++i) {
+        unsigned int base = static_cast<unsigned int>(i * 4);
+        staticIndices.push_back(base + 0);
+        staticIndices.push_back(base + 1);
+        staticIndices.push_back(base + 2);
+        staticIndices.push_back(base + 0);
+        staticIndices.push_back(base + 2);
+        staticIndices.push_back(base + 3);
+    }
+
     glGenBuffers(1, &m_ebo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_maxSegments * 6 * sizeof(unsigned int), nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, staticIndices.size() * sizeof(unsigned int), staticIndices.data(), GL_STATIC_DRAW);
 
     // Atributo 0: Posicion 3D (x, y, z)
     glEnableVertexAttribArray(0);
@@ -205,36 +218,19 @@ void SkidmarkManager::update(float deltaTime, const glm::vec3& kartPos, float ka
 void SkidmarkManager::render(const glm::mat4& view, const glm::mat4& projection) {
     if (!m_initialized || m_segments.empty()) return;
 
-    m_vertexCache.clear();
-    m_indexCache.clear();
-
-    unsigned int baseIdx = 0;
-    for (const auto& seg : m_segments) {
-        m_vertexCache.push_back(seg.v[0]);
-        m_vertexCache.push_back(seg.v[1]);
-        m_vertexCache.push_back(seg.v[2]);
-        m_vertexCache.push_back(seg.v[3]);
-
-        m_indexCache.push_back(baseIdx + 0);
-        m_indexCache.push_back(baseIdx + 1);
-        m_indexCache.push_back(baseIdx + 2);
-        m_indexCache.push_back(baseIdx + 0);
-        m_indexCache.push_back(baseIdx + 2);
-        m_indexCache.push_back(baseIdx + 3);
-
-        baseIdx += 4;
+    m_vertexCache.resize(m_segments.size() * 4);
+    for (size_t i = 0; i < m_segments.size(); ++i) {
+        std::memcpy(&m_vertexCache[i * 4], m_segments[i].v, sizeof(SkidVertex) * 4);
     }
 
     glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
     glBufferSubData(GL_ARRAY_BUFFER, 0, m_vertexCache.size() * sizeof(SkidVertex), m_vertexCache.data());
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
-    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, m_indexCache.size() * sizeof(unsigned int), m_indexCache.data());
-
     // Configuración de renderizado para calcomanías sobre el asfalto
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDepthMask(GL_FALSE);
+    glDisable(GL_CULL_FACE);
     glEnable(GL_POLYGON_OFFSET_FILL);
     glPolygonOffset(-2.0f, -2.0f);
 
@@ -243,11 +239,13 @@ void SkidmarkManager::render(const glm::mat4& view, const glm::mat4& projection)
     m_shader.setMat4("u_Projection", projection);
 
     glBindVertexArray(m_vao);
-    glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(m_indexCache.size()), GL_UNSIGNED_INT, nullptr);
+    glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(m_segments.size() * 6), GL_UNSIGNED_INT, nullptr);
     glBindVertexArray(0);
 
     glDisable(GL_POLYGON_OFFSET_FILL);
+    glEnable(GL_CULL_FACE);
     glDepthMask(GL_TRUE);
+    glDisable(GL_BLEND);
 }
 
 } // namespace vfx

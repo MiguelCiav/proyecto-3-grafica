@@ -107,8 +107,10 @@ int main() {
     // -------------------------------------------------------------------------
     {
         vfx::KartParticleEmitter emitter;
-        assert(emitter.init());
-        assert(emitter.loadShaders("shaders/particle.vert", "shaders/particle.frag"));
+        bool emitterInitOk = emitter.init();
+        assert(emitterInitOk && "Emitter debe inicializarse");
+        bool emitterShadersOk = emitter.loadShaders("shaders/particle.vert", "shaders/particle.frag");
+        assert(emitterShadersOk && "Shaders de particulas deben compilar");
 
         Engine::Physics::KartPhysics physics;
         physics.setPosition(glm::vec3(10.0f, 0.0f, 10.0f));
@@ -159,8 +161,10 @@ int main() {
     // -------------------------------------------------------------------------
     {
         renderer::Skybox skybox;
-        assert(skybox.loadShader("shaders/skybox.vert", "shaders/skybox.frag"));
-        assert(skybox.loadFromDirectory("assets/textures/skybox", ".png"));
+        bool skyboxShaderOk = skybox.loadShader("shaders/skybox.vert", "shaders/skybox.frag");
+        assert(skyboxShaderOk && "Shader skybox debe compilar");
+        bool skyboxTexOk = skybox.loadFromDirectory("assets/textures/skybox", ".png");
+        assert(skyboxTexOk && "Cubemap skybox debe cargarse");
 
         glm::mat4 proj = glm::perspective(glm::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
         glm::mat4 view = glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -175,7 +179,8 @@ int main() {
     // -------------------------------------------------------------------------
     {
         renderer::Shader boosterShader;
-        assert(boosterShader.loadFromFiles("shaders/booster_procedural.vert", "shaders/booster_procedural.frag"));
+        bool boosterShaderOk = boosterShader.loadFromFiles("shaders/booster_procedural.vert", "shaders/booster_procedural.frag");
+        assert(boosterShaderOk && "Shader booster procedural debe compilar");
 
         world::BoosterPad pad(glm::vec3(0.0f, 0.0f, 5.0f), 90.0f, 2.6f, 3.8f);
 

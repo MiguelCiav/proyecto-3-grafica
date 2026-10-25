@@ -33,6 +33,9 @@ public:
     static void setCursorVisible(bool visible);
     static bool isCursorVisible();
 
+    // Simulación de entrada para pruebas
+    static void simulateKey(int key, int action);
+
 private:
     static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
     static void cursorPosCallback(GLFWwindow* window, double xpos, double ypos);

@@ -2,95 +2,12 @@
 
 #include "core/Window.hpp"
 #include "core/Time.hpp"
-#include "camera/Camera.hpp"
-#include "camera/ChaseCamera.hpp"
-#include "physics/CollisionSystem.hpp"
-#include "physics/KartPhysics.hpp"
-#include "animation/WheelAnimator.hpp"
-#include "vehicle/KartEntity.hpp"
-#include "renderer/Shader.hpp"
-#include "renderer/Texture.hpp"
-#include "renderer/TrackRenderer.hpp"
-#include "renderer/MeshGL.hpp"
-#include "world/TrackGrid.hpp"
-#include "world/PropSpawner.hpp"
-#include "world/ZoneTrigger.hpp"
-#include "geometry/KartPreprocessor.hpp"
-#include "lighting/LightManager.hpp"
-#include "lighting/LightingController.hpp"
-#include "renderer/Skybox.hpp"
-#include "world/BoosterPad.hpp"
-#include "vfx/KartParticleEmitter.hpp"
-#include "vfx/SkidmarkManager.hpp"
-#include "ui/RacingHud.hpp"
+#include "core/SceneManager.hpp"
+#include "core/GameContext.hpp"
 #include <memory>
 #include <string>
-#include <vector>
 
 namespace core {
-
-enum class GameState {
-    MAIN_MENU,       // Pantalla de inicio con camara orbital cinematografica
-    VEHICLE_SELECT,  // Showroom 3D con seleccion de corredor, vehiculo y pista de frente
-    RACING           // Modo de juego de carreras activo
-};
-
-enum class SelectionCategory {
-    DRIVER,   // [1] Seleccionando piloto / corredor
-    VEHICLE,  // [2] Seleccionando vehiculo / carroceria
-    TRACK     // [3] Seleccionando pista / circuito
-};
-
-enum class CameraMode {
-    CHASE, // Conduccion en tercera persona siguiendo al kart
-    FPS    // Inspeccion libre en primera persona restringida por colision
-};
-
-struct DriverProfile {
-    std::string id;
-    std::string name;
-    std::string description;
-    std::string sourcePath;
-    geometry::SubMesh driverMesh;
-    glm::vec4 accentColor{1.0f};
-    bool loaded{false};
-};
-
-struct VehicleProfile {
-    std::string id;
-    std::string name;
-    std::string category;
-    std::string description;
-    std::string modelPath;
-    glm::vec3 driverOffset{0.0f};
-    float maxSpeed{22.0f};
-    float acceleration{18.0f};
-    float turnSpeed{100.0f};
-    float offRoadFriction{0.45f};
-    geometry::KartAssembly assembly;
-    bool loaded{false};
-};
-
-enum class TrackTheme {
-    DAY_GRASSLAND,
-    NIGHT_NEON,
-    DESERT_DUNES,
-    COSMIC_SPACE,
-    AQUATIC_REEF,
-    VOLCANO_CALDERA
-};
-
-struct TrackProfile {
-    std::string id;
-    std::string name;
-    std::string difficulty;
-    std::string description;
-    std::string filePath;
-    int cols{12};
-    int rows{12};
-    bool isNight{false};
-    TrackTheme theme{TrackTheme::DAY_GRASSLAND};
-};
 
 struct AppConfig {
     std::string title{"Prototipo Mario Kart - CGI (UCV)"};
@@ -99,6 +16,9 @@ struct AppConfig {
     bool vsync{true};
 };
 
+/**
+ * @brief Orquestador principal de la aplicacion (Ciclo de vida, ventana, contexto y escenas).
+ */
 class Application {
 public:
     static Application& getInstance();
@@ -115,48 +35,29 @@ public:
 
     Window& getWindow() { return *m_window; }
     const Time& getTime() const { return m_time; }
-    GameState getGameState() const { return m_gameState; }
+    GameState getGameState() const { return m_sceneManager.getCurrentState(); }
     void setGameState(GameState state);
 
-    const renderer::Skybox& getSkybox() const;
+    const renderer::Skybox& getSkybox() const { return m_gameContext.getCurrentSkybox(); }
     const renderer::Shader& getBoosterShader() const { return m_boosterShader; }
     const std::vector<world::BoosterPad>& getBoosterPads() const { return m_boosterPads; }
     vfx::KartParticleEmitter& getKartEmitter() { return m_kartEmitter; }
     const vfx::KartParticleEmitter& getKartEmitter() const { return m_kartEmitter; }
 
 private:
-    void processInput();
-    void update(float deltaTime);
-    void render();
-    void setupColliders();
-    void setupTrackLighting();
-    void applyDayNightState(bool isNight);
-    void toggleTrackPointLights();
-    void setupBoosterPads();
-    void loadCatalog();
-    void selectDriver(int index);
-    void selectVehicle(int index);
-    void selectTrack(int index);
-    void applySelection();
-    void printSelectionHUD();
+    void initContext();
+    void loadCatalogs();
     void createPedestalMesh();
 
     AppConfig m_config;
     std::unique_ptr<Window> m_window;
     Time m_time;
-
-    // Estado del juego
-    GameState m_gameState{GameState::MAIN_MENU};
-
-    // Camaras
-    CameraMode m_cameraMode{CameraMode::CHASE};
-    camera::Camera m_camera;              // FPS Cam
-    camera::ChaseCamera m_chaseCamera;    // 3rd person chase cam
-
     bool m_running{false};
-    bool m_cursorLocked{false};
 
-    // Shaders y Texturas
+    // Gestor de Escenas
+    SceneManager m_sceneManager;
+
+    // Recursos GPU y Shaders
     renderer::Shader m_basicShader;
     renderer::Shader m_litShader;
     renderer::Shader m_boosterShader;
@@ -168,59 +69,33 @@ private:
     renderer::Skybox m_skyboxAquatic;
     renderer::Skybox m_skyboxVolcano;
 
-    // Mundo y Circuito Modular
+    // Mundo y Renderizado
     world::TrackGrid m_trackGrid;
     renderer::TrackRenderer m_trackRenderer;
     world::PropSpawner m_propSpawner;
     world::ZoneTriggerManager m_zoneManager;
     std::vector<world::BoosterPad> m_boosterPads;
 
-    // Fisicas y Colisiones
+    // Física y Dinámica
     Engine::Physics::CollisionSystem m_collisionSystem;
     Engine::Physics::KartPhysics m_kartPhysics;
-
-    // Entidad jerarquica del Kart articulado
     vehicle::KartEntity m_kartEntity;
     animation::WheelAnimator m_wheelAnimator;
     vfx::KartParticleEmitter m_kartEmitter;
+    vfx::SkidmarkManager m_skidmarkManager;
 
-    // Sistema y Controlador de Iluminacion
+    // Iluminación y Cámaras
     lighting::LightManager m_lightManager;
     lighting::LightingController m_lightingController;
+    camera::Camera m_fpsCamera;
+    camera::ChaseCamera m_chaseCamera;
 
-    // Catalogo de Corredores, Vehiculos y Pistas
-    SelectionCategory m_selectionCategory{SelectionCategory::DRIVER};
-    std::vector<DriverProfile> m_drivers;
-    std::vector<VehicleProfile> m_vehicles;
-    std::vector<TrackProfile> m_tracks;
-    int m_selectedDriverIndex{0};
-    int m_selectedVehicleIndex{0};
-    int m_selectedTrackIndex{0};
-
-    float m_showcaseAngle{0.0f}; // Fijo en 0 grados (de frente a la camara)
-    float m_menuOrbitAngle{0.0f};
+    // HUD y Pedestal
+    ui::RacingHud m_racingHud;
     renderer::MeshGL m_pedestalMesh;
 
-    glm::vec3 m_kartInitialPos{0.0f};
-    float m_kartInitialYaw{90.0f};
-
-    // Telemetria y cooldowns
-    float m_finishLineCooldown{8.0f};
-    float m_titleUpdateTimer{0.0f};
-    int m_lapsCompleted{0};
-
-    // Efectos de marcas de derrape e interfaz HUD de carreras
-    vfx::SkidmarkManager m_skidmarkManager;
-    ui::RacingHud m_racingHud;
-
-    // Cronometraje de carreras y vueltas
-    float m_currentLapTime{0.0f};
-    float m_bestLapTime{0.0f};
-    float m_totalRaceTime{0.0f};
-    float m_lapNoticeTimer{0.0f};
-    float m_lastLapTime{0.0f};
-    bool m_isNewRecord{false};
-    int m_totalLaps{3};
+    // Contexto de Juego Compartido
+    GameContext m_gameContext;
 };
 
 } // namespace core
