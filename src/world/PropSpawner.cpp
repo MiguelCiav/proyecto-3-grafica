@@ -173,6 +173,161 @@ static geometry::SubMesh createFacetedDomeSubMesh(float radius, float height, in
     return mesh;
 }
 
+static geometry::SubMesh createBrazierSubMesh(float baseRadius, float bowlRadius, float totalHeight) {
+    geometry::SubMesh mesh;
+    mesh.name = "Procedural_Fire_Brazier";
+    const float PI = 3.14159265358979323846f;
+    const int segments = 8; // Octágono de hierro forjado
+
+    auto addTri = [&](const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2) {
+        glm::vec3 norm = glm::normalize(glm::cross(v1 - v0, v2 - v0));
+        if (glm::length(norm) < 0.001f) norm = glm::vec3(0.0f, 1.0f, 0.0f);
+        uint32_t base = static_cast<uint32_t>(mesh.vertices.size());
+        auto uv = [&](const glm::vec3& p) {
+            return glm::vec2(0.5f + p.x / (bowlRadius * 2.0f), 0.5f + p.z / (bowlRadius * 2.0f));
+        };
+        mesh.vertices.push_back({ v0, norm, uv(v0) });
+        mesh.vertices.push_back({ v1, norm, uv(v1) });
+        mesh.vertices.push_back({ v2, norm, uv(v2) });
+        mesh.indices.push_back(base + 0);
+        mesh.indices.push_back(base + 1);
+        mesh.indices.push_back(base + 2);
+    };
+
+    struct Ring { float y; float r; };
+    std::vector<Ring> rings = {
+        { -totalHeight * 0.50f, baseRadius * 1.25f },
+        { -totalHeight * 0.38f, baseRadius * 1.00f },
+        {  totalHeight * 0.15f, baseRadius * 0.65f },
+        {  totalHeight * 0.32f, baseRadius * 0.90f },
+        {  totalHeight * 0.50f, bowlRadius }
+    };
+
+    std::vector<std::vector<glm::vec3>> ringVerts(rings.size());
+    for (size_t r = 0; r < rings.size(); ++r) {
+        for (int s = 0; s < segments; ++s) {
+            float theta = (static_cast<float>(s) / static_cast<float>(segments)) * 2.0f * PI;
+            ringVerts[r].push_back(glm::vec3(
+                rings[r].r * std::cos(theta),
+                rings[r].y,
+                rings[r].r * std::sin(theta)
+            ));
+        }
+    }
+
+    for (size_t r = 0; r < rings.size() - 1; ++r) {
+        for (int s = 0; s < segments; ++s) {
+            int nxt = (s + 1) % segments;
+            addTri(ringVerts[r][s], ringVerts[r+1][s], ringVerts[r+1][nxt]);
+            addTri(ringVerts[r][s], ringVerts[r+1][nxt], ringVerts[r][nxt]);
+        }
+    }
+
+    glm::vec3 bottomCenter(0.0f, -totalHeight * 0.50f, 0.0f);
+    for (int s = 0; s < segments; ++s) {
+        int nxt = (s + 1) % segments;
+        addTri(bottomCenter, ringVerts[0][nxt], ringVerts[0][s]);
+    }
+
+    glm::vec3 innerCoalCenter(0.0f, totalHeight * 0.35f, 0.0f);
+    for (int s = 0; s < segments; ++s) {
+        int nxt = (s + 1) % segments;
+        addTri(innerCoalCenter, ringVerts.back()[s], ringVerts.back()[nxt]);
+    }
+
+    return mesh;
+}
+
+static geometry::SubMesh createFlameSubMesh(float radius, float height, bool isCore = false) {
+    geometry::SubMesh mesh;
+    mesh.name = isCore ? "Procedural_Flame_Core" : "Procedural_Volcano_Flame";
+    const float PI = 3.14159265358979323846f;
+
+    auto addTri = [&](const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2) {
+        glm::vec3 norm = glm::normalize(glm::cross(v1 - v0, v2 - v0));
+        if (glm::length(norm) < 0.001f) norm = glm::vec3(0.0f, 1.0f, 0.0f);
+        uint32_t base = static_cast<uint32_t>(mesh.vertices.size());
+        auto uv = [&](const glm::vec3& p) {
+            return glm::vec2(0.5f + p.x / (radius * 2.0f), p.y / height);
+        };
+        mesh.vertices.push_back({ v0, norm, uv(v0) });
+        mesh.vertices.push_back({ v1, norm, uv(v1) });
+        mesh.vertices.push_back({ v2, norm, uv(v2) });
+        mesh.indices.push_back(base + 0);
+        mesh.indices.push_back(base + 1);
+        mesh.indices.push_back(base + 2);
+    };
+
+    if (isCore) {
+        // Núcleo caliente interno de fuego (forma estilizada de lágrima ardiente)
+        struct CoreRing { float y; float r; };
+        std::vector<CoreRing> rings = {
+            { 0.00f * height, 0.25f * radius },
+            { 0.25f * height, 0.85f * radius },
+            { 0.55f * height, 0.60f * radius },
+            { 0.80f * height, 0.28f * radius }
+        };
+        const int segments = 8;
+        std::vector<std::vector<glm::vec3>> ringVerts(rings.size());
+        for (size_t r = 0; r < rings.size(); ++r) {
+            for (int s = 0; s < segments; ++s) {
+                float th = (static_cast<float>(s) / static_cast<float>(segments)) * 2.0f * PI;
+                ringVerts[r].push_back(glm::vec3(
+                    rings[r].r * std::cos(th),
+                    rings[r].y,
+                    rings[r].r * std::sin(th)
+                ));
+            }
+        }
+
+        for (size_t r = 0; r < rings.size() - 1; ++r) {
+            for (int s = 0; s < segments; ++s) {
+                int nxt = (s + 1) % segments;
+                addTri(ringVerts[r][s], ringVerts[r+1][s], ringVerts[r+1][nxt]);
+                addTri(ringVerts[r][s], ringVerts[r+1][nxt], ringVerts[r][nxt]);
+            }
+        }
+
+        glm::vec3 apex(0.0f, height, 0.0f);
+        size_t last = rings.size() - 1;
+        for (int s = 0; s < segments; ++s) {
+            int nxt = (s + 1) % segments;
+            addTri(ringVerts[last][s], apex, ringVerts[last][nxt]);
+        }
+
+        glm::vec3 bottom(0.0f, 0.0f, 0.0f);
+        for (int s = 0; s < segments; ++s) {
+            int nxt = (s + 1) % segments;
+            addTri(bottom, ringVerts[0][nxt], ringVerts[0][s]);
+        }
+    } else {
+        // Lenguas de fuego exteriores estilizadas y curvadas con puntas afiladas
+        const int numTongues = 5;
+        for (int t = 0; t < numTongues; ++t) {
+            float ang = static_cast<float>(t) * (2.0f * PI / static_cast<float>(numTongues));
+            float thHeight = height * (0.75f + 0.20f * std::sin(static_cast<float>(t) * 1.8f));
+
+            glm::vec3 bL(radius * 0.40f * std::cos(ang - 0.35f), 0.0f, radius * 0.40f * std::sin(ang - 0.35f));
+            glm::vec3 bR(radius * 0.40f * std::cos(ang + 0.35f), 0.0f, radius * 0.40f * std::sin(ang + 0.35f));
+            glm::vec3 mL(radius * 0.95f * std::cos(ang - 0.20f + 0.15f), thHeight * 0.45f, radius * 0.95f * std::sin(ang - 0.20f + 0.15f));
+            glm::vec3 mR(radius * 0.95f * std::cos(ang + 0.20f + 0.15f), thHeight * 0.45f, radius * 0.95f * std::sin(ang + 0.20f + 0.15f));
+            glm::vec3 tip(radius * 0.25f * std::cos(ang + 0.35f), thHeight, radius * 0.25f * std::sin(ang + 0.35f));
+
+            // Cara exterior
+            addTri(bL, mL, mR);
+            addTri(bL, mR, bR);
+            addTri(mL, tip, mR);
+
+            // Cara interior (doble cara para visibilidad 360°)
+            addTri(mL, bL, mR);
+            addTri(mR, bL, bR);
+            addTri(tip, mL, mR);
+        }
+    }
+
+    return mesh;
+}
+
 PropSpawner::PropSpawner() = default;
 PropSpawner::~PropSpawner() = default;
 
@@ -425,11 +580,20 @@ bool PropSpawner::init(const std::string& obstaclesDir) {
         m_propMeshes["lavaVent"] = std::move(lavaVent);
 
         renderer::MeshGL fireBrazier;
-        fireBrazier.setup(createBoxSubMesh(0.22f, 0.70f, 0.22f));
+        fireBrazier.setup(createBrazierSubMesh(0.24f, 0.38f, 1.40f));
         m_propMeshes["fireBrazier"] = std::move(fireBrazier);
 
+        renderer::MeshGL volcanoFlame;
+        volcanoFlame.setup(createFlameSubMesh(0.36f, 1.05f, false));
+        m_propMeshes["volcanoFlame"] = std::move(volcanoFlame);
+
+        renderer::MeshGL volcanoFlameCore;
+        volcanoFlameCore.setup(createFlameSubMesh(0.22f, 0.72f, true));
+        m_propMeshes["volcanoFlameCore"] = std::move(volcanoFlameCore);
+
+        // Alias flameOrb a volcanoFlame para compatibilidad
         renderer::MeshGL flameOrb;
-        flameOrb.setup(createStarSubMesh(0.38f, 0.20f, 0.22f));
+        flameOrb.setup(createFlameSubMesh(0.36f, 1.05f, false));
         m_propMeshes["flameOrb"] = std::move(flameOrb);
     }
 
@@ -569,15 +733,30 @@ void PropSpawner::update(float dt) {
         m_starRotation -= 360.0f;
     }
 
-    // Animar giro 3D continuo y levitación vertical armónica de las estrellas flotantes, perlas marinas y orbes de fuego
+    // Animar giro 3D continuo y levitación vertical armónica de las estrellas flotantes y perlas marinas
     for (auto& prop : m_props) {
-        if (prop.type == "floatingStar" || prop.type == "seaPearl" || prop.type == "flameOrb") {
+        if (prop.type == "floatingStar" || prop.type == "seaPearl") {
             float bob = std::sin(m_animTime * 2.8f + prop.position.x * 0.4f + prop.position.z * 0.4f) * 0.08f;
             glm::vec3 animatedPos = prop.position + glm::vec3(0.0f, bob, 0.0f);
 
             glm::mat4 mat = glm::translate(glm::mat4(1.0f), animatedPos);
             mat = glm::rotate(mat, glm::radians(m_starRotation + prop.rotationDegrees), glm::vec3(0.0f, 1.0f, 0.0f));
             mat = glm::scale(mat, prop.scale);
+            prop.modelMatrix = mat;
+        } else if (prop.type == "volcanoFlame" || prop.type == "volcanoFlameCore" || prop.type == "flameOrb") {
+            // El fuego volcánico parpadea, vibra y oscila orgánicamente con ráfagas térmicas y viento
+            float phase = prop.position.x * 2.3f + prop.position.z * 1.7f;
+            float flickerY = 1.0f + 0.15f * std::sin(m_animTime * 14.5f + phase) + 0.07f * std::cos(m_animTime * 23.0f + phase * 1.5f);
+            float flickerXZ = 1.0f + 0.08f * std::cos(m_animTime * 11.0f + phase);
+            float swayX = 4.5f * std::sin(m_animTime * 5.5f + phase);
+            float swayZ = 3.5f * std::cos(m_animTime * 6.5f + phase);
+            float slowDrift = m_animTime * 28.0f + prop.rotationDegrees;
+
+            glm::mat4 mat = glm::translate(glm::mat4(1.0f), prop.position);
+            mat = glm::rotate(mat, glm::radians(swayX), glm::vec3(1.0f, 0.0f, 0.0f));
+            mat = glm::rotate(mat, glm::radians(swayZ), glm::vec3(0.0f, 0.0f, 1.0f));
+            mat = glm::rotate(mat, glm::radians(slowDrift), glm::vec3(0.0f, 1.0f, 0.0f));
+            mat = glm::scale(mat, prop.scale * glm::vec3(flickerXZ, flickerY, flickerXZ));
             prop.modelMatrix = mat;
         }
     }
@@ -633,13 +812,15 @@ void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDe
             addProp("volcanoRock", posB - sideDir * 1.2f, 65.0f, glm::vec3(1.2f), true);
 
             addProp("fireBrazier", posA + sideDir * 1.8f + glm::vec3(0.0f, 0.70f, 0.0f), 0.0f, glm::vec3(1.0f), true);
-            addProp("flameOrb", posA + sideDir * 1.8f + glm::vec3(0.0f, 1.60f, 0.0f), 0.0f, glm::vec3(1.0f), false);
+            addProp("volcanoFlame", posA + sideDir * 1.8f + glm::vec3(0.0f, 1.25f, 0.0f), 0.0f, glm::vec3(1.0f), false);
+            addProp("volcanoFlameCore", posA + sideDir * 1.8f + glm::vec3(0.0f, 1.28f, 0.0f), 0.0f, glm::vec3(0.9f), false);
 
             addProp("fireBrazier", posB - sideDir * 1.8f + glm::vec3(0.0f, 0.70f, 0.0f), 0.0f, glm::vec3(1.0f), true);
-            addProp("flameOrb", posB - sideDir * 1.8f + glm::vec3(0.0f, 1.60f, 0.0f), 0.0f, glm::vec3(1.0f), false);
+            addProp("volcanoFlame", posB - sideDir * 1.8f + glm::vec3(0.0f, 1.25f, 0.0f), 0.0f, glm::vec3(1.0f), false);
+            addProp("volcanoFlameCore", posB - sideDir * 1.8f + glm::vec3(0.0f, 1.28f, 0.0f), 0.0f, glm::vec3(0.9f), false);
 
-            m_lampPositions.push_back(posA + sideDir * 1.8f + glm::vec3(0.0f, 1.60f, 0.0f));
-            m_lampPositions.push_back(posB - sideDir * 1.8f + glm::vec3(0.0f, 1.60f, 0.0f));
+            m_lampPositions.push_back(posA + sideDir * 1.8f + glm::vec3(0.0f, 1.65f, 0.0f));
+            m_lampPositions.push_back(posB - sideDir * 1.8f + glm::vec3(0.0f, 1.65f, 0.0f));
         }
 
         // 2. Obstáculos y Decoraciones Volcánicas en Curvas
@@ -685,10 +866,11 @@ void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDe
                 glm::vec3 bPos = tile->worldPos + sideDir * brazierDist;
                 addProp("fireBrazier", bPos + glm::vec3(0.0f, 0.70f, 0.0f), 0.0f, glm::vec3(1.0f), true);
 
-                glm::vec3 flamePos = bPos + glm::vec3(0.0f, 1.60f, 0.0f);
-                addProp("flameOrb", flamePos, 0.0f, glm::vec3(1.0f), false);
+                float rotDeg = static_cast<float>((i * 53) % 360);
+                addProp("volcanoFlame", bPos + glm::vec3(0.0f, 1.25f, 0.0f), rotDeg, glm::vec3(1.0f), false);
+                addProp("volcanoFlameCore", bPos + glm::vec3(0.0f, 1.28f, 0.0f), rotDeg, glm::vec3(0.9f), false);
 
-                m_lampPositions.push_back(flamePos);
+                m_lampPositions.push_back(bPos + glm::vec3(0.0f, 1.65f, 0.0f));
                 flameCount++;
             }
         }
@@ -1463,13 +1645,17 @@ void PropSpawner::render(const renderer::Shader& shader) const {
                 shader.setBool("u_UseTexture", false);
                 shader.setVec4("u_Color", glm::vec4(1.0f, 0.55f, 0.08f, 1.0f));
             } else if (prop.type == "fireBrazier") {
-                // Soporte de hierro forjado volcánico
+                // Soporte de hierro forjado volcánico / copa de piedra basáltica oscura
                 shader.setBool("u_UseTexture", false);
-                shader.setVec4("u_Color", glm::vec4(0.18f, 0.18f, 0.20f, 1.0f));
-            } else if (prop.type == "flameOrb") {
-                // Núcleo de fuego ardiente incandescente
+                shader.setVec4("u_Color", glm::vec4(0.16f, 0.15f, 0.17f, 1.0f));
+            } else if (prop.type == "volcanoFlame" || prop.type == "flameOrb") {
+                // Lenguas de fuego ardiente en tono naranja-rojo incandescente
                 shader.setBool("u_UseTexture", false);
-                shader.setVec4("u_Color", glm::vec4(1.0f, 0.35f, 0.05f, 1.0f));
+                shader.setVec4("u_Color", glm::vec4(1.0f, 0.38f, 0.04f, 1.0f));
+            } else if (prop.type == "volcanoFlameCore") {
+                // Núcleo central caliente en tono amarillo brillante intenso
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(1.0f, 0.88f, 0.18f, 1.0f));
             } else {
                 // Mallas texturizadas con la paleta de Kenney
                 shader.setBool("u_UseTexture", true);
