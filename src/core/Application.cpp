@@ -469,6 +469,7 @@ void Application::setupColliders() {
 
     // 1. Registrar obstaculos generados (barreras y conos) con sus AABB exactos
     for (const auto& prop : m_propSpawner.getProps()) {
+        if (!prop.hasCollision) continue;
         m_collisionSystem.addStaticBox(Engine::Physics::BoundingBox(prop.aabbMin, prop.aabbMax));
     }
 
@@ -552,9 +553,24 @@ void Application::setupTrackLighting() {
     sun.enabled = true;
     m_lightManager.setDirectionalLight(sun);
 
-    // En el espacio y en el desierto salvaje no hay farolas electricas convencionales
+    // En el espacio, configurar las estrellas flotantes como fuentes de luz puntual neón no-blancas
     if (isSpace) {
-        std::cout << "[OK] [Lighting] Circuito configurado: BIOMA ESPACIAL (Nebulosas purpuras, luz estelar)." << std::endl;
+        for (const auto& star : m_propSpawner.getStarLights()) {
+            if (m_lightManager.getPointLightCount() >= lighting::LightManager::MAX_POINT_LIGHTS) break;
+            lighting::PointLight pl;
+            pl.position  = star.position;
+            pl.ambient   = star.diffuseColor * 0.12f;
+            pl.diffuse   = star.diffuseColor * 2.4f; // Iluminación neón intensa no-blanca sobre la pista y el kart
+            pl.specular  = star.diffuseColor * 1.8f;
+            pl.constant  = 1.0f;
+            pl.linear    = 0.12f;
+            pl.quadratic = 0.045f;
+            pl.enabled   = true;
+            m_lightManager.addPointLight(pl);
+        }
+        std::cout << "[OK] [Lighting] Circuito configurado: BIOMA ESPACIAL ("
+                  << m_lightManager.getPointLightCount()
+                  << " luces puntuales neon estelares no-blancas activadas)." << std::endl;
         return;
     }
     if (isDesert) {
@@ -1016,6 +1032,9 @@ void Application::processInput() {
 }
 
 void Application::update(float deltaTime) {
+    // Actualizar animaciones de props dinámicos (estrellas flotantes giratorias)
+    m_propSpawner.update(deltaTime);
+
     // -------------------------------------------------------------
     // Actualizacion en MAIN_MENU: Camara orbital cinematografica
     // -------------------------------------------------------------

@@ -57,6 +57,59 @@ static geometry::SubMesh createBoxSubMesh(float hx, float hy, float hz) {
     return mesh;
 }
 
+static geometry::SubMesh createStarSubMesh(float outerRadius, float innerRadius, float depth) {
+    geometry::SubMesh mesh;
+    mesh.name = "Procedural_Star";
+
+    const int NUM_POINTS = 5;
+    const float PI = 3.14159265358979323846f;
+    std::vector<glm::vec3> perimeter(NUM_POINTS * 2);
+
+    for (int i = 0; i < NUM_POINTS; ++i) {
+        // Punta exterior
+        float angleTip = (PI * 0.5f) + (static_cast<float>(i) * 2.0f * PI / static_cast<float>(NUM_POINTS));
+        perimeter[i * 2] = glm::vec3(outerRadius * std::cos(angleTip), outerRadius * std::sin(angleTip), 0.0f);
+
+        // Valle interior
+        float angleValley = (PI * 0.5f) + ((static_cast<float>(i) + 0.5f) * 2.0f * PI / static_cast<float>(NUM_POINTS));
+        perimeter[i * 2 + 1] = glm::vec3(innerRadius * std::cos(angleValley), innerRadius * std::sin(angleValley), 0.0f);
+    }
+
+    glm::vec3 frontApex(0.0f, 0.0f,  depth);
+    glm::vec3 backApex(0.0f, 0.0f, -depth);
+
+    auto addTriangle = [&](const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2) {
+        glm::vec3 normal = glm::normalize(glm::cross(v1 - v0, v2 - v0));
+        uint32_t baseIdx = static_cast<uint32_t>(mesh.vertices.size());
+
+        auto makeUV = [&](const glm::vec3& p) -> glm::vec2 {
+            return glm::vec2(0.5f + (p.x / (outerRadius * 2.0f)), 0.5f + (p.y / (outerRadius * 2.0f)));
+        };
+
+        mesh.vertices.push_back({ v0, normal, makeUV(v0) });
+        mesh.vertices.push_back({ v1, normal, makeUV(v1) });
+        mesh.vertices.push_back({ v2, normal, makeUV(v2) });
+
+        mesh.indices.push_back(baseIdx + 0);
+        mesh.indices.push_back(baseIdx + 1);
+        mesh.indices.push_back(baseIdx + 2);
+    };
+
+    // 10 Caras frontales
+    for (int i = 0; i < NUM_POINTS * 2; ++i) {
+        int next = (i + 1) % (NUM_POINTS * 2);
+        addTriangle(frontApex, perimeter[i], perimeter[next]);
+    }
+
+    // 10 Caras traseras
+    for (int i = 0; i < NUM_POINTS * 2; ++i) {
+        int next = (i + 1) % (NUM_POINTS * 2);
+        addTriangle(backApex, perimeter[next], perimeter[i]);
+    }
+
+    return mesh;
+}
+
 PropSpawner::PropSpawner() = default;
 PropSpawner::~PropSpawner() = default;
 
@@ -228,23 +281,41 @@ bool PropSpawner::init(const std::string& obstaclesDir) {
         renderer::MeshGL spaceBeaconTop;
         spaceBeaconTop.setup(createBoxSubMesh(0.20f, 0.14f, 0.20f));
         m_propMeshes["spaceBeaconTop"] = std::move(spaceBeaconTop);
+
+        // Estrella 3D Neón procedural para el bioma espacial
+        renderer::MeshGL starMesh;
+        starMesh.setup(createStarSubMesh(0.42f, 0.18f, 0.15f));
+        m_propMeshes["floatingStar"] = std::move(starMesh);
     }
 
     m_initialized = !m_propMeshes.empty();
     return m_initialized;
 }
 
-void PropSpawner::addProp(const std::string& type, const glm::vec3& pos, float rotDeg, const glm::vec3& scale) {
+void PropSpawner::addProp(const std::string& type, const glm::vec3& pos, float rotDeg,
+                          const glm::vec3& scale, bool hasCollision,
+                          const glm::vec4& customColor, bool useCustomColor) {
     PropInstance inst;
     inst.type = type;
     inst.position = pos;
     inst.rotationDegrees = rotDeg;
     inst.scale = scale;
+    inst.hasCollision = hasCollision;
+    inst.customColor = customColor;
+    inst.useCustomColor = useCustomColor;
 
     glm::mat4 mat = glm::translate(glm::mat4(1.0f), pos);
     mat = glm::rotate(mat, glm::radians(rotDeg), glm::vec3(0.0f, 1.0f, 0.0f));
     mat = glm::scale(mat, scale);
     inst.modelMatrix = mat;
+
+    // Si no tiene colisión física activa, dejamos los límites en cero para evitar obstáculos fantasma
+    if (!hasCollision) {
+        inst.aabbMin = glm::vec3(0.0f);
+        inst.aabbMax = glm::vec3(0.0f);
+        m_props.push_back(inst);
+        return;
+    }
 
     // AABBs ajustados con máxima fidelidad a la malla visual (sin buffers sobredimensionados)
     if (type == "cone") {
@@ -316,6 +387,27 @@ void PropSpawner::addProp(const std::string& type, const glm::vec3& pos, float r
     m_props.push_back(inst);
 }
 
+void PropSpawner::update(float dt) {
+    m_animTime += dt;
+    m_starRotation += dt * 65.0f;
+    if (m_starRotation >= 360.0f) {
+        m_starRotation -= 360.0f;
+    }
+
+    // Animar giro 3D continuo y levitación vertical armónica de las estrellas flotantes
+    for (auto& prop : m_props) {
+        if (prop.type == "floatingStar") {
+            float bob = std::sin(m_animTime * 2.8f + prop.position.x * 0.4f + prop.position.z * 0.4f) * 0.08f;
+            glm::vec3 animatedPos = prop.position + glm::vec3(0.0f, bob, 0.0f);
+
+            glm::mat4 mat = glm::translate(glm::mat4(1.0f), animatedPos);
+            mat = glm::rotate(mat, glm::radians(m_starRotation + prop.rotationDegrees), glm::vec3(0.0f, 1.0f, 0.0f));
+            mat = glm::scale(mat, prop.scale);
+            prop.modelMatrix = mat;
+        }
+    }
+}
+
 void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDesert, bool isSpace) {
     m_props.clear();
     m_lampPositions.clear();
@@ -336,6 +428,7 @@ void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDe
     }
 
     if (isSpace) {
+        m_starLights.clear();
         // =========================================================
         // GENERACION BIOMA ESPACIAL: Rainbow Cosmic Highway
         // =========================================================
@@ -351,13 +444,13 @@ void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDe
             glm::vec3 posA = startFinishTile->worldPos + pillarAOffset;
             glm::vec3 posB = startFinishTile->worldPos + pillarBOffset;
 
-            addProp("spaceWarpPillar", glm::vec3(posA.x, 2.40f, posA.z), beamRot);
-            addProp("spaceWarpPillar", glm::vec3(posB.x, 2.40f, posB.z), beamRot);
+            addProp("spaceWarpPillar", glm::vec3(posA.x, 2.40f, posA.z), beamRot, glm::vec3(1.0f), true);
+            addProp("spaceWarpPillar", glm::vec3(posB.x, 2.40f, posB.z), beamRot, glm::vec3(1.0f), true);
 
             glm::vec3 beamPos = (posA + posB) * 0.5f + glm::vec3(0.0f, 4.80f, 0.0f);
-            addProp("spaceWarpBeam", beamPos, beamRot);
-            addProp("spaceWarpTrimCyan", beamPos + glm::vec3(0.0f, 0.18f, 0.0f), beamRot);
-            addProp("spaceWarpTrimMagenta", beamPos - glm::vec3(0.0f, 0.18f, 0.0f), beamRot);
+            addProp("spaceWarpBeam", beamPos, beamRot, glm::vec3(1.0f), false);
+            addProp("spaceWarpTrimCyan", beamPos + glm::vec3(0.0f, 0.18f, 0.0f), beamRot, glm::vec3(1.0f), false);
+            addProp("spaceWarpTrimMagenta", beamPos - glm::vec3(0.0f, 0.18f, 0.0f), beamRot, glm::vec3(1.0f), false);
         }
 
         // 2. Anillos de Hipervelocidad (Warp Rings) a lo largo de las grandes rectas
@@ -373,45 +466,86 @@ void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDe
                 glm::vec3 posA = tile->worldPos + sideDir * pillarOffset;
                 glm::vec3 posB = tile->worldPos - sideDir * pillarOffset;
 
-                addProp("spaceWarpPillar", glm::vec3(posA.x, 2.40f, posA.z), beamRot);
-                addProp("spaceWarpPillar", glm::vec3(posB.x, 2.40f, posB.z), beamRot);
+                addProp("spaceWarpPillar", glm::vec3(posA.x, 2.40f, posA.z), beamRot, glm::vec3(1.0f), true);
+                addProp("spaceWarpPillar", glm::vec3(posB.x, 2.40f, posB.z), beamRot, glm::vec3(1.0f), true);
 
                 glm::vec3 beamPos = (posA + posB) * 0.5f + glm::vec3(0.0f, 4.70f, 0.0f);
-                addProp("spaceWarpBeam", beamPos, beamRot);
+                addProp("spaceWarpBeam", beamPos, beamRot, glm::vec3(1.0f), false);
                 if (i % 12 == 2) {
-                    addProp("spaceWarpTrimCyan", beamPos + glm::vec3(0.0f, 0.15f, 0.0f), beamRot);
+                    addProp("spaceWarpTrimCyan", beamPos + glm::vec3(0.0f, 0.15f, 0.0f), beamRot, glm::vec3(1.0f), false);
                 } else {
-                    addProp("spaceWarpTrimMagenta", beamPos + glm::vec3(0.0f, 0.15f, 0.0f), beamRot);
+                    addProp("spaceWarpTrimMagenta", beamPos + glm::vec3(0.0f, 0.15f, 0.0f), beamRot, glm::vec3(1.0f), false);
                 }
             }
 
-            // Satélites flotantes de comunicación orbital a los lados
+            // Satélites flotantes de comunicación orbital a los lados (suspendidos sin colisión)
             if (i % 8 == 4) {
                 float sideSign = (i % 16 == 4) ? 1.0f : -1.0f;
                 glm::vec3 sideDir = isHorizontal ? glm::vec3(0.0f, 0.0f, sideSign) : glm::vec3(sideSign, 0.0f, 0.0f);
                 glm::vec3 satPos = tile->worldPos + sideDir * 5.5f + glm::vec3(0.0f, 3.8f, 0.0f);
                 float satRot = static_cast<float>((i * 67) % 360);
 
-                addProp("satelliteBody", satPos, satRot);
-                addProp("satellitePanel", satPos, satRot);
-                addProp("satelliteAntenna", satPos + glm::vec3(0.0f, 0.55f, 0.0f), satRot);
+                addProp("satelliteBody", satPos, satRot, glm::vec3(1.0f), false);
+                addProp("satellitePanel", satPos, satRot, glm::vec3(1.0f), false);
+                addProp("satelliteAntenna", satPos + glm::vec3(0.0f, 0.55f, 0.0f), satRot, glm::vec3(1.0f), false);
             }
         }
 
-        // 3. Balizas de Navegación Estelar en los bordes de todas las curvas
+        // 3. Balizas de Navegación Estelar en los bordes de todas las curvas (base sólida, cabezal luminoso)
         for (const auto& tile : grid.getAllTiles()) {
             if (tile.type == TileType::ROAD_CORNER_SMALL || tile.type == TileType::ROAD_CORNER_LARGE) {
                 float rotRad = glm::radians(tile.rotationDegrees);
                 glm::vec3 outerDir(std::cos(rotRad + 0.785f), 0.0f, std::sin(rotRad + 0.785f));
 
                 glm::vec3 bPos = tile.worldPos + outerDir * 2.30f;
-                addProp("spaceBeacon", bPos, tile.rotationDegrees);
-                addProp("spaceBeaconTop", bPos + glm::vec3(0.0f, 0.45f, 0.0f), tile.rotationDegrees);
+                addProp("spaceBeacon", bPos, tile.rotationDegrees, glm::vec3(1.0f), true);
+                addProp("spaceBeaconTop", bPos + glm::vec3(0.0f, 0.45f, 0.0f), tile.rotationDegrees, glm::vec3(1.0f), false);
             }
         }
 
+        // 4. Estrellas Flotantes Neón en la Pista (emiten luces neón vibrantes no-blancas: cian, magenta, oro, verde, violeta)
+        struct NeonStarTheme {
+            glm::vec4 meshColor;
+            glm::vec3 lightColor;
+        };
+
+        const std::vector<NeonStarTheme> neonThemes = {
+            { glm::vec4(0.0f, 0.98f, 1.0f, 1.0f),  glm::vec3(0.05f, 0.95f, 1.0f) }, // Neon Cian Eléctrico
+            { glm::vec4(1.0f, 0.12f, 0.88f, 1.0f), glm::vec3(1.0f, 0.10f, 0.85f) }, // Neon Magenta / Hot Pink
+            { glm::vec4(1.0f, 0.85f, 0.08f, 1.0f), glm::vec3(1.0f, 0.80f, 0.08f) }, // Neon Oro / Ámbar Radiante
+            { glm::vec4(0.12f, 1.0f, 0.45f, 1.0f), glm::vec3(0.12f, 1.0f, 0.40f) }, // Neon Verde Láser
+            { glm::vec4(0.75f, 0.20f, 1.0f, 1.0f), glm::vec3(0.75f, 0.18f, 1.0f) }, // Neon Púrpura Cósmico
+            { glm::vec4(0.0f, 0.85f, 0.95f, 1.0f), glm::vec3(0.05f, 0.85f, 0.95f) }, // Neon Turquesa Glaciar
+            { glm::vec4(1.0f, 0.45f, 0.05f, 1.0f), glm::vec3(1.0f, 0.42f, 0.05f) }, // Neon Ámbar Solar
+            { glm::vec4(0.95f, 0.08f, 0.65f, 1.0f), glm::vec3(0.95f, 0.08f, 0.65f) }  // Neon Fucsia Galáctico
+        };
+
+        // Distribuir 8 estrellas flotantes principales espaciadas por todo el circuito
+        size_t starCount = 0;
+        size_t starStride = std::max<size_t>(1, straightTiles.size() / 8);
+
+        for (size_t i = 0; i < straightTiles.size() && starCount < 8; i += starStride) {
+            size_t tileIdx = i;
+            if (tileIdx % 6 == 2 && tileIdx + 1 < straightTiles.size()) {
+                tileIdx++;
+            }
+            const auto* sTile = straightTiles[tileIdx];
+
+            // Flotan sobre el centro del carril a 1.15m de altura
+            glm::vec3 starPos = sTile->worldPos + glm::vec3(0.0f, 1.15f, 0.0f);
+            const auto& theme = neonThemes[starCount % neonThemes.size()];
+
+            // Se agregan sin colisión física para no trabar al vehículo al atravesarlas
+            addProp("floatingStar", starPos, static_cast<float>(starCount * 45), glm::vec3(1.0f),
+                    false /*hasCollision*/, theme.meshColor, true /*useCustomColor*/);
+
+            m_starLights.push_back({ starPos, theme.lightColor });
+            starCount++;
+        }
+
         std::cout << "[OK] [PropSpawner] Total de elementos generados: "
-                  << m_props.size() << " (Portales Warp hiperespaciales, satelites orbitales y balizas estelares)." << std::endl;
+                  << m_props.size() << " (Portales Warp, satelites, balizas y "
+                  << starCount << " estrellas flotantes neon no-blancas)." << std::endl;
         return;
     }
 
@@ -424,24 +558,25 @@ void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDe
         if (startFinishTile) {
             bool isHorizontal = (startFinishTile->rotationDegrees == 90.0f || startFinishTile->rotationDegrees == 270.0f);
             float beamRot = isHorizontal ? 90.0f : 0.0f;
-            float pillarOffset = 2.45f;
-            glm::vec3 pillarAOffset = isHorizontal ? glm::vec3(0.0f, 0.0f,  pillarOffset) : glm::vec3( pillarOffset, 0.0f, 0.0f);
-            glm::vec3 pillarBOffset = isHorizontal ? glm::vec3(0.0f, 0.0f, -pillarOffset) : glm::vec3(-pillarOffset, 0.0f, 0.0f);
+            float pillarOffset = 2.60f; // Mayor holgura para evitar roce con el ancho de pista
+            glm::vec3 sideDir = isHorizontal ? glm::vec3(0.0f, 0.0f, 1.0f) : glm::vec3(1.0f, 0.0f, 0.0f);
+            glm::vec3 pillarAOffset = sideDir * pillarOffset;
+            glm::vec3 pillarBOffset = -sideDir * pillarOffset;
 
             glm::vec3 posA = startFinishTile->worldPos + pillarAOffset;
             glm::vec3 posB = startFinishTile->worldPos + pillarBOffset;
 
             // Pilares de piedra arenisca natural
-            addProp("desertArchPillar", glm::vec3(posA.x, 2.50f, posA.z), beamRot);
-            addProp("desertArchPillar", glm::vec3(posB.x, 2.50f, posB.z), beamRot);
+            addProp("desertArchPillar", glm::vec3(posA.x, 2.50f, posA.z), beamRot, glm::vec3(1.0f), true);
+            addProp("desertArchPillar", glm::vec3(posB.x, 2.50f, posB.z), beamRot, glm::vec3(1.0f), true);
 
-            // Viga superior de roca tallada conectando los pilares
+            // Viga superior de roca tallada conectando los pilares (suspendida a 5.1m sin colisión)
             glm::vec3 beamPos = (posA + posB) * 0.5f + glm::vec3(0.0f, 5.10f, 0.0f);
-            addProp("desertArchBeam", beamPos, beamRot);
+            addProp("desertArchBeam", beamPos, beamRot, glm::vec3(1.0f), false);
 
-            // Monolitos protectores en las bases del arco
-            addProp("desertRock", posA + glm::vec3(0.8f, 0.55f, 0.0f), 25.0f, glm::vec3(1.1f));
-            addProp("desertRock", posB - glm::vec3(0.8f, -0.55f, 0.0f), 65.0f, glm::vec3(1.1f));
+            // Monolitos protectores en las bases del arco (ubicados sólidamente fuera de la pista)
+            addProp("desertRock", posA + sideDir * 1.1f, 25.0f, glm::vec3(1.1f), true);
+            addProp("desertRock", posB - sideDir * 1.1f, 65.0f, glm::vec3(1.1f), true);
         }
 
         // 2. Obstaculos y decoraciones en curvas: Barreras de neumaticos, conos y rocas de arenisca
@@ -450,13 +585,13 @@ void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDe
                 float rotRad = glm::radians(tile.rotationDegrees);
                 glm::vec3 outerDir(std::cos(rotRad + 0.785f), 0.0f, std::sin(rotRad + 0.785f));
                 
-                // Conos / neumaticos de aviso
-                addProp("debris-tire", tile.worldPos + outerDir * 2.2f, tile.rotationDegrees, glm::vec3(1.3f));
-                addProp("cone", tile.worldPos - outerDir * 1.8f, tile.rotationDegrees + 45.0f, glm::vec3(1.1f));
+                // Conos / neumaticos de aviso (con holgura exterior)
+                addProp("debris-tire", tile.worldPos + outerDir * 2.35f, tile.rotationDegrees, glm::vec3(1.3f), true);
+                addProp("cone", tile.worldPos - outerDir * 1.8f, tile.rotationDegrees + 45.0f, glm::vec3(1.1f), true);
 
                 // Formaciones rocosas naturales de arenisca a los bordes
-                addProp("desertRock", tile.worldPos + outerDir * 3.8f, tile.rotationDegrees + 30.0f, glm::vec3(1.3f, 1.2f, 1.3f));
-                addProp("desertMesaRock", tile.worldPos + outerDir * 5.8f, tile.rotationDegrees + 75.0f, glm::vec3(1.4f, 1.5f, 1.2f));
+                addProp("desertRock", tile.worldPos + outerDir * 3.8f, tile.rotationDegrees + 30.0f, glm::vec3(1.3f, 1.2f, 1.3f), true);
+                addProp("desertMesaRock", tile.worldPos + outerDir * 5.8f, tile.rotationDegrees + 75.0f, glm::vec3(1.4f, 1.5f, 1.2f), true);
             }
         }
 
@@ -473,29 +608,28 @@ void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDe
                 glm::vec3 cPos = tile->worldPos + sideDir * dist;
                 float cactusRot = static_cast<float>((i * 53) % 360);
 
-                // Tronco principal
-                addProp("cactusTrunk", cPos + glm::vec3(0.0f, 1.25f, 0.0f), cactusRot);
-                // Brazo izquierdo (ramificacion horizontal + vertical hacia arriba)
+                // Tronco principal con colisionador sólido
+                addProp("cactusTrunk", cPos + glm::vec3(0.0f, 1.25f, 0.0f), cactusRot, glm::vec3(1.0f), true);
+                // Brazos del cactus decorativos sin colisión
                 float rad = glm::radians(cactusRot);
                 glm::vec3 leftDir(-std::sin(rad), 0.0f, std::cos(rad));
                 glm::vec3 rightDir(std::sin(rad), 0.0f, -std::cos(rad));
 
-                addProp("cactusArmJoint", cPos + leftDir * 0.28f + glm::vec3(0.0f, 1.55f, 0.0f), cactusRot);
-                addProp("cactusArmSpire", cPos + leftDir * 0.42f + glm::vec3(0.0f, 1.95f, 0.0f), cactusRot);
+                addProp("cactusArmJoint", cPos + leftDir * 0.28f + glm::vec3(0.0f, 1.55f, 0.0f), cactusRot, glm::vec3(1.0f), false);
+                addProp("cactusArmSpire", cPos + leftDir * 0.42f + glm::vec3(0.0f, 1.95f, 0.0f), cactusRot, glm::vec3(1.0f), false);
 
-                // Brazo derecho
-                addProp("cactusArmJoint", cPos + rightDir * 0.28f + glm::vec3(0.0f, 1.15f, 0.0f), cactusRot);
-                addProp("cactusArmSpire", cPos + rightDir * 0.42f + glm::vec3(0.0f, 1.55f, 0.0f), cactusRot);
+                addProp("cactusArmJoint", cPos + rightDir * 0.28f + glm::vec3(0.0f, 1.15f, 0.0f), cactusRot, glm::vec3(1.0f), false);
+                addProp("cactusArmSpire", cPos + rightDir * 0.42f + glm::vec3(0.0f, 1.55f, 0.0f), cactusRot, glm::vec3(1.0f), false);
 
-                // Roca pequena en la base del cactus
+                // Roca pequeña en la base del cactus
                 if (i % 4 == 0) {
-                    addProp("desertRock", cPos + sideDir * 0.9f + glm::vec3(0.0f, 0.5f, 0.0f), cactusRot + 45.0f, glm::vec3(0.7f));
+                    addProp("desertRock", cPos + sideDir * 0.9f + glm::vec3(0.0f, 0.5f, 0.0f), cactusRot + 45.0f, glm::vec3(0.7f), true);
                 }
             } else if (i % 3 == 0) {
                 // Rocas de arenisca naturales en los laterales de la pista
                 float dist = 4.2f + (i % 2) * 1.2f;
                 glm::vec3 rockPos = tile->worldPos - sideDir * dist;
-                addProp("desertRock", rockPos + glm::vec3(0.0f, 0.45f, 0.0f), static_cast<float>((i * 71) % 360), glm::vec3(1.1f, 0.8f, 1.0f));
+                addProp("desertRock", rockPos + glm::vec3(0.0f, 0.45f, 0.0f), static_cast<float>((i * 71) % 360), glm::vec3(1.1f, 0.8f, 1.0f), true);
             }
         }
 
@@ -524,31 +658,31 @@ void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDe
         // Pilares izquierdo y derecho anclados en el césped a cada lado del carril (4.7m de luz)
         glm::vec3 leftPillar = startFinishTile->worldPos + sideDir * 2.35f + glm::vec3(0.0f, 2.30f, 0.0f);
         glm::vec3 rightPillar = startFinishTile->worldPos - sideDir * 2.35f + glm::vec3(0.0f, 2.30f, 0.0f);
-        addProp("gantryPillar", leftPillar, 0.0f, glm::vec3(1.0f));
-        addProp("gantryPillar", rightPillar, 0.0f, glm::vec3(1.0f));
+        addProp("gantryPillar", leftPillar, 0.0f, glm::vec3(1.0f), true);
+        addProp("gantryPillar", rightPillar, 0.0f, glm::vec3(1.0f), true);
 
-        // Zapatas de hormigón en la base de los pilares
+        // Zapatas de hormigón en la base de los pilares (sin colisión separada del pilar)
         glm::vec3 leftFoot = startFinishTile->worldPos + sideDir * 2.35f + glm::vec3(0.0f, 0.18f, 0.0f);
         glm::vec3 rightFoot = startFinishTile->worldPos - sideDir * 2.35f + glm::vec3(0.0f, 0.18f, 0.0f);
-        addProp("gantryFooting", leftFoot, 0.0f, glm::vec3(1.0f));
-        addProp("gantryFooting", rightFoot, 0.0f, glm::vec3(1.0f));
+        addProp("gantryFooting", leftFoot, 0.0f, glm::vec3(1.0f), false);
+        addProp("gantryFooting", rightFoot, 0.0f, glm::vec3(1.0f), false);
 
-        // Viga transversal superior en celosía descansando sólidamente sobre los pilares a 4.76m de altura (5.4m de largo)
+        // Viga transversal superior en celosía descansando sólidamente sobre los pilares a 4.76m de altura (sin colisión con vehículos)
         glm::vec3 beamPos = startFinishTile->worldPos + glm::vec3(0.0f, 4.76f, 0.0f);
-        addProp("gantryBeam", beamPos, beamRot, glm::vec3(1.0f));
+        addProp("gantryBeam", beamPos, beamRot, glm::vec3(1.0f), false);
 
         // Viga inferior de soporte y unión a 3.90m
         glm::vec3 lowerBeamPos = startFinishTile->worldPos + glm::vec3(0.0f, 3.90f, 0.0f);
-        addProp("gantryLowerBeam", lowerBeamPos, beamRot, glm::vec3(1.0f));
+        addProp("gantryLowerBeam", lowerBeamPos, beamRot, glm::vec3(1.0f), false);
 
         // Letrero luminoso de START / FINISH en el centro entre ambas vigas
         glm::vec3 signPos = startFinishTile->worldPos + glm::vec3(0.0f, 4.33f, 0.0f);
-        addProp("gantrySign", signPos, signRot, glm::vec3(1.0f));
+        addProp("gantrySign", signPos, signRot, glm::vec3(1.0f), false);
 
         // 5 Luces de semáforo de salida de carrera F1 suspendidas bajo la estructura
         for (int i = -2; i <= 2; ++i) {
             glm::vec3 lightPos = startFinishTile->worldPos + sideDir * (i * 0.60f) + glm::vec3(0.0f, 3.72f, 0.0f);
-            addProp("gantryLight", lightPos, beamRot, glm::vec3(1.0f));
+            addProp("gantryLight", lightPos, beamRot, glm::vec3(1.0f), false);
         }
     }
 
@@ -582,19 +716,19 @@ void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDe
             // Mástil vertical en el césped
             glm::vec3 poleBase = tile->worldPos + sideDir * (halfTile * 1.15f);
             glm::vec3 poleCenter = poleBase + glm::vec3(0.0f, 2.1f, 0.0f);
-            addProp("lampPole", poleCenter, 0.0f, glm::vec3(1.0f));
+            addProp("lampPole", poleCenter, 0.0f, glm::vec3(1.0f), true);
 
             // Base de protección con neumáticos
-            addProp("debris-tire", poleBase + glm::vec3(0.0f, 0.25f, 0.0f), 0.0f, glm::vec3(1.0f));
+            addProp("debris-tire", poleBase + glm::vec3(0.0f, 0.25f, 0.0f), 0.0f, glm::vec3(1.0f), true);
 
-            // Brazo en voladizo inclinado a 4.2m
+            // Brazo en voladizo inclinado a 4.2m (suspendido sin colisión)
             glm::vec3 armPos = poleBase + glm::vec3(0.0f, 4.2f, 0.0f) - sideDir * 0.55f;
             float armRot = isHorizontal ? (sideSign > 0 ? 180.0f : 0.0f) : (sideSign > 0 ? 270.0f : 90.0f);
-            addProp("lampArm", armPos, armRot, glm::vec3(1.0f));
+            addProp("lampArm", armPos, armRot, glm::vec3(1.0f), false);
 
-            // Foco / Luminaria incandescente suspendida sobre la pista
+            // Foco / Luminaria incandescente suspendida sobre la pista (sin colisión)
             glm::vec3 bulbPos = poleBase + glm::vec3(0.0f, 4.1f, 0.0f) - sideDir * 1.15f;
-            addProp("lampBulb", bulbPos, 0.0f, glm::vec3(1.0f));
+            addProp("lampBulb", bulbPos, 0.0f, glm::vec3(1.0f), false);
 
             m_lampPositions.push_back(bulbPos);
         }
@@ -615,14 +749,14 @@ void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDe
 
             glm::vec3 lp = nTile->worldPos + sDir * 2.35f + glm::vec3(0.0f, 2.30f, 0.0f);
             glm::vec3 rp = nTile->worldPos - sDir * 2.35f + glm::vec3(0.0f, 2.30f, 0.0f);
-            addProp("neonArchPillar", lp, 0.0f, glm::vec3(1.0f));
-            addProp("neonArchPillar", rp, 0.0f, glm::vec3(1.0f));
+            addProp("neonArchPillar", lp, 0.0f, glm::vec3(1.0f), true);
+            addProp("neonArchPillar", rp, 0.0f, glm::vec3(1.0f), true);
 
             glm::vec3 bp = nTile->worldPos + glm::vec3(0.0f, 4.60f, 0.0f);
-            addProp("neonArchBeam", bp, bRot, glm::vec3(1.0f));
+            addProp("neonArchBeam", bp, bRot, glm::vec3(1.0f), false);
 
             glm::vec3 tp = nTile->worldPos + glm::vec3(0.0f, 4.40f, 0.0f);
-            addProp(trims[k], tp, bRot, glm::vec3(1.0f));
+            addProp(trims[k], tp, bRot, glm::vec3(1.0f), false);
         }
     }
 
@@ -641,8 +775,8 @@ void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDe
             if (isNight) {
                 // Baliza luminosa en el ápice interior de la curva
                 glm::vec3 beaconPos = cornerPos + glm::vec3(-xSign * halfTile * 0.52f, 0.0f, -zSign * halfTile * 0.52f);
-                addProp("neonBeacon", beaconPos, 0.0f, glm::vec3(1.0f));
-                addProp("neonBeaconTop", beaconPos + glm::vec3(0.0f, 0.45f, 0.0f), 0.0f, glm::vec3(1.0f));
+                addProp("neonBeacon", beaconPos, 0.0f, glm::vec3(1.0f), true);
+                addProp("neonBeaconTop", beaconPos + glm::vec3(0.0f, 0.45f, 0.0f), 0.0f, glm::vec3(1.0f), false);
 
                 // Doble pila de neumáticos de seguridad en la escapatoria exterior
                 glm::vec3 tirePos1 = cornerPos + glm::vec3(xSign * (halfTile * 1.05f), 0.25f, zSign * (halfTile * 1.05f));
@@ -736,9 +870,9 @@ void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDe
                     );
                     float treeRot = static_cast<float>((c * 37 + r * 53) % 360);
 
-                    addProp("treeTrunk", treePos + glm::vec3(0.0f, 0.8f, 0.0f), treeRot, glm::vec3(1.0f));
-                    addProp("treeFoliageBottom", treePos + glm::vec3(0.0f, 1.85f, 0.0f), treeRot + 15.0f, glm::vec3(1.0f));
-                    addProp("treeFoliageTop", treePos + glm::vec3(0.0f, 2.70f, 0.0f), treeRot + 30.0f, glm::vec3(1.0f));
+                    addProp("treeTrunk", treePos + glm::vec3(0.0f, 0.8f, 0.0f), treeRot, glm::vec3(1.0f), true);
+                    addProp("treeFoliageBottom", treePos + glm::vec3(0.0f, 1.85f, 0.0f), treeRot + 15.0f, glm::vec3(1.0f), false);
+                    addProp("treeFoliageTop", treePos + glm::vec3(0.0f, 2.70f, 0.0f), treeRot + 30.0f, glm::vec3(1.0f), false);
                 }
             }
         }
@@ -783,7 +917,11 @@ void PropSpawner::render(const renderer::Shader& shader) const {
         if (it != m_propMeshes.end()) {
             shader.setMat4("u_Model", prop.modelMatrix);
 
-            if (prop.type == "lampBulb") {
+            if (prop.useCustomColor) {
+                // Color neón personalizado (estrellas flotantes con brillo no-blanco)
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", prop.customColor);
+            } else if (prop.type == "lampBulb") {
                 // Luminaria incandescente de vapor de sodio (ámbar brillante)
                 shader.setBool("u_UseTexture", false);
                 shader.setVec4("u_Color", glm::vec4(1.0f, 0.88f, 0.30f, 1.0f));
@@ -879,6 +1017,10 @@ void PropSpawner::render(const renderer::Shader& shader) const {
                 // Base metalica de baliza
                 shader.setBool("u_UseTexture", false);
                 shader.setVec4("u_Color", glm::vec4(0.20f, 0.22f, 0.28f, 1.0f));
+            } else if (prop.type == "floatingStar") {
+                // Estrella flotante por defecto en cian neón brillante
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(0.0f, 0.95f, 1.0f, 1.0f));
             } else {
                 // Mallas texturizadas con la paleta de Kenney
                 shader.setBool("u_UseTexture", true);

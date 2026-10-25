@@ -10,6 +10,11 @@
 
 namespace world {
 
+struct StarLightData {
+    glm::vec3 position{0.0f};
+    glm::vec3 diffuseColor{1.0f};
+};
+
 struct PropInstance {
     std::string type;
     glm::vec3 position{0.0f};
@@ -18,6 +23,9 @@ struct PropInstance {
     glm::mat4 modelMatrix{1.0f};
     glm::vec3 aabbMin{0.0f};
     glm::vec3 aabbMax{0.0f};
+    bool hasCollision{true};
+    bool useCustomColor{false};
+    glm::vec4 customColor{1.0f};
 };
 
 class PropSpawner {
@@ -31,21 +39,30 @@ public:
     // Genera automáticamente barreras y conos alrededor del circuito
     void generateForGrid(const TrackGrid& grid, bool isNight = false, bool isDesert = false, bool isSpace = false);
 
+    // Actualiza animaciones de props dinámicos (giro y levitación de estrellas)
+    void update(float dt);
+
     // Dibuja todos los props en pantalla
     void render(const renderer::Shader& shader) const;
 
     const std::vector<PropInstance>& getProps() const { return m_props; }
     size_t getPropCount() const { return m_props.size(); }
     const std::vector<glm::vec3>& getLampPositions() const { return m_lampPositions; }
+    const std::vector<StarLightData>& getStarLights() const { return m_starLights; }
 
-    void addProp(const std::string& type, const glm::vec3& pos, float rotDeg = 0.0f, const glm::vec3& scale = glm::vec3(1.0f));
-    void clear() { m_props.clear(); m_lampPositions.clear(); }
+    void addProp(const std::string& type, const glm::vec3& pos, float rotDeg = 0.0f,
+                 const glm::vec3& scale = glm::vec3(1.0f), bool hasCollision = true,
+                 const glm::vec4& customColor = glm::vec4(1.0f), bool useCustomColor = false);
+    void clear() { m_props.clear(); m_lampPositions.clear(); m_starLights.clear(); }
 
 private:
     std::vector<PropInstance> m_props;
     std::vector<glm::vec3> m_lampPositions;
+    std::vector<StarLightData> m_starLights;
     std::unordered_map<std::string, renderer::MeshGL> m_propMeshes;
     bool m_initialized{false};
+    float m_animTime{0.0f};
+    float m_starRotation{0.0f};
 };
 
 } // namespace world
