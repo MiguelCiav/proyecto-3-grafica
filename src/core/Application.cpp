@@ -284,9 +284,9 @@ void Application::loadCatalog() {
         },
         {
             "track-desert",
-            "Valle del Desierto UCV (Desert Rally)",
+            "Valle del Desierto UCV (Dakar Canyon Wedge)",
             "Dakar ★★★",
-            "Rally por dunas de arena dorada, cañones de arenisca, cactus saguaro 3D y sol abrasador.",
+            "Rally asimetrico en forma de cuña por cañones de arenisca, escalones de dunas y rectas de alta velocidad.",
             "assets/levels/track_desert_dunes.txt",
             26, 24,
             false, // isNight
@@ -294,9 +294,9 @@ void Application::loadCatalog() {
         },
         {
             "track-cosmic",
-            "Circuito Espacial UCV (Rainbow Cosmic Highway)",
+            "Circuito Espacial UCV (Starfighter Orbital Wings)",
             "Extremo ★★★",
-            "Pista orbital suspendida sobre el vacio cosmico con nebulosas purpuras, anillos warp y satelites.",
+            "Nave orbital con alas solares exteriores, pasarela hiperespacial y vortices estelares suspendidos.",
             "assets/levels/track_cosmic_space.txt",
             26, 26,
             true, // isNight
@@ -304,9 +304,9 @@ void Application::loadCatalog() {
         },
         {
             "track-aquatic",
-            "Arrecife Abisal UCV (Aquatic Deep Reef)",
+            "Arrecife Abisal UCV (Nautilus Reef & Kelp Atoll)",
             "Acuatico ★★★",
-            "Circuito submarino en las profundidades oceanicas con corales bioluminiscentes, bosques de algas y templo atlante.",
+            "Atolon oceanico natural con amplia laguna sur, ensenada submarina y serpentina por bosques de algas kelp.",
             "assets/levels/track_aquatic_reef.txt",
             26, 26,
             false, // isNight
