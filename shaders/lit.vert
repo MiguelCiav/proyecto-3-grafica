@@ -2,10 +2,12 @@
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 aNormal;
 layout (location = 2) in vec2 aTexCoords;
+layout (location = 3) in vec4 aColor;
 
 out vec3 v_FragPos;
 out vec3 v_Normal;
 out vec2 v_TexCoords;
+out vec4 v_Color;
 
 uniform mat4 u_Model;
 uniform mat4 u_View;
@@ -18,6 +20,7 @@ void main() {
     // Matriz normal segura contra escalas no uniformes
     v_Normal = mat3(transpose(inverse(u_Model))) * aNormal;
     v_TexCoords = aTexCoords;
+    v_Color = aColor;
     
     gl_Position = u_Projection * u_View * worldPos;
 }

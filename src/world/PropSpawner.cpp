@@ -1253,6 +1253,7 @@ void PropSpawner::render(const renderer::Shader& shader) const {
         auto it = m_propMeshes.find(prop.type);
         if (it != m_propMeshes.end()) {
             shader.setMat4("u_Model", prop.modelMatrix);
+            shader.setBool("u_UseVertexColor", false);
 
             if (prop.useCustomColor) {
                 // Color neón personalizado (estrellas flotantes con brillo no-blanco)
@@ -1434,9 +1435,15 @@ void PropSpawner::render(const renderer::Shader& shader) const {
                 // Núcleo central caliente en tono amarillo brillante intenso
                 shader.setBool("u_UseTexture", false);
                 shader.setVec4("u_Color", glm::vec4(1.0f, 0.88f, 0.18f, 1.0f));
+            } else if (prop.type == "barrierRed" || prop.type == "barrierWhite" || prop.type == "barrierWall") {
+                // Barreras de seguridad de Kenney Racing Kit: usan colores de vértice difusos nativos del .mtl
+                shader.setBool("u_UseTexture", false);
+                shader.setBool("u_UseVertexColor", true);
+                shader.setVec4("u_Color", glm::vec4(1.0f));
             } else {
-                // Mallas texturizadas con la paleta de Kenney
+                // Mallas texturizadas con la paleta de Kenney Car Kit (conos, cajas, etc.)
                 shader.setBool("u_UseTexture", true);
+                shader.setBool("u_UseVertexColor", false);
                 shader.setVec4("u_Color", glm::vec4(1.0f));
             }
 

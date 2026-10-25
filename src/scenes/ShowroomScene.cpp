@@ -168,6 +168,7 @@ void ShowroomScene::render(int windowWidth, int windowHeight) {
     // 1. Dibujar el Pedestal bajo el kart
     if (m_ctx.pedestalMesh) {
         shader.setBool("u_UseTexture", false);
+        shader.setBool("u_UseVertexColor", false);
         glm::mat4 pedMat = glm::rotate(glm::mat4(1.0f), glm::radians(m_showcaseAngle), glm::vec3(0.0f, 1.0f, 0.0f));
         shader.setMat4("u_Model", pedMat);
         shader.setVec4("u_Color", glm::vec4(0.20f, 0.22f, 0.28f, 1.0f));
@@ -177,6 +178,7 @@ void ShowroomScene::render(int windowWidth, int windowHeight) {
     // 2. Dibujar el Kart y Piloto DE FRENTE con sus texturas
     if (m_ctx.kartEntity) {
         shader.setBool("u_UseTexture", true);
+        shader.setBool("u_UseVertexColor", false);
         shader.setVec4("u_Color", glm::vec4(1.0f));
         m_ctx.kartEntity->draw(shader);
     }

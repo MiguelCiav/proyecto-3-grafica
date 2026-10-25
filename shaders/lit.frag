@@ -3,6 +3,7 @@
 in vec3 v_FragPos;
 in vec3 v_Normal;
 in vec2 v_TexCoords;
+in vec4 v_Color;
 
 out vec4 FragColor;
 
@@ -70,6 +71,7 @@ uniform vec3 u_ViewPos;
 // Muestreo de textura y color
 uniform sampler2D u_Texture;
 uniform bool u_UseTexture;
+uniform bool u_UseVertexColor;
 uniform vec4 u_Color;
 
 // -------------------------------------------------------------
@@ -160,7 +162,14 @@ vec3 calcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec
 // Programa Principal
 // -------------------------------------------------------------
 void main() {
-    vec4 texColor = u_UseTexture ? texture(u_Texture, v_TexCoords) : u_Color;
+    vec4 texColor;
+    if (u_UseTexture) {
+        texColor = texture(u_Texture, v_TexCoords);
+    } else if (u_UseVertexColor) {
+        texColor = v_Color * u_Color;
+    } else {
+        texColor = u_Color;
+    }
     if (texColor.a < 0.05) discard;
 
     vec3 baseColor = texColor.rgb;

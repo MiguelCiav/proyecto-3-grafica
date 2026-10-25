@@ -101,6 +101,12 @@ void MeshGL::setup(const geometry::SubMesh& submesh) {
                           sizeof(geometry::Vertex),
                           reinterpret_cast<void*>(offsetof(geometry::Vertex, texCoords)));
 
+    // Atributo 3: Color de vértice difuso / material (vec4)
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE,
+                          sizeof(geometry::Vertex),
+                          reinterpret_cast<void*>(offsetof(geometry::Vertex, color)));
+
     glBindVertexArray(0);
 }
 

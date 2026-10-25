@@ -20,16 +20,21 @@ public:
     void render(const world::TrackGrid& grid, const Shader& shader) const;
 
     int getRenderedTileCount() const { return m_renderedTileCount; }
-    void setGroundColor(const glm::vec4& color) { m_groundColor = color; }
+    void setGroundColor(const glm::vec4& color);
     glm::vec4 getGroundColor() const { return m_groundColor; }
 
 private:
     void createGroundPlane();
+    void updateTrackMeshes();
 
     MeshGL m_meshStraight;
     MeshGL m_meshCornerSmall;
     MeshGL m_meshCornerLarge;
     MeshGL m_meshGround;
+
+    geometry::SubMesh m_submeshStraight;
+    geometry::SubMesh m_submeshCornerSmall;
+    geometry::SubMesh m_submeshCornerLarge;
 
     mutable int m_renderedTileCount{0};
     bool m_initialized{false};

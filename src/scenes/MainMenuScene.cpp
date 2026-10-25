@@ -114,6 +114,7 @@ void MainMenuScene::render(int windowWidth, int windowHeight) {
 
     if (m_ctx.kartEntity) {
         shader.setBool("u_UseTexture", true);
+        shader.setBool("u_UseVertexColor", false);
         shader.setVec4("u_Color", glm::vec4(1.0f));
         m_ctx.kartEntity->draw(shader);
     }
