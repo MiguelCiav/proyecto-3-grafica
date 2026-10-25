@@ -45,6 +45,10 @@ public:
         m_exhaustOffsetRight = right;
     }
 
+    // Modo subacuático: sustituye el humo por estelas de burbujas ascendentes
+    void setUnderwater(bool underwater) { m_isUnderwater = underwater; }
+    [[nodiscard]] bool isUnderwater() const { return m_isUnderwater; }
+
 private:
     ParticleSystem m_smokeSystem;
     ParticleSystem m_boostSystem;
@@ -56,6 +60,7 @@ private:
     float m_boostTrailTimer{0.0f};
     bool m_wasBoosting{false};
     bool m_toggleExhaust{false};
+    bool m_isUnderwater{false};
 };
 
 } // namespace vfx

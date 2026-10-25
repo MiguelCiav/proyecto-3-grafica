@@ -381,6 +381,9 @@ void Application::selectTrack(int index) {
     m_propSpawner.generateForGrid(m_trackGrid, track.isNight, isDesert, isSpace, isAquatic, isVolcano);
     m_zoneManager.autoGenerateFromGrid(m_trackGrid);
 
+    // Activar modo de estela de burbujas en el kart para el bioma acuático
+    m_kartEmitter.setUnderwater(isAquatic);
+
     // Ajustar color del terreno segun el bioma
     if (isVolcano) {
         m_trackRenderer.setGroundColor(glm::vec4(0.09f, 0.08f, 0.09f, 1.0f)); // Basalto volcanico y ceniza oscura

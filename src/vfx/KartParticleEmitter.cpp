@@ -68,9 +68,13 @@ void KartParticleEmitter::triggerBoostBurst(const glm::vec3& kartPos, float kart
 
         glm::vec3 vel = -forward * speedBack + right * spreadX + up * spreadY;
 
-        // Alternancia de colores neón cian y naranja eléctrico
+        // Alternancia de colores neón cian y naranja eléctrico (o burbujas de agua si está sumergido)
         glm::vec4 color;
-        if (i % 3 == 0) {
+        if (m_isUnderwater) {
+            color = (i % 2 == 0)
+                ? glm::vec4(0.35f, 0.95f, 1.0f, 0.90f)  // Burbuja bioluminiscente turquesa
+                : glm::vec4(0.85f, 1.00f, 1.0f, 0.95f); // Núcleo de espuma marina blanca
+        } else if (i % 3 == 0) {
             color = glm::vec4(0.1f, 0.85f, 1.0f, 0.95f); // Azul cian neón
         } else if (i % 3 == 1) {
             color = glm::vec4(1.0f, 0.6f, 0.05f, 0.95f);  // Naranja llama
@@ -87,6 +91,15 @@ void KartParticleEmitter::triggerBoostBurst(const glm::vec3& kartPos, float kart
 
 void KartParticleEmitter::update(float deltaTime, const Engine::Physics::KartPhysics& physics, bool isAccelerating) {
     if (deltaTime <= 0.0f) return;
+
+    // Configurar flotabilidad del sistema de partículas según si está sumergido en agua o en tierra firme
+    if (m_isUnderwater) {
+        m_smokeSystem.setGravity(glm::vec3(0.0f, 2.4f, 0.0f)); // Flotabilidad ascendente de burbujas en agua
+        m_smokeSystem.setSizeGrowth(0.15f);
+    } else {
+        m_smokeSystem.setGravity(glm::vec3(0.0f, 0.6f, 0.0f)); // Humo de escape convencional
+        m_smokeSystem.setSizeGrowth(0.55f);
+    }
 
     const glm::vec3 kartPos = physics.getPosition();
     const float kartYaw = physics.getYaw();
@@ -120,9 +133,14 @@ void KartParticleEmitter::update(float deltaTime, const Engine::Physics::KartPhy
             float speedBack = getRandomFloat(12.0f, 18.0f);
 
             glm::vec3 vel = -forward * speedBack + right * spreadX + up * spreadY;
-            glm::vec4 color = (getRandomFloat(0.0f, 1.0f) > 0.4f)
-                ? glm::vec4(0.15f, 0.8f, 1.0f, 0.9f)
-                : glm::vec4(1.0f, 0.5f, 0.1f, 0.9f);
+            glm::vec4 color;
+            if (m_isUnderwater) {
+                color = glm::vec4(0.40f, 0.95f, 1.0f, 0.90f);
+            } else {
+                color = (getRandomFloat(0.0f, 1.0f) > 0.4f)
+                    ? glm::vec4(0.15f, 0.8f, 1.0f, 0.9f)
+                    : glm::vec4(1.0f, 0.5f, 0.1f, 0.9f);
+            }
 
             m_boostSystem.emit(origin, vel, color, getRandomFloat(0.2f, 0.32f), getRandomFloat(0.25f, 0.45f));
         }
@@ -131,15 +149,16 @@ void KartParticleEmitter::update(float deltaTime, const Engine::Physics::KartPhy
     }
 
     // -------------------------------------------------------------------------
-    // 2. Emisión reactiva de humo de escape según aceleración y ralentí
+    // 2. Emisión reactiva de humo de escape (o burbujas acuáticas)
     // -------------------------------------------------------------------------
     m_smokeTimer += deltaTime;
 
-    float smokeCadence = 0.35f; // Ralentí por defecto
+    float smokeCadence = m_isUnderwater ? 0.18f : 0.35f; // Cadencia de burbujas
     if (isAccelerating) {
-        // Cadencia rápida proporcional a la velocidad y aceleración
         float speedFactor = std::clamp(std::abs(speed) / 20.0f, 0.0f, 1.0f);
-        smokeCadence = std::max(0.035f, 0.08f - speedFactor * 0.045f);
+        smokeCadence = m_isUnderwater
+            ? std::max(0.025f, 0.06f - speedFactor * 0.035f)
+            : std::max(0.035f, 0.08f - speedFactor * 0.045f);
     }
 
     while (m_smokeTimer >= smokeCadence) {
@@ -153,7 +172,21 @@ void KartParticleEmitter::update(float deltaTime, const Engine::Physics::KartPhy
         float size;
         float life;
 
-        if (isAccelerating) {
+        if (m_isUnderwater) {
+            // Estela de burbujas acuáticas ascendentes con destellos y brillo turquesa
+            float ejectSpeed = std::abs(speed) * 0.25f + getRandomFloat(0.8f, 1.8f);
+            float spreadX = getRandomFloat(-0.45f, 0.45f);
+            float spreadZ = getRandomFloat(-0.45f, 0.45f);
+            float riseSpeed = isAccelerating ? getRandomFloat(1.8f, 3.2f) : getRandomFloat(1.0f, 2.0f);
+
+            vel = -forward * ejectSpeed + right * spreadX + forward * spreadZ + up * riseSpeed;
+
+            float alpha = getRandomFloat(0.55f, 0.85f);
+            float blueTint = getRandomFloat(0.88f, 1.0f);
+            color = glm::vec4(0.65f, 0.92f, blueTint, alpha);
+            size = getRandomFloat(0.08f, 0.17f);
+            life = getRandomFloat(0.85f, 1.4f);
+        } else if (isAccelerating) {
             float ejectSpeed = std::abs(speed) * 0.35f + getRandomFloat(1.2f, 2.5f);
             float spreadX = getRandomFloat(-0.35f, 0.35f);
             float spreadZ = getRandomFloat(-0.35f, 0.35f);
@@ -173,6 +206,15 @@ void KartParticleEmitter::update(float deltaTime, const Engine::Physics::KartPhy
         }
 
         m_smokeSystem.emit(origin, vel, color, size, life);
+    }
+
+    // Cavitación adicional de burbujas en los neumáticos al acelerar en agua
+    if (m_isUnderwater && std::abs(speed) > 2.5f && isAccelerating) {
+        glm::vec3 wheelLeft = kartPos - right * 0.45f + up * 0.15f - forward * 0.40f;
+        glm::vec3 wheelRight = kartPos + right * 0.45f + up * 0.15f - forward * 0.40f;
+        glm::vec3 wheelPos = (getRandomFloat(0.0f, 1.0f) > 0.5f) ? wheelLeft : wheelRight;
+        glm::vec3 bubVel = -forward * (speed * 0.15f) + up * getRandomFloat(1.2f, 2.2f) + right * getRandomFloat(-0.2f, 0.2f);
+        m_smokeSystem.emit(wheelPos, bubVel, glm::vec4(0.75f, 0.95f, 1.0f, 0.70f), getRandomFloat(0.06f, 0.13f), getRandomFloat(0.6f, 1.1f));
     }
 
     // -------------------------------------------------------------------------

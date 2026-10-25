@@ -328,6 +328,224 @@ static geometry::SubMesh createFlameSubMesh(float radius, float height, bool isC
     return mesh;
 }
 
+static geometry::SubMesh createSphereSubMesh(float radius, int rings = 6, int sectors = 10) {
+    geometry::SubMesh mesh;
+    mesh.name = "Procedural_Sphere";
+    const float PI = 3.14159265358979323846f;
+
+    auto addTri = [&](const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2) {
+        glm::vec3 norm = glm::normalize(glm::cross(v1 - v0, v2 - v0));
+        if (glm::length(norm) < 0.001f) norm = glm::vec3(0.0f, 1.0f, 0.0f);
+        uint32_t base = static_cast<uint32_t>(mesh.vertices.size());
+        auto uv = [&](const glm::vec3& p) {
+            return glm::vec2(0.5f + p.x / (radius * 2.0f), 0.5f + p.z / (radius * 2.0f));
+        };
+        mesh.vertices.push_back({ v0, norm, uv(v0) });
+        mesh.vertices.push_back({ v1, norm, uv(v1) });
+        mesh.vertices.push_back({ v2, norm, uv(v2) });
+        mesh.indices.push_back(base + 0);
+        mesh.indices.push_back(base + 1);
+        mesh.indices.push_back(base + 2);
+    };
+
+    glm::vec3 northPole(0.0f, radius, 0.0f);
+    glm::vec3 southPole(0.0f, -radius, 0.0f);
+
+    std::vector<std::vector<glm::vec3>> ringVerts;
+    for (int r = 1; r < rings; ++r) {
+        float phi = PI * static_cast<float>(r) / static_cast<float>(rings);
+        std::vector<glm::vec3> rv;
+        for (int s = 0; s < sectors; ++s) {
+            float th = 2.0f * PI * static_cast<float>(s) / static_cast<float>(sectors);
+            rv.push_back(glm::vec3(
+                radius * std::sin(phi) * std::cos(th),
+                radius * std::cos(phi),
+                radius * std::sin(phi) * std::sin(th)
+            ));
+        }
+        ringVerts.push_back(rv);
+    }
+
+    for (int s = 0; s < sectors; ++s) {
+        int nxt = (s + 1) % sectors;
+        addTri(northPole, ringVerts[0][s], ringVerts[0][nxt]);
+    }
+
+    for (size_t r = 0; r < ringVerts.size() - 1; ++r) {
+        for (int s = 0; s < sectors; ++s) {
+            int nxt = (s + 1) % sectors;
+            addTri(ringVerts[r][s], ringVerts[r+1][s], ringVerts[r+1][nxt]);
+            addTri(ringVerts[r][s], ringVerts[r+1][nxt], ringVerts[r][nxt]);
+        }
+    }
+
+    size_t last = ringVerts.size() - 1;
+    for (int s = 0; s < sectors; ++s) {
+        int nxt = (s + 1) % sectors;
+        addTri(southPole, ringVerts[last][nxt], ringVerts[last][s]);
+    }
+
+    return mesh;
+}
+
+static geometry::SubMesh createClamShellSubMesh(float radius, float openAngleDeg = 50.0f) {
+    geometry::SubMesh mesh;
+    mesh.name = "Procedural_Clam_Shell";
+    const float PI = 3.14159265358979323846f;
+
+    auto addTri = [&](const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2) {
+        glm::vec3 norm = glm::normalize(glm::cross(v1 - v0, v2 - v0));
+        if (glm::length(norm) < 0.001f) norm = glm::vec3(0.0f, 1.0f, 0.0f);
+        uint32_t base = static_cast<uint32_t>(mesh.vertices.size());
+        auto uv = [&](const glm::vec3& p) {
+            return glm::vec2(0.5f + p.x / (radius * 2.0f), 0.5f + p.z / (radius * 2.0f));
+        };
+        mesh.vertices.push_back({ v0, norm, uv(v0) });
+        mesh.vertices.push_back({ v1, norm, uv(v1) });
+        mesh.vertices.push_back({ v2, norm, uv(v2) });
+        mesh.indices.push_back(base + 0);
+        mesh.indices.push_back(base + 1);
+        mesh.indices.push_back(base + 2);
+    };
+
+    const int segments = 12;
+    glm::vec3 hinge(0.0f, 0.05f, -radius * 0.45f);
+    float radAngle = glm::radians(openAngleDeg);
+    float cosT = std::cos(radAngle);
+    float sinT = std::sin(radAngle);
+
+    for (int valve = 0; valve < 2; ++valve) {
+        std::vector<glm::vec3> rimOuter;
+        std::vector<glm::vec3> rimInner;
+
+        for (int s = 0; s <= segments; ++s) {
+            float t = (static_cast<float>(s) / static_cast<float>(segments)) * PI;
+            float angle = t - PI * 0.5f;
+            float rib = 1.0f + 0.10f * std::cos(angle * 7.0f);
+            float lx = radius * rib * std::cos(angle);
+            float lz = radius * rib * std::sin(angle) * 0.75f;
+
+            float distSq = (lx * lx + lz * lz) / (radius * radius);
+            float curveY = 0.22f * (1.0f - std::min(1.0f, distSq));
+
+            if (valve == 0) {
+                // Valva inferior cóncava
+                float yOut = -curveY;
+                float yIn  = -curveY * 0.65f + 0.02f;
+                rimOuter.push_back(glm::vec3(lx, yOut, lz));
+                rimInner.push_back(glm::vec3(lx * 0.92f, yIn, lz * 0.92f));
+            } else {
+                // Valva superior abierta e inclinada en la bisagra
+                float yOut = curveY + 0.06f;
+                float yIn  = curveY * 0.65f + 0.04f;
+
+                float zRel = lz - hinge.z;
+                float yRot = yOut * cosT - zRel * sinT;
+                float zRot = yOut * sinT + zRel * cosT + hinge.z;
+                rimOuter.push_back(glm::vec3(lx, yRot, zRot));
+
+                float zRelIn = (lz * 0.92f) - hinge.z;
+                float yRotIn = yIn * cosT - zRelIn * sinT;
+                float zRotIn = yIn * sinT + zRelIn * cosT + hinge.z;
+                rimInner.push_back(glm::vec3(lx * 0.92f, yRotIn, zRotIn));
+            }
+        }
+
+        glm::vec3 h(hinge.x, hinge.y + (valve == 1 ? 0.06f : 0.0f), hinge.z);
+        for (int s = 0; s < segments; ++s) {
+            if (valve == 0) {
+                addTri(h, rimOuter[s], rimOuter[s+1]);
+                addTri(h, rimInner[s+1], rimInner[s]);
+            } else {
+                addTri(h, rimOuter[s+1], rimOuter[s]);
+                addTri(h, rimInner[s], rimInner[s+1]);
+            }
+        }
+    }
+
+    return mesh;
+}
+
+static geometry::SubMesh createBubbleColumnSubMesh() {
+    geometry::SubMesh mesh;
+    mesh.name = "Procedural_Bubble_Column";
+    const float PI = 3.14159265358979323846f;
+
+    auto addTri = [&](const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2) {
+        glm::vec3 norm = glm::normalize(glm::cross(v1 - v0, v2 - v0));
+        if (glm::length(norm) < 0.001f) norm = glm::vec3(0.0f, 1.0f, 0.0f);
+        uint32_t base = static_cast<uint32_t>(mesh.vertices.size());
+        auto uv = [&](const glm::vec3& p) {
+            return glm::vec2(0.5f + p.x * 0.5f, p.y * 0.25f);
+        };
+        mesh.vertices.push_back({ v0, norm, uv(v0) });
+        mesh.vertices.push_back({ v1, norm, uv(v1) });
+        mesh.vertices.push_back({ v2, norm, uv(v2) });
+        mesh.indices.push_back(base + 0);
+        mesh.indices.push_back(base + 1);
+        mesh.indices.push_back(base + 2);
+    };
+
+    auto addSphere = [&](const glm::vec3& center, float radius, int rings = 4, int sectors = 6) {
+        glm::vec3 northPole = center + glm::vec3(0.0f, radius, 0.0f);
+        glm::vec3 southPole = center - glm::vec3(0.0f, radius, 0.0f);
+
+        std::vector<std::vector<glm::vec3>> ringVerts;
+        for (int r = 1; r < rings; ++r) {
+            float phi = PI * static_cast<float>(r) / static_cast<float>(rings);
+            std::vector<glm::vec3> rv;
+            for (int s = 0; s < sectors; ++s) {
+                float th = 2.0f * PI * static_cast<float>(s) / static_cast<float>(sectors);
+                rv.push_back(center + glm::vec3(
+                    radius * std::sin(phi) * std::cos(th),
+                    radius * std::cos(phi),
+                    radius * std::sin(phi) * std::sin(th)
+                ));
+            }
+            ringVerts.push_back(rv);
+        }
+
+        for (int s = 0; s < sectors; ++s) {
+            int nxt = (s + 1) % sectors;
+            addTri(northPole, ringVerts[0][s], ringVerts[0][nxt]);
+        }
+
+        for (size_t r = 0; r < ringVerts.size() - 1; ++r) {
+            for (int s = 0; s < sectors; ++s) {
+                int nxt = (s + 1) % sectors;
+                addTri(ringVerts[r][s], ringVerts[r+1][s], ringVerts[r+1][nxt]);
+                addTri(ringVerts[r][s], ringVerts[r+1][nxt], ringVerts[r][nxt]);
+            }
+        }
+
+        size_t last = ringVerts.size() - 1;
+        for (int s = 0; s < sectors; ++s) {
+            int nxt = (s + 1) % sectors;
+            addTri(southPole, ringVerts[last][nxt], ringVerts[last][s]);
+        }
+    };
+
+    // Columna de 9 burbujas esféricas ascendentes con offsets orgánicos
+    struct BubbleSpec { glm::vec3 pos; float rad; };
+    std::vector<BubbleSpec> bubbles = {
+        { {  0.05f, 0.30f,  0.02f }, 0.12f },
+        { { -0.08f, 0.75f, -0.04f }, 0.16f },
+        { {  0.09f, 1.25f,  0.06f }, 0.10f },
+        { { -0.04f, 1.70f,  0.08f }, 0.18f },
+        { {  0.07f, 2.20f, -0.06f }, 0.13f },
+        { { -0.06f, 2.65f, -0.02f }, 0.15f },
+        { {  0.05f, 3.10f,  0.07f }, 0.11f },
+        { { -0.03f, 3.55f, -0.05f }, 0.17f },
+        { {  0.02f, 3.95f,  0.03f }, 0.14f }
+    };
+
+    for (const auto& b : bubbles) {
+        addSphere(b.pos, b.rad, 4, 6);
+    }
+
+    return mesh;
+}
+
 PropSpawner::PropSpawner() = default;
 PropSpawner::~PropSpawner() = default;
 
@@ -523,7 +741,7 @@ bool PropSpawner::init(const std::string& obstaclesDir) {
         m_propMeshes["kelpSegment"] = std::move(kelpSegment);
 
         renderer::MeshGL bubbleColumn;
-        bubbleColumn.setup(createBoxSubMesh(0.20f, 1.80f, 0.20f));
+        bubbleColumn.setup(createBubbleColumnSubMesh());
         m_propMeshes["bubbleColumn"] = std::move(bubbleColumn);
 
         renderer::MeshGL seaRock;
@@ -546,8 +764,14 @@ bool PropSpawner::init(const std::string& obstaclesDir) {
         seaPedestal.setup(createBoxSubMesh(0.22f, 0.75f, 0.22f));
         m_propMeshes["seaPedestal"] = std::move(seaPedestal);
 
+        // Ostra marina abierta para albergar la perla bioluminiscente
+        renderer::MeshGL clamShell;
+        clamShell.setup(createClamShellSubMesh(0.50f, 50.0f));
+        m_propMeshes["clamShell"] = std::move(clamShell);
+
+        // Perla marina esférica bioluminiscente perfecta (reemplaza la estrella)
         renderer::MeshGL seaPearl;
-        seaPearl.setup(createStarSubMesh(0.40f, 0.22f, 0.20f));
+        seaPearl.setup(createSphereSubMesh(0.24f, 6, 10));
         m_propMeshes["seaPearl"] = std::move(seaPearl);
 
         // Elementos procedurales del Bioma Volcánico (Basalto negro, magma, chimeneas y braseros de fuego)
@@ -733,15 +957,32 @@ void PropSpawner::update(float dt) {
         m_starRotation -= 360.0f;
     }
 
-    // Animar giro 3D continuo y levitación vertical armónica de las estrellas flotantes y perlas marinas
+    // Animar giro 3D continuo de estrellas flotantes espaciales
     for (auto& prop : m_props) {
-        if (prop.type == "floatingStar" || prop.type == "seaPearl") {
+        if (prop.type == "floatingStar") {
             float bob = std::sin(m_animTime * 2.8f + prop.position.x * 0.4f + prop.position.z * 0.4f) * 0.08f;
             glm::vec3 animatedPos = prop.position + glm::vec3(0.0f, bob, 0.0f);
 
             glm::mat4 mat = glm::translate(glm::mat4(1.0f), animatedPos);
             mat = glm::rotate(mat, glm::radians(m_starRotation + prop.rotationDegrees), glm::vec3(0.0f, 1.0f, 0.0f));
             mat = glm::scale(mat, prop.scale);
+            prop.modelMatrix = mat;
+        } else if (prop.type == "seaPearl") {
+            // La perla dentro de la ostra pulsa suavemente con respiración bioluminiscente
+            float pulse = 1.0f + 0.045f * std::sin(m_animTime * 2.8f + prop.position.x * 0.5f);
+            glm::mat4 mat = glm::translate(glm::mat4(1.0f), prop.position);
+            mat = glm::scale(mat, prop.scale * pulse);
+            prop.modelMatrix = mat;
+        } else if (prop.type == "bubbleColumn") {
+            // Las columnas de burbujas ascienden con bamboleo hidrodinámico senoidal
+            float phase = prop.position.x * 1.7f + prop.position.z * 1.3f;
+            float yAscend = std::fmod(m_animTime * 1.5f + phase, 1.2f) * 0.75f;
+            float wobbleX = 0.12f * std::sin(m_animTime * 3.5f + phase);
+            float wobbleZ = 0.10f * std::cos(m_animTime * 4.2f + phase);
+            float pulse = 1.0f + 0.06f * std::sin(m_animTime * 5.0f + phase);
+
+            glm::mat4 mat = glm::translate(glm::mat4(1.0f), prop.position + glm::vec3(wobbleX, yAscend, wobbleZ));
+            mat = glm::scale(mat, prop.scale * glm::vec3(pulse, 1.0f, pulse));
             prop.modelMatrix = mat;
         } else if (prop.type == "volcanoFlame" || prop.type == "volcanoFlameCore" || prop.type == "flameOrb") {
             // El fuego volcánico parpadea, vibra y oscila orgánicamente con ráfagas térmicas y viento
@@ -912,13 +1153,15 @@ void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDe
             addProp("seaRock", posB - sideDir * 1.2f, 60.0f, glm::vec3(1.2f), true);
 
             addProp("seaPedestal", posA + sideDir * 1.8f + glm::vec3(0.0f, 0.75f, 0.0f), 0.0f, glm::vec3(1.0f), true);
-            addProp("seaPearl", posA + sideDir * 1.8f + glm::vec3(0.0f, 1.70f, 0.0f), 0.0f, glm::vec3(1.0f), false);
+            addProp("clamShell", posA + sideDir * 1.8f + glm::vec3(0.0f, 1.50f, 0.0f), beamRot + 90.0f, glm::vec3(1.0f), false);
+            addProp("seaPearl", posA + sideDir * 1.8f + glm::vec3(0.0f, 1.62f, 0.0f), 0.0f, glm::vec3(1.0f), false);
 
             addProp("seaPedestal", posB - sideDir * 1.8f + glm::vec3(0.0f, 0.75f, 0.0f), 0.0f, glm::vec3(1.0f), true);
-            addProp("seaPearl", posB - sideDir * 1.8f + glm::vec3(0.0f, 1.70f, 0.0f), 0.0f, glm::vec3(1.0f), false);
+            addProp("clamShell", posB - sideDir * 1.8f + glm::vec3(0.0f, 1.50f, 0.0f), beamRot + 90.0f, glm::vec3(1.0f), false);
+            addProp("seaPearl", posB - sideDir * 1.8f + glm::vec3(0.0f, 1.62f, 0.0f), 0.0f, glm::vec3(1.0f), false);
 
-            m_lampPositions.push_back(posA + sideDir * 1.8f + glm::vec3(0.0f, 1.70f, 0.0f));
-            m_lampPositions.push_back(posB - sideDir * 1.8f + glm::vec3(0.0f, 1.70f, 0.0f));
+            m_lampPositions.push_back(posA + sideDir * 1.8f + glm::vec3(0.0f, 1.62f, 0.0f));
+            m_lampPositions.push_back(posB - sideDir * 1.8f + glm::vec3(0.0f, 1.62f, 0.0f));
         }
 
         // 2. Obstáculos y Decoraciones del Arrecife en Curvas
@@ -963,17 +1206,23 @@ void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDe
                 addProp("coralBrain", coralPos + glm::vec3(0.6f, 0.40f, 0.3f), coralRot + 90.0f, glm::vec3(0.9f), true);
             }
 
-            // Pedestales con Perlas Bioluminiscentes cada 5 losas (emiten luz puntual acuática)
+            // Pedestales con Ostra Abierta y Perla Bioluminiscente cada 5 losas (emiten luz puntual acuática)
             if (i % 5 == 1 && pearlCount < 6) {
                 float pearlDist = 2.65f;
                 glm::vec3 pPos = tile->worldPos + sideDir * pearlDist;
                 addProp("seaPedestal", pPos + glm::vec3(0.0f, 0.75f, 0.0f), 0.0f, glm::vec3(1.0f), true);
 
-                glm::vec3 pearlPos = pPos + glm::vec3(0.0f, 1.70f, 0.0f);
-                addProp("seaPearl", pearlPos, 0.0f, glm::vec3(1.0f), false);
+                float clamRot = isHorizontal ? 0.0f : 90.0f;
+                addProp("clamShell", pPos + glm::vec3(0.0f, 1.50f, 0.0f), clamRot, glm::vec3(1.0f), false);
+                addProp("seaPearl", pPos + glm::vec3(0.0f, 1.62f, 0.0f), 0.0f, glm::vec3(1.0f), false);
 
-                m_lampPositions.push_back(pearlPos);
+                m_lampPositions.push_back(pPos + glm::vec3(0.0f, 1.62f, 0.0f));
                 pearlCount++;
+            }
+
+            // Columnas de burbujas ascendentes adicionales a lo largo de las rectas
+            if (i % 4 == 2) {
+                addProp("bubbleColumn", tile->worldPos - sideDir * 4.6f + glm::vec3(0.0f, 0.1f, 0.0f), 0.0f, glm::vec3(1.0f), false);
             }
         }
 
@@ -1596,10 +1845,14 @@ void PropSpawner::render(const renderer::Shader& shader) const {
                 // Algas marinas Kelp verde esmeralda marino
                 shader.setBool("u_UseTexture", false);
                 shader.setVec4("u_Color", glm::vec4(0.08f, 0.68f, 0.38f, 1.0f));
-            } else if (prop.type == "bubbleColumn") {
-                // Columna de burbujas marinas cian celeste
+            } else if (prop.type == "clamShell") {
+                // Ostra de concha nacarada / marfil marino con destello violáceo
                 shader.setBool("u_UseTexture", false);
-                shader.setVec4("u_Color", glm::vec4(0.40f, 0.85f, 0.95f, 1.0f));
+                shader.setVec4("u_Color", glm::vec4(0.85f, 0.82f, 0.88f, 1.0f));
+            } else if (prop.type == "bubbleColumn") {
+                // Columna de burbujas marinas translúcidas y brillantes
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(0.60f, 0.94f, 1.0f, 0.75f));
             } else if (prop.type == "seaRock") {
                 // Rocas submarinas de basalto oceánico
                 shader.setBool("u_UseTexture", false);
