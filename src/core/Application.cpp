@@ -400,7 +400,7 @@ void Application::selectTrack(int index) {
 
     // Ajustar color del terreno segun el bioma
     if (isDesert) {
-        m_trackRenderer.setGroundColor(glm::vec4(0.86f, 0.70f, 0.44f, 1.0f)); // Arena dorada del Sahara
+        m_trackRenderer.setGroundColor(glm::vec4(0.89f, 0.74f, 0.48f, 1.0f)); // Arena dorada cálida del Sahara
     } else if (track.isNight) {
         m_trackRenderer.setGroundColor(glm::vec4(0.08f, 0.12f, 0.10f, 1.0f)); // Asfalto / césped nocturno
     } else {

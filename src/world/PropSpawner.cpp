@@ -369,28 +369,15 @@ void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDe
                     addProp("desertRock", cPos + sideDir * 0.9f + glm::vec3(0.0f, 0.5f, 0.0f), cactusRot + 45.0f, glm::vec3(0.7f));
                 }
             } else if (i % 3 == 0) {
-                // Grandes monolitos de arenisca en los laterales
+                // Rocas de arenisca naturales en los laterales de la pista
                 float dist = 4.2f + (i % 2) * 1.2f;
                 glm::vec3 rockPos = tile->worldPos - sideDir * dist;
-                addProp("desertMesaRock", rockPos + glm::vec3(0.0f, 0.85f, 0.0f), static_cast<float>((i * 71) % 360), glm::vec3(1.2f));
+                addProp("desertRock", rockPos + glm::vec3(0.0f, 0.45f, 0.0f), static_cast<float>((i * 71) % 360), glm::vec3(1.1f, 0.8f, 1.0f));
             }
         }
 
-        // 4. Perimetro exterior: Grandes mesetas del canon
-        float halfW = (grid.getCols() * TrackGrid::TILE_SIZE) * 0.5f + 16.0f;
-        float halfD = (grid.getRows() * TrackGrid::TILE_SIZE) * 0.5f + 16.0f;
-
-        for (float x = -halfW; x <= halfW; x += 18.0f) {
-            addProp("desertMesaRock", glm::vec3(x, 1.2f, -halfD), 0.0f, glm::vec3(2.4f, 2.2f, 2.0f));
-            addProp("desertMesaRock", glm::vec3(x, 1.2f,  halfD), 180.0f, glm::vec3(2.4f, 2.2f, 2.0f));
-        }
-        for (float z = -halfD; z <= halfD; z += 18.0f) {
-            addProp("desertMesaRock", glm::vec3(-halfW, 1.2f, z), 90.0f, glm::vec3(2.4f, 2.2f, 2.0f));
-            addProp("desertMesaRock", glm::vec3( halfW, 1.2f, z), 270.0f, glm::vec3(2.4f, 2.2f, 2.0f));
-        }
-
         std::cout << "[OK] [PropSpawner] Total de elementos generados: "
-                  << m_props.size() << " (Arco natural de arenisca, cactus saguaro 3D y formaciones rocosas del desierto)." << std::endl;
+                  << m_props.size() << " (Arco natural de arenisca, cactus saguaro 3D y rocas de arenisca del desierto)." << std::endl;
         return;
     }
 
