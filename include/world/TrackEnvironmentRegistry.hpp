@@ -25,10 +25,10 @@ struct VehicleProfile {
     std::string description;
     std::string modelPath;
     glm::vec3 driverOffset{0.0f};
-    float maxSpeed{22.0f};
-    float acceleration{18.0f};
-    float turnSpeed{100.0f};
-    float offRoadFriction{0.45f};
+    float maxSpeed{14.5f};
+    float acceleration{11.5f};
+    float turnSpeed{155.0f};
+    float offRoadFriction{0.28f};
     geometry::KartAssembly assembly;
     bool loaded{false};
 };

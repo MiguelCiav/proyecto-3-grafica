@@ -26,7 +26,7 @@ Application::Application(const AppConfig& config)
     : m_config(config)
     , m_lightingController(&m_lightManager)
     , m_fpsCamera(glm::vec3(0.0f, 1.5f, 0.0f))
-    , m_chaseCamera(4.2f, 1.8f, 1.5f)
+    , m_chaseCamera(3.0f, 1.3f, 1.2f)
 {
     s_instance = this;
 }

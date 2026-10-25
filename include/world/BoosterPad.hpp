@@ -59,9 +59,9 @@ private:
     float m_length{4.5f};
     float m_elevationOffset{0.085f};
 
-    float m_boostMultiplier{1.6f};
-    float m_boostDuration{2.0f};
-    float m_instantImpulse{7.0f};
+    float m_boostMultiplier{1.28f};
+    float m_boostDuration{1.2f};
+    float m_instantImpulse{3.5f};
 
     SpecialZone m_triggerZone;
 

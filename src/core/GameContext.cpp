@@ -48,7 +48,9 @@ void GameContext::applySelection() {
     kartPhysics->m_maxSpeed = vehicle.maxSpeed;
     kartPhysics->m_acceleration = vehicle.acceleration;
     kartPhysics->m_turnSpeed = vehicle.turnSpeed;
-    kartPhysics->m_drag = 7.0f;
+    kartPhysics->m_drag = 5.0f;
+    kartPhysics->m_brakingRate = 22.0f;
+    kartPhysics->m_maxReverseSpeed = 4.5f;
 }
 
 void GameContext::selectDriver(int index) {

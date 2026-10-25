@@ -167,6 +167,98 @@ int main() {
         std::cout << "  [CHECK 3] Interfaz HUD Sci-Fi y Modal de Pausa (Kenney Space Pack + UI Pack) validados." << std::endl;
     }
 
+    // -------------------------------------------------------------------------
+    // TEST 4: Validacion de Dinamica de Vehiculo, Derrape, Wall Sliding y Cesped
+    // -------------------------------------------------------------------------
+    {
+        Engine::Physics::KartPhysics kart;
+
+        // 1. Validar colisionadores reducidos al 70% (0.70x)
+        auto sphere = kart.getBoundingSphere();
+        assert(std::abs(sphere.radius - 0.34f) < 0.001f && "Radio de esfera debe ser 0.34f");
+        auto box = kart.getBoundingBox();
+        assert(std::abs(box.halfExtents.x - 0.38f) < 0.001f && "Half-extent X de caja debe ser 0.38f");
+        assert(std::abs(box.halfExtents.y - 0.28f) < 0.001f && "Half-extent Y de caja debe ser 0.28f");
+        assert(std::abs(box.halfExtents.z - 0.56f) < 0.001f && "Half-extent Z de caja debe ser 0.56f");
+        (void)sphere;
+        (void)box;
+
+        // 2. Mecanica de Derrape (Power Slide): steer > 0.1 y drift=true
+        kart.setPosition(glm::vec3(0.0f));
+        kart.setYaw(0.0f);
+        // Acelerar un poco para tener velocidad
+        kart.update(1.0f, true, false, 0.0f, false);
+        float speedBefore = kart.getSpeed();
+        assert(speedBefore > 5.0f);
+        (void)speedBefore;
+
+        // Sin drift: steer a tope (1.0f) genera scrubbing y m_isDrifting es false
+        kart.update(0.1f, true, false, 1.0f, false);
+        assert(!kart.isDrifting());
+        float yawNoDrift = kart.getYaw();
+        (void)yawNoDrift;
+
+        // Con drift: bandera m_isDrifting = true y mayor tasa de viraje (1.35x)
+        Engine::Physics::KartPhysics kartDrift;
+        kartDrift.setPosition(glm::vec3(0.0f));
+        kartDrift.setYaw(0.0f);
+        kartDrift.update(1.0f, true, false, 0.0f, false);
+        kartDrift.update(0.1f, true, false, 1.0f, true);
+        assert(kartDrift.isDrifting());
+        // El giro debe ser mayor con drift que sin drift
+        assert(std::abs(kartDrift.getYaw()) > std::abs(yawNoDrift));
+
+        // 3. Deslizamiento rasante en muros (Wall Sliding)
+        // Impacto lateral rasante (dot ~ 0): el kart debe conservar el 85% de su velocidad
+        Engine::Physics::KartPhysics kartWall;
+        kartWall.setPosition(glm::vec3(0.0f));
+        kartWall.setYaw(0.0f); // forward = (0, 0, 1)
+        kartWall.update(1.0f, true, false, 0.0f);
+        float speedBeforeImpact = kartWall.getSpeed();
+        // Separación mínima perpendicular al avance: mtv = (0.5f, 0.0f, 0.0f), dot(forward, mtv) = 0.0f
+        kartWall.onCollision(glm::vec3(0.5f, 0.0f, 0.0f), 0.2f);
+        assert(std::abs(kartWall.getSpeed() - speedBeforeImpact * 0.85f) < 0.01f && "Wall sliding debe preservar el 85% de velocidad");
+        (void)speedBeforeImpact;
+
+        // Choque frontal directo (dot = -1.0f): debe rebotar
+        Engine::Physics::KartPhysics kartHeadOn;
+        kartHeadOn.setPosition(glm::vec3(0.0f));
+        kartHeadOn.setYaw(0.0f); // forward = (0, 0, 1)
+        kartHeadOn.update(1.0f, true, false, 0.0f);
+        float headOnSpeed = kartHeadOn.getSpeed();
+        kartHeadOn.onCollision(glm::vec3(0.0f, 0.0f, -0.5f), 0.25f);
+        assert(kartHeadOn.getSpeed() < 0.0f && std::abs(kartHeadOn.getSpeed() - (-headOnSpeed * 0.25f)) < 0.01f);
+        (void)headOnSpeed;
+
+        // 4. Penalización firme en césped
+        Engine::Physics::KartPhysics kartGrass;
+        kartGrass.setPosition(glm::vec3(0.0f));
+        // Acelerar en asfalto a alta velocidad (~14 m/s)
+        for (int i = 0; i < 40; ++i) {
+            kartGrass.update(0.05f, true, false, 0.0f);
+        }
+        assert(kartGrass.getSpeed() > 12.0f);
+        // Salir al césped (fricción 0.28)
+        kartGrass.setSurfaceFriction(0.28f);
+        // En un solo paso de 0.1s debe haber frenado firmemente (-28 m/s * 0.1s = -2.8 m/s)
+        float preGrassSpeed = kartGrass.getSpeed();
+        kartGrass.update(0.1f, true, false, 0.0f);
+        assert(kartGrass.getSpeed() <= preGrassSpeed - 2.5f && "El kart debe frenar con fuerza al salir al cesped");
+        (void)preGrassSpeed;
+
+        // 5. Inmunidad al césped con Boost
+        Engine::Physics::KartPhysics kartBoostGrass;
+        kartBoostGrass.setPosition(glm::vec3(0.0f));
+        kartBoostGrass.setSurfaceFriction(0.28f);
+        kartBoostGrass.applyBoost(1.2f, 1.28f, 3.5f);
+        assert(kartBoostGrass.isBoosting());
+        kartBoostGrass.update(0.1f, true, false, 0.0f);
+        // La velocidad en boost no debe ser limitada a m_maxSpeed * 0.28f
+        assert(kartBoostGrass.getSpeed() > kartBoostGrass.m_maxSpeed * 0.5f);
+
+        std::cout << "  [CHECK 4] Escala 70%, Derrape, Wall-Sliding, Penalizacion de cesped e Inmunidad Turbo validados." << std::endl;
+    }
+
     glfwDestroyWindow(window);
     glfwTerminate();
 

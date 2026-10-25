@@ -631,7 +631,7 @@ void ShowroomUI::renderVehicleInfo(float x, float y, float w, float h) {
     float speedKmH = vehicle.maxSpeed * 3.6f;
     std::stringstream ssSpeed;
     ssSpeed << std::fixed << std::setprecision(1) << speedKmH << " KM/H";
-    float speedRatio = std::clamp(speedKmH / 110.0f, 0.1f, 1.0f);
+    float speedRatio = std::clamp(speedKmH / 65.0f, 0.1f, 1.0f);
     renderStatBar(x, curY, w, 38.0f, "VELOCIDAD MAXIMA", ssSpeed.str(), speedRatio,
                   glm::vec4(1.0f, 0.40f, 0.20f, 1.0f));
     curY += 46.0f;
@@ -639,7 +639,7 @@ void ShowroomUI::renderVehicleInfo(float x, float y, float w, float h) {
     // Bar 2: ACELERACIÓN (m/s²)
     std::stringstream ssAcc;
     ssAcc << std::fixed << std::setprecision(1) << vehicle.acceleration << " M/S2";
-    float accRatio = std::clamp(vehicle.acceleration / 25.0f, 0.1f, 1.0f);
+    float accRatio = std::clamp(vehicle.acceleration / 15.0f, 0.1f, 1.0f);
     renderStatBar(x, curY, w, 38.0f, "ACELERACION", ssAcc.str(), accRatio,
                   glm::vec4(0.20f, 0.80f, 1.0f, 1.0f));
     curY += 46.0f;
@@ -647,7 +647,7 @@ void ShowroomUI::renderVehicleInfo(float x, float y, float w, float h) {
     // Bar 3: MANEJO / GIRO (deg/s)
     std::stringstream ssTurn;
     ssTurn << std::fixed << std::setprecision(1) << vehicle.turnSpeed << " DEG/S";
-    float turnRatio = std::clamp(vehicle.turnSpeed / 130.0f, 0.1f, 1.0f);
+    float turnRatio = std::clamp(vehicle.turnSpeed / 185.0f, 0.1f, 1.0f);
     renderStatBar(x, curY, w, 38.0f, "MANEJO / GIRO", ssTurn.str(), turnRatio,
                   glm::vec4(0.25f, 0.95f, 0.45f, 1.0f));
     curY += 46.0f;
@@ -655,7 +655,7 @@ void ShowroomUI::renderVehicleInfo(float x, float y, float w, float h) {
     // Bar 4: TRACCIÓN EN CÉSPED (%)
     int offRoadPct = static_cast<int>(vehicle.offRoadFriction * 100.0f + 0.5f);
     std::string offRoadStr = std::to_string(offRoadPct) + " %";
-    float frictionRatio = std::clamp(vehicle.offRoadFriction, 0.1f, 1.0f);
+    float frictionRatio = std::clamp(vehicle.offRoadFriction / 0.40f, 0.1f, 1.0f);
     renderStatBar(x, curY, w, 38.0f, "TRACCION EN CESPED", offRoadStr, frictionRatio,
                   glm::vec4(1.0f, 0.85f, 0.20f, 1.0f));
 }

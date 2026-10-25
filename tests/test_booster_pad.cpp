@@ -31,8 +31,8 @@ int main() {
     const auto* foundZone = triggerMgr.checkTrigger(padPos);
     assert(foundZone != nullptr);
     assert(foundZone->type == world::ZoneType::BOOST);
-    assert(foundZone->speedMultiplier == 1.6f);
-    assert(foundZone->durationSeconds == 2.0f);
+    assert(foundZone->speedMultiplier == 1.28f);
+    assert(foundZone->durationSeconds == 1.2f);
     std::cout << "  [CHECK 2] Volumen de activacion AABB registrado con exito en ZoneTriggerManager." << std::endl;
 
     // 3. Interacción reactiva con KartPhysics
@@ -50,16 +50,16 @@ int main() {
     bool contactInside = pad.onKartContact(kart);
     assert(contactInside);
     assert(kart.isBoosting());
-    assert(kart.getBoostTimer() == 2.0f);
-    assert(kart.getSpeed() > 0.0f); // Impulso instantáneo aplicado
+    assert(std::abs(kart.getBoostTimer() - 1.2f) < 0.001f);
+    assert(kart.getSpeed() >= 3.5f); // Impulso instantáneo rebalanceado aplicado
     std::cout << "  [CHECK 3] Contacto reactivo detectado: boost activado e impulso instantaneo inyectado." << std::endl;
 
     // Simulación de avance en el tiempo
-    kart.update(1.0f, true, false, 0.0f);
+    kart.update(0.6f, true, false, 0.0f);
     assert(kart.isBoosting());
-    assert(kart.getBoostTimer() == 1.0f);
+    assert(std::abs(kart.getBoostTimer() - 0.6f) < 0.001f);
 
-    kart.update(1.1f, false, false, 0.0f);
+    kart.update(0.7f, false, false, 0.0f);
     assert(!kart.isBoosting());
     std::cout << "  [CHECK 4] Temporizador de turbo y restauracion de limites de velocidad verificados." << std::endl;
 

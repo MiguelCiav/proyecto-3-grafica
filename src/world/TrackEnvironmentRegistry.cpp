@@ -52,7 +52,7 @@ std::vector<VehicleProfile> TrackEnvironmentRegistry::createDefaultVehicles() {
             "Chasis ligero estandar, agil y facil de maniobrar",
             "assets/models/karts/kart-oobi.obj",
             glm::vec3(0.0f, 0.0f, 0.0f),
-            22.0f, 18.0f, 100.0f, 0.45f, {}, false
+            14.5f, 11.5f, 155.0f, 0.28f, {}, false
         },
         {
             "kart-oodi",
@@ -61,7 +61,7 @@ std::vector<VehicleProfile> TrackEnvironmentRegistry::createDefaultVehicles() {
             "Aleron aerodinamico de alta velocidad punta",
             "assets/models/karts/kart-oodi.obj",
             glm::vec3(0.0f, 0.0f, 0.0f),
-            25.5f, 16.0f, 85.0f, 0.38f, {}, false
+            15.8f, 10.5f, 140.0f, 0.24f, {}, false
         },
         {
             "kart-ooli",
@@ -70,7 +70,7 @@ std::vector<VehicleProfile> TrackEnvironmentRegistry::createDefaultVehicles() {
             "Traccion total y suspension reforzada para curvas",
             "assets/models/karts/kart-ooli.obj",
             glm::vec3(0.0f, 0.0f, 0.0f),
-            21.0f, 20.0f, 105.0f, 0.65f, {}, false
+            13.8f, 12.5f, 160.0f, 0.35f, {}, false
         },
         {
             "kart-oopi",
@@ -79,7 +79,7 @@ std::vector<VehicleProfile> TrackEnvironmentRegistry::createDefaultVehicles() {
             "Aceleracion explosiva y turbo de salida rapida",
             "assets/models/karts/kart-oopi.obj",
             glm::vec3(0.0f, 0.0f, 0.0f),
-            23.5f, 22.0f, 95.0f, 0.40f, {}, false
+            15.0f, 13.5f, 150.0f, 0.25f, {}, false
         },
         {
             "kart-oozi",
@@ -88,7 +88,7 @@ std::vector<VehicleProfile> TrackEnvironmentRegistry::createDefaultVehicles() {
             "Maximo angulo de giro y derrape ultratecnico",
             "assets/models/karts/kart-oozi.obj",
             glm::vec3(0.0f, 0.0f, 0.0f),
-            22.5f, 19.0f, 120.0f, 0.44f, {}, false
+            14.6f, 11.8f, 175.0f, 0.27f, {}, false
         },
         // --- Vehiculos Adicionales Kenney Car-Kit ---
         {
@@ -98,7 +98,7 @@ std::vector<VehicleProfile> TrackEnvironmentRegistry::createDefaultVehicles() {
             "Monoplaza de competicion ultraligero y aerodinamico",
             "assets/models/vehicles/race.obj",
             glm::vec3(0.0f, -0.04f, -0.12f),
-            27.0f, 21.0f, 110.0f, 0.35f, {}, false
+            16.0f, 13.0f, 165.0f, 0.22f, {}, false
         },
         {
             "race-future",
@@ -107,7 +107,7 @@ std::vector<VehicleProfile> TrackEnvironmentRegistry::createDefaultVehicles() {
             "Prototipo futurista de vanguardia y maxima velocidad",
             "assets/models/vehicles/race-future.obj",
             glm::vec3(0.0f, -0.04f, -0.18f),
-            28.5f, 23.0f, 105.0f, 0.32f, {}, false
+            16.2f, 13.5f, 160.0f, 0.22f, {}, false
         },
         {
             "police",
@@ -116,7 +116,7 @@ std::vector<VehicleProfile> TrackEnvironmentRegistry::createDefaultVehicles() {
             "Vehiculo de persecucion con gran estabilidad y sirena",
             "assets/models/vehicles/police.obj",
             glm::vec3(0.0f, -0.15f, 0.02f),
-            23.0f, 19.0f, 90.0f, 0.45f, {}, false
+            14.8f, 12.0f, 145.0f, 0.28f, {}, false
         },
         {
             "taxi",
@@ -125,7 +125,7 @@ std::vector<VehicleProfile> TrackEnvironmentRegistry::createDefaultVehicles() {
             "Iconico taxi urbano preparado para carreras callejeras",
             "assets/models/vehicles/taxi.obj",
             glm::vec3(0.0f, -0.15f, 0.02f),
-            23.5f, 17.5f, 95.0f, 0.42f, {}, false
+            15.0f, 11.2f, 150.0f, 0.26f, {}, false
         },
         {
             "sedan-sports",
@@ -134,7 +134,7 @@ std::vector<VehicleProfile> TrackEnvironmentRegistry::createDefaultVehicles() {
             "Sedan con aleron deportivo y agarre equilibrado",
             "assets/models/vehicles/sedan-sports.obj",
             glm::vec3(0.0f, -0.15f, 0.02f),
-            24.5f, 18.5f, 92.0f, 0.40f, {}, false
+            15.4f, 11.8f, 148.0f, 0.25f, {}, false
         },
         {
             "suv",
@@ -143,7 +143,7 @@ std::vector<VehicleProfile> TrackEnvironmentRegistry::createDefaultVehicles() {
             "Traccion integral 4x4 con rueda de repuesto",
             "assets/models/vehicles/suv.obj",
             glm::vec3(0.0f, -0.15f, 0.02f),
-            21.5f, 19.5f, 88.0f, 0.70f, {}, false
+            13.8f, 12.2f, 142.0f, 0.35f, {}, false
         }
     };
 }

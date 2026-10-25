@@ -327,16 +327,21 @@ void RacingScene::update(float deltaTime) {
     // 1. Entrada de conduccion del kart
     bool accel = false;
     bool brake = false;
+    bool drift = false;
     float steer = 0.0f;
 
     if (m_ctx.cameraMode == core::CameraMode::CHASE) {
         accel = core::Input::isKeyPressed(GLFW_KEY_W) || core::Input::isKeyPressed(GLFW_KEY_UP);
         brake = core::Input::isKeyPressed(GLFW_KEY_S) || core::Input::isKeyPressed(GLFW_KEY_DOWN);
+        drift = core::Input::isKeyPressed(GLFW_KEY_SPACE) ||
+                core::Input::isKeyPressed(GLFW_KEY_LEFT_SHIFT) ||
+                core::Input::isKeyPressed(GLFW_KEY_RIGHT_SHIFT);
         if (core::Input::isKeyPressed(GLFW_KEY_A) || core::Input::isKeyPressed(GLFW_KEY_LEFT))  steer -= 1.0f;
         if (core::Input::isKeyPressed(GLFW_KEY_D) || core::Input::isKeyPressed(GLFW_KEY_RIGHT)) steer += 1.0f;
     } else {
         accel = core::Input::isKeyPressed(GLFW_KEY_UP);
         brake = core::Input::isKeyPressed(GLFW_KEY_DOWN);
+        drift = core::Input::isKeyPressed(GLFW_KEY_RIGHT_SHIFT);
         if (core::Input::isKeyPressed(GLFW_KEY_LEFT))  steer -= 1.0f;
         if (core::Input::isKeyPressed(GLFW_KEY_RIGHT)) steer += 1.0f;
     }
@@ -349,7 +354,7 @@ void RacingScene::update(float deltaTime) {
         const auto* currentTile = m_ctx.trackGrid->getTileAtWorldPos(kartPos.x, kartPos.z);
         if (currentTile == nullptr || currentTile->type == world::TileType::EMPTY) {
             float offRoad = (!m_ctx.vehicles.empty() && m_ctx.selectedVehicleIndex < static_cast<int>(m_ctx.vehicles.size()))
-                                ? m_ctx.vehicles[m_ctx.selectedVehicleIndex].offRoadFriction : 0.45f;
+                                ? m_ctx.vehicles[m_ctx.selectedVehicleIndex].offRoadFriction : 0.28f;
             m_ctx.kartPhysics->setSurfaceFriction(offRoad);
         } else {
             m_ctx.kartPhysics->setSurfaceFriction(1.0f);
@@ -364,7 +369,7 @@ void RacingScene::update(float deltaTime) {
     }
 
     // 3. Actualizar modelo de dinamica de vehiculo
-    m_ctx.kartPhysics->update(deltaTime, accel, brake, steer);
+    m_ctx.kartPhysics->update(deltaTime, accel, brake, steer, drift);
 
     // 4. Resolucion de colisiones del kart contra barreras/conos con esfera suave
     if (m_ctx.collisionSystem) {
@@ -426,6 +431,7 @@ void RacingScene::update(float deltaTime) {
     // Actualizar marcas de derrape en el asfalto y terreno
     if (m_ctx.skidmarkManager && m_ctx.kartEntity) {
         bool isBraking = brake && (m_ctx.kartPhysics->getSpeed() > 1.5f);
+        bool isDriftSkid = m_ctx.kartPhysics->isDrifting() || isBraking;
         glm::vec3 leftTireContact = m_ctx.kartEntity->getWheelBLWorldPos();
         glm::vec3 rightTireContact = m_ctx.kartEntity->getWheelBRWorldPos();
 
@@ -447,7 +453,7 @@ void RacingScene::update(float deltaTime) {
         rightTireContact.y = rightY;
 
         m_ctx.skidmarkManager->updateWithWheelPositions(deltaTime, leftTireContact, rightTireContact,
-                                                       m_ctx.kartPhysics->getSpeed(), steer, isBraking, m_ctx.kartPhysics->isBoosting());
+                                                       m_ctx.kartPhysics->getSpeed(), steer, isDriftSkid, m_ctx.kartPhysics->isBoosting());
     }
 
     if (m_ctx.lightingController) {
@@ -476,6 +482,7 @@ void RacingScene::update(float deltaTime) {
             ss << "[" << vName << " @ " << tName << "] ";
             ss << "| Vel: " << std::fixed << std::setprecision(1) << (m_ctx.kartPhysics->getSpeed() * 3.6f) << " km/h";
             if (m_ctx.kartPhysics->isBoosting()) ss << " [TURBO!]";
+            if (m_ctx.kartPhysics->isDrifting()) ss << " [DRIFT!]";
             if (m_ctx.kartPhysics->getSurfaceFriction() < 0.9f) ss << " [OFF-ROAD]";
             ss << " | Vueltas: " << m_lapsCompleted;
         } else if (m_ctx.fpsCamera) {

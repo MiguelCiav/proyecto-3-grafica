@@ -17,7 +17,7 @@ void KartPhysics::applyBoost(float duration, float multiplier, float instantImpu
     m_currentSpeed = std::min(m_currentSpeed + instantImpulse, boostedMax);
 }
 
-void KartPhysics::update(float deltaTime, bool accelerate, bool brake, float steerInput) {
+void KartPhysics::update(float deltaTime, bool accelerate, bool brake, float steerInput, bool drift) {
     if (deltaTime <= 0.0f) return;
 
     // 1. Control del boost temporal
@@ -26,16 +26,41 @@ void KartPhysics::update(float deltaTime, bool accelerate, bool brake, float ste
         if (m_boostTimer < 0.0f) m_boostTimer = 0.0f;
     }
 
+    bool hasBoost = (m_boostTimer > 0.0f);
+    bool isOffRoad = (m_surfaceFriction < 0.95f) && !hasBoost;
+
+    // Velocidad maxima efectiva (inmunidad al cesped durante turbo)
     float currentMaxSpeed = m_maxSpeed;
-    if (m_boostTimer > 0.0f) {
+    if (hasBoost) {
         currentMaxSpeed *= m_boostMultiplier;
+    } else {
+        currentMaxSpeed *= m_surfaceFriction;
     }
-    // Modificador de superficie (cesped, asfalto)
-    currentMaxSpeed *= m_surfaceFriction;
+
+    // Penalizacion firme si se excede la velocidad maxima de la superficie actual (ej: entrar al cesped a 50 km/h)
+    if (isOffRoad && m_currentSpeed > currentMaxSpeed) {
+        m_currentSpeed -= 28.0f * deltaTime;
+        if (m_currentSpeed < currentMaxSpeed) {
+            m_currentSpeed = currentMaxSpeed;
+        }
+    } else if (!hasBoost && m_currentSpeed > currentMaxSpeed) {
+        m_currentSpeed -= m_drag * 2.0f * deltaTime;
+        if (m_currentSpeed < currentMaxSpeed) {
+            m_currentSpeed = currentMaxSpeed;
+        }
+    }
+
+    // Aceleracion efectiva segun superficie
+    float currentAccel = m_acceleration;
+    if (hasBoost) {
+        currentAccel *= 1.5f;
+    } else if (isOffRoad) {
+        currentAccel *= m_surfaceFriction;
+    }
 
     // 2. Aceleracion y frenado longitudinal
     if (accelerate && !brake) {
-        m_currentSpeed += m_acceleration * (m_boostTimer > 0.0f ? 1.5f : 1.0f) * deltaTime;
+        m_currentSpeed += currentAccel * deltaTime;
         if (m_currentSpeed > currentMaxSpeed) {
             m_currentSpeed = currentMaxSpeed;
         }
@@ -46,14 +71,19 @@ void KartPhysics::update(float deltaTime, bool accelerate, bool brake, float ste
             if (m_currentSpeed < 0.0f) m_currentSpeed = 0.0f;
         } else {
             // Reversa
-            m_currentSpeed -= (m_acceleration * 0.6f) * deltaTime;
-            if (m_currentSpeed < -m_maxReverseSpeed) {
-                m_currentSpeed = -m_maxReverseSpeed;
+            float revAccel = currentAccel * 0.6f;
+            m_currentSpeed -= revAccel * deltaTime;
+            float maxRev = isOffRoad ? (m_maxReverseSpeed * m_surfaceFriction) : m_maxReverseSpeed;
+            if (m_currentSpeed < -maxRev) {
+                m_currentSpeed = -maxRev;
             }
         }
     } else {
         // Desaceleracion pasiva por friccion con el suelo y resistencia del aire
-        float activeDrag = m_drag / m_surfaceFriction; // Mas desaceleracion en cesped
+        float activeDrag = m_drag;
+        if (isOffRoad) {
+            activeDrag = m_drag / std::max(m_surfaceFriction, 0.1f);
+        }
         if (m_currentSpeed > 0.0f) {
             m_currentSpeed -= activeDrag * deltaTime;
             if (m_currentSpeed < 0.0f) m_currentSpeed = 0.0f;
@@ -63,25 +93,33 @@ void KartPhysics::update(float deltaTime, bool accelerate, bool brake, float ste
         }
     }
 
-    // Si la velocidad supera la velocidad maxima permitida por la superficie actual (ej: entro al pasto rapido)
-    if (m_currentSpeed > currentMaxSpeed && m_boostTimer <= 0.0f) {
-        m_currentSpeed -= m_drag * 2.0f * deltaTime;
+    // 3. Direccion, viraje angular (yaw) y mecanica de Derrape (Power Slide)
+    float clampedSteer = std::clamp(steerInput, -1.0f, 1.0f);
+    m_steeringAngle = clampedSteer * m_maxSteerAngle;
+
+    // Bandera de derrape activa si el jugador presiona drift y gira
+    m_isDrifting = drift && (std::abs(clampedSteer) > 0.1f);
+
+    // "Scrubbing" de velocidad en curvas cerradas si no esta derrapando (ayuda a cerrar la trazada)
+    if (std::abs(clampedSteer) > 0.7f && !m_isDrifting) {
+        if (m_currentSpeed > 0.0f) {
+            m_currentSpeed -= 3.0f * std::abs(clampedSteer) * deltaTime;
+            if (m_currentSpeed < 0.0f) m_currentSpeed = 0.0f;
+        }
     }
 
-    // 3. Direccion y viraje angular (yaw)
     // El viraje solo es efectivo si el vehiculo esta en movimiento
     float speedRatio = std::clamp(std::abs(m_currentSpeed) / (m_maxSpeed * 0.5f), 0.0f, 1.0f);
     float directionMultiplier = (m_currentSpeed >= 0.0f) ? 1.0f : -1.0f; // Invertir viraje en reversa
 
-    // steerInput: -1.0 (Izquierda), +1.0 (Derecha)
-    float clampedSteer = std::clamp(steerInput, -1.0f, 1.0f);
-    m_steeringAngle = clampedSteer * m_maxSteerAngle;
+    // Tasa de viraje: incremento de 1.35x en modo derrape
+    float effectiveTurnSpeed = m_turnSpeed * (m_isDrifting ? 1.35f : 1.0f);
 
     if (std::abs(clampedSteer) > 0.01f && speedRatio > 0.05f) {
         // En nuestro sistema de coordenadas:
-        // yaw=0 -> (0, 0, 1). steerInput > 0 (derecha) rota en sentido horario (yaw negativo o positivo)
+        // yaw=0 -> (0, 0, 1). steerInput > 0 (derecha) rota en sentido horario (yaw negativo)
         // sin(yaw): yaw positivo rota hacia +X (derecha del eje +Z).
-        m_yawDegrees -= clampedSteer * m_turnSpeed * speedRatio * directionMultiplier * deltaTime;
+        m_yawDegrees -= clampedSteer * effectiveTurnSpeed * speedRatio * directionMultiplier * deltaTime;
 
         // Normalizar yaw a [-180, 180]
         while (m_yawDegrees > 180.0f) m_yawDegrees -= 360.0f;
@@ -102,17 +140,18 @@ void KartPhysics::onCollision(const glm::vec3& mtv, float reboundFactor) {
         m_position += mtv;
     }
 
-    // Disminuir o rebotar la velocidad si el impacto fue frontal
+    // Evaluar ángulo de incidencia del impacto
     glm::vec3 forward = getForwardVector();
     glm::vec3 mtvDir = (glm::length(planarMTV) > 0.0001f) ? glm::normalize(planarMTV) : glm::normalize(mtv);
     float dot = glm::dot(forward, mtvDir);
 
-    if (dot < -0.22f) {
-        // Impacto frontal o angular directo contra el obstaculo
-        m_currentSpeed = -m_currentSpeed * reboundFactor;
-    } else {
-        // Roce lateral o contacto rasante junto a conos y barreras
+    if (std::abs(dot) < 0.45f) {
+        // Deslizamiento rasante en paredes (Wall Sliding):
+        // Preservar la inercia del kart reduciendo solo un 15% de velocidad en impactos laterales
         m_currentSpeed *= 0.85f;
+    } else {
+        // Impacto frontal o directo contra el obstaculo
+        m_currentSpeed = -m_currentSpeed * reboundFactor;
     }
 }
 
