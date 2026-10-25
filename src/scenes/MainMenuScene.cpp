@@ -17,52 +17,18 @@ MainMenuScene::MainMenuScene(core::GameContext& ctx)
 
 void MainMenuScene::onEnter() {
     core::Input::setCursorVisible(true);
+
+    if (!m_uiRenderer.isInitialized()) {
+        m_uiRenderer.init();
+    }
+    m_menuUI.init(&m_uiRenderer, &m_ctx);
 }
 
 void MainMenuScene::onExit() {
 }
 
 void MainMenuScene::handleInput(float deltaTime) {
-    (void)deltaTime;
-    if (core::Input::isKeyJustPressed(GLFW_KEY_ESCAPE)) {
-        std::cout << "[MENU] Saliendo del juego..." << std::endl;
-        if (m_ctx.window) {
-            glfwSetWindowShouldClose(m_ctx.window->getNativeWindow(), GLFW_TRUE);
-        }
-        return;
-    }
-    if (core::Input::isKeyJustPressed(GLFW_KEY_1) || core::Input::isKeyJustPressed(GLFW_KEY_KP_1) ||
-        core::Input::isKeyJustPressed(GLFW_KEY_ENTER) || core::Input::isKeyJustPressed(GLFW_KEY_KP_ENTER)) {
-        std::cout << "[MENU] Opcion [1 / ENTER]: Abriendo Configuracion (Corredor)..." << std::endl;
-        m_ctx.selectionCategory = core::SelectionCategory::DRIVER;
-        if (m_ctx.sceneManager) {
-            m_ctx.sceneManager->changeScene(core::GameState::VEHICLE_SELECT);
-        }
-        return;
-    }
-    if (core::Input::isKeyJustPressed(GLFW_KEY_2) || core::Input::isKeyJustPressed(GLFW_KEY_KP_2)) {
-        std::cout << "[MENU] Opcion [2]: Abriendo Configuracion (Vehiculo)..." << std::endl;
-        m_ctx.selectionCategory = core::SelectionCategory::VEHICLE;
-        if (m_ctx.sceneManager) {
-            m_ctx.sceneManager->changeScene(core::GameState::VEHICLE_SELECT);
-        }
-        return;
-    }
-    if (core::Input::isKeyJustPressed(GLFW_KEY_3) || core::Input::isKeyJustPressed(GLFW_KEY_KP_3)) {
-        std::cout << "[MENU] Opcion [3]: Abriendo Configuracion (Pista)..." << std::endl;
-        m_ctx.selectionCategory = core::SelectionCategory::TRACK;
-        if (m_ctx.sceneManager) {
-            m_ctx.sceneManager->changeScene(core::GameState::VEHICLE_SELECT);
-        }
-        return;
-    }
-    if (core::Input::isKeyJustPressed(GLFW_KEY_SPACE)) {
-        std::cout << "[MENU] Opcion [ESPACIO]: Iniciando Carrera Inmediata..." << std::endl;
-        if (m_ctx.sceneManager) {
-            m_ctx.sceneManager->changeScene(core::GameState::RACING);
-        }
-        return;
-    }
+    m_menuUI.handleInput(deltaTime);
 }
 
 void MainMenuScene::update(float deltaTime) {
@@ -73,10 +39,12 @@ void MainMenuScene::update(float deltaTime) {
         m_ctx.propSpawner->update(deltaTime);
     }
 
+    m_menuUI.update(deltaTime);
+
     m_titleTimer += deltaTime;
     if (m_titleTimer >= 0.25f && m_ctx.window) {
         m_titleTimer = 0.0f;
-        m_ctx.window->setTitle("Prototipo Mario Kart - CGI (UCV) | MENU PRINCIPAL | [1/ENTER] Seleccionar Corredor/Auto/Pista | [ESPACIO] Iniciar Carrera | [ESC] Salir");
+        m_ctx.window->setTitle("Prototipo Mario Kart - CGI (UCV) | MENU PRINCIPAL | [W/S/FLECHAS] Navegar | [ENTER] Seleccionar");
     }
 }
 
@@ -176,6 +144,11 @@ void MainMenuScene::render(int windowWidth, int windowHeight) {
     if (skybox.isLoaded()) {
         skybox.draw(view, proj);
     }
+
+    // -------------------------------------------------------------
+    // Capa de Interfaz Grafica 2D (Kenney UI Pack)
+    // -------------------------------------------------------------
+    m_menuUI.render(static_cast<float>(windowWidth), static_cast<float>(windowHeight));
 }
 
 } // namespace scenes

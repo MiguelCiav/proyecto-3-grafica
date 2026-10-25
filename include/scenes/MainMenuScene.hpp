@@ -2,6 +2,8 @@
 
 #include "core/IScene.hpp"
 #include "core/GameContext.hpp"
+#include "ui/UIRenderer.hpp"
+#include "ui/MainMenuUI.hpp"
 
 namespace scenes {
 
@@ -18,6 +20,9 @@ public:
 
 private:
     core::GameContext& m_ctx;
+    ui::UIRenderer m_uiRenderer;
+    ui::MainMenuUI m_menuUI;
+
     float m_menuOrbitAngle{0.0f};
     float m_elapsedTime{0.0f};
     float m_titleTimer{0.0f};

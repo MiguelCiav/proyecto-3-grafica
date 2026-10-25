@@ -4,218 +4,183 @@
 #include <cmath>
 #include <algorithm>
 #include <iostream>
+#include <fstream>
 
 namespace ui {
 
 namespace {
 
-// Fuente matricial 5x7 para caracteres ASCII 32 (' ') hasta 90 ('Z')
-const uint8_t FONT_5X7[][7] = {
-    // 32 ' '
-    {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-    // 33 '!'
-    {0x04, 0x04, 0x04, 0x04, 0x00, 0x04, 0x00},
-    // 34 '"'
-    {0x0A, 0x0A, 0x00, 0x00, 0x00, 0x00, 0x00},
-    // 35 '#'
-    {0x0A, 0x1F, 0x0A, 0x0A, 0x1F, 0x0A, 0x00},
-    // 36 '$'
-    {0x04, 0x0F, 0x14, 0x0E, 0x05, 0x1E, 0x04},
-    // 37 '%'
-    {0x18, 0x19, 0x02, 0x04, 0x08, 0x13, 0x03},
-    // 38 '&'
-    {0x08, 0x14, 0x14, 0x08, 0x15, 0x12, 0x0D},
-    // 39 '\''
-    {0x04, 0x04, 0x02, 0x00, 0x00, 0x00, 0x00},
-    // 40 '('
-    {0x02, 0x04, 0x08, 0x08, 0x08, 0x04, 0x02},
-    // 41 ')'
-    {0x08, 0x04, 0x02, 0x02, 0x02, 0x04, 0x08},
-    // 42 '*'
-    {0x00, 0x04, 0x15, 0x0E, 0x15, 0x04, 0x00},
-    // 43 '+'
-    {0x00, 0x04, 0x04, 0x1F, 0x04, 0x04, 0x00},
-    // 44 ','
-    {0x00, 0x00, 0x00, 0x00, 0x04, 0x04, 0x08},
-    // 45 '-'
-    {0x00, 0x00, 0x00, 0x1F, 0x00, 0x00, 0x00},
-    // 46 '.'
-    {0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00},
-    // 47 '/'
-    {0x01, 0x02, 0x04, 0x08, 0x10, 0x00, 0x00},
-    // 48 '0'
-    {0x0E, 0x11, 0x13, 0x15, 0x19, 0x11, 0x0E},
-    // 49 '1'
-    {0x04, 0x0C, 0x04, 0x04, 0x04, 0x04, 0x0E},
-    // 50 '2'
-    {0x0E, 0x11, 0x01, 0x06, 0x08, 0x10, 0x1F},
-    // 51 '3'
-    {0x1F, 0x02, 0x04, 0x02, 0x01, 0x11, 0x0E},
-    // 52 '4'
-    {0x02, 0x06, 0x0A, 0x12, 0x1F, 0x02, 0x02},
-    // 53 '5'
-    {0x1F, 0x10, 0x1E, 0x01, 0x01, 0x11, 0x0E},
-    // 54 '6'
-    {0x06, 0x08, 0x10, 0x1E, 0x11, 0x11, 0x0E},
-    // 55 '7'
-    {0x1F, 0x01, 0x02, 0x04, 0x08, 0x08, 0x08},
-    // 56 '8'
-    {0x0E, 0x11, 0x11, 0x0E, 0x11, 0x11, 0x0E},
-    // 57 '9'
-    {0x0E, 0x11, 0x11, 0x0F, 0x01, 0x02, 0x0C},
-    // 58 ':'
-    {0x00, 0x04, 0x00, 0x00, 0x04, 0x00, 0x00},
-    // 59 ';'
-    {0x00, 0x04, 0x00, 0x00, 0x04, 0x04, 0x08},
-    // 60 '<'
-    {0x02, 0x04, 0x08, 0x10, 0x08, 0x04, 0x02},
-    // 61 '='
-    {0x00, 0x1F, 0x00, 0x1F, 0x00, 0x00, 0x00},
-    // 62 '>'
-    {0x08, 0x04, 0x02, 0x01, 0x02, 0x04, 0x08},
-    // 63 '?'
-    {0x0E, 0x11, 0x01, 0x02, 0x04, 0x00, 0x04},
-    // 64 '@'
-    {0x0E, 0x11, 0x01, 0x0D, 0x15, 0x15, 0x0E},
-    // 65 'A'
-    {0x0E, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11},
-    // 66 'B'
-    {0x1E, 0x11, 0x11, 0x1E, 0x11, 0x11, 0x1E},
-    // 67 'C'
-    {0x0E, 0x11, 0x10, 0x10, 0x10, 0x11, 0x0E},
-    // 68 'D'
-    {0x1C, 0x12, 0x11, 0x11, 0x11, 0x12, 0x1C},
-    // 69 'E'
-    {0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x1F},
-    // 70 'F'
-    {0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x10},
-    // 71 'G'
-    {0x0E, 0x11, 0x10, 0x17, 0x11, 0x11, 0x0F},
-    // 72 'H'
-    {0x11, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11},
-    // 73 'I'
-    {0x0E, 0x04, 0x04, 0x04, 0x04, 0x04, 0x0E},
-    // 74 'J'
-    {0x07, 0x02, 0x02, 0x02, 0x02, 0x12, 0x0C},
-    // 75 'K'
-    {0x11, 0x12, 0x14, 0x18, 0x14, 0x12, 0x11},
-    // 76 'L'
-    {0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x1F},
-    // 77 'M'
-    {0x11, 0x1B, 0x15, 0x15, 0x11, 0x11, 0x11},
-    // 78 'N'
-    {0x11, 0x11, 0x19, 0x15, 0x13, 0x11, 0x11},
-    // 79 'O'
-    {0x0E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E},
-    // 80 'P'
-    {0x1E, 0x11, 0x11, 0x1E, 0x10, 0x10, 0x10},
-    // 81 'Q'
-    {0x0E, 0x11, 0x11, 0x11, 0x15, 0x12, 0x0D},
-    // 82 'R'
-    {0x1E, 0x11, 0x11, 0x1E, 0x14, 0x12, 0x11},
-    // 83 'S'
-    {0x0E, 0x11, 0x10, 0x0E, 0x01, 0x11, 0x0E},
-    // 84 'T'
-    {0x1F, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04},
-    // 85 'U'
-    {0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E},
-    // 86 'V'
-    {0x11, 0x11, 0x11, 0x11, 0x11, 0x0A, 0x04},
-    // 87 'W'
-    {0x11, 0x11, 0x11, 0x15, 0x15, 0x15, 0x0A},
-    // 88 'X'
-    {0x11, 0x11, 0x0A, 0x04, 0x0A, 0x11, 0x11},
-    // 89 'Y'
-    {0x11, 0x11, 0x0A, 0x04, 0x04, 0x04, 0x04},
-    // 90 'Z'
-    {0x1F, 0x01, 0x02, 0x04, 0x08, 0x10, 0x1F}
-};
+// Helper para localizar rutas de assets independientemente de si el ejecutable
+// corre desde la raiz del repositorio o desde la carpeta de construccion build/
+std::string resolveAssetPath(const std::string& relativePath) {
+    std::ifstream f1(relativePath);
+    if (f1.good()) return relativePath;
+
+    std::string parentRelative = "../" + relativePath;
+    std::ifstream f2(parentRelative);
+    if (f2.good()) return parentRelative;
+
+    return relativePath;
+}
 
 } // namespace
 
-RacingHud::RacingHud() {
-    m_vertices.reserve(4096);
+RacingHud::RacingHud() = default;
+
+RacingHud::~RacingHud() = default;
+
+RacingHud::RacingHud(RacingHud&& other) noexcept
+    : m_uiRenderer(std::move(other.m_uiRenderer))
+    , m_texSpeedGaugeFrame(std::move(other.m_texSpeedGaugeFrame))
+    , m_texSpeedBarContainer(std::move(other.m_texSpeedBarContainer))
+    , m_texSpeedBarFillYellow(std::move(other.m_texSpeedBarFillYellow))
+    , m_texSpeedBarFillRed(std::move(other.m_texSpeedBarFillRed))
+    , m_texSpeedBarContainerL(std::move(other.m_texSpeedBarContainerL))
+    , m_texSpeedBarContainerM(std::move(other.m_texSpeedBarContainerM))
+    , m_texSpeedBarContainerR(std::move(other.m_texSpeedBarContainerR))
+    , m_texSpeedBarFillYellowL(std::move(other.m_texSpeedBarFillYellowL))
+    , m_texSpeedBarFillYellowM(std::move(other.m_texSpeedBarFillYellowM))
+    , m_texSpeedBarFillYellowR(std::move(other.m_texSpeedBarFillYellowR))
+    , m_texSpeedBarFillRedL(std::move(other.m_texSpeedBarFillRedL))
+    , m_texSpeedBarFillRedM(std::move(other.m_texSpeedBarFillRedM))
+    , m_texSpeedBarFillRedR(std::move(other.m_texSpeedBarFillRedR))
+    , m_texLapTimerFrame(std::move(other.m_texLapTimerFrame))
+    , m_texLapBadge(std::move(other.m_texLapBadge))
+    , m_texTurboBoostBanner(std::move(other.m_texTurboBoostBanner))
+    , m_initialized(other.m_initialized)
+    , m_pulseTimer(other.m_pulseTimer)
+{
+    other.m_initialized = false;
+    other.m_pulseTimer = 0.0f;
 }
 
-RacingHud::~RacingHud() {
-    if (m_vao) glDeleteVertexArrays(1, &m_vao);
-    if (m_vbo) glDeleteBuffers(1, &m_vbo);
+RacingHud& RacingHud::operator=(RacingHud&& other) noexcept {
+    if (this != &other) {
+        m_uiRenderer = std::move(other.m_uiRenderer);
+        m_texSpeedGaugeFrame = std::move(other.m_texSpeedGaugeFrame);
+        m_texSpeedBarContainer = std::move(other.m_texSpeedBarContainer);
+        m_texSpeedBarFillYellow = std::move(other.m_texSpeedBarFillYellow);
+        m_texSpeedBarFillRed = std::move(other.m_texSpeedBarFillRed);
+        m_texSpeedBarContainerL = std::move(other.m_texSpeedBarContainerL);
+        m_texSpeedBarContainerM = std::move(other.m_texSpeedBarContainerM);
+        m_texSpeedBarContainerR = std::move(other.m_texSpeedBarContainerR);
+        m_texSpeedBarFillYellowL = std::move(other.m_texSpeedBarFillYellowL);
+        m_texSpeedBarFillYellowM = std::move(other.m_texSpeedBarFillYellowM);
+        m_texSpeedBarFillYellowR = std::move(other.m_texSpeedBarFillYellowR);
+        m_texSpeedBarFillRedL = std::move(other.m_texSpeedBarFillRedL);
+        m_texSpeedBarFillRedM = std::move(other.m_texSpeedBarFillRedM);
+        m_texSpeedBarFillRedR = std::move(other.m_texSpeedBarFillRedR);
+        m_texLapTimerFrame = std::move(other.m_texLapTimerFrame);
+        m_texLapBadge = std::move(other.m_texLapBadge);
+        m_texTurboBoostBanner = std::move(other.m_texTurboBoostBanner);
+        m_initialized = other.m_initialized;
+        m_pulseTimer = other.m_pulseTimer;
+
+        other.m_initialized = false;
+        other.m_pulseTimer = 0.0f;
+    }
+    return *this;
 }
 
 bool RacingHud::init(const std::string& vertPath, const std::string& fragPath) {
     if (m_initialized) return true;
 
-    if (!m_shader.loadFromFiles(vertPath, fragPath)) {
-        std::cerr << "[ERROR] [RacingHud] Error cargando shaders desde: "
-                  << vertPath << " y " << fragPath << std::endl;
+    // Inicializar renderizador 2D por lotes
+    bool shaderOk = m_uiRenderer.init(vertPath, fragPath);
+    if (!shaderOk && vertPath != "shaders/ui.vert") {
+        shaderOk = m_uiRenderer.init("shaders/ui.vert", "shaders/ui.frag");
+    }
+    if (!shaderOk && vertPath != "shaders/hud.vert") {
+        shaderOk = m_uiRenderer.init("shaders/hud.vert", "shaders/hud.frag");
+    }
+    if (!shaderOk) {
+        std::cerr << "[ERROR] [RacingHud] Fallo al compilar shaders para UIRenderer ("
+                  << vertPath << ", " << fragPath << ")" << std::endl;
         return false;
     }
 
-    glGenVertexArrays(1, &m_vao);
-    glBindVertexArray(m_vao);
+    // Cargar texturas de Kenney Space Expansion Pack (sin volteo vertical para UI 2D)
+    // Se intenta primero la versión 2x de alta resolución (Double) con fallback a Default
+    const std::string basePath = "assets/kenney_ui-pack-space-expansion/PNG/";
 
-    glGenBuffers(1, &m_vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-    glBufferData(GL_ARRAY_BUFFER, 8192 * sizeof(HudVertex), nullptr, GL_DYNAMIC_DRAW);
+    auto loadTexture = [&](renderer::Texture& tex, const std::string& relPath) -> bool {
+        std::string doubleRel = relPath;
+        size_t idx = doubleRel.find("/Default/");
+        if (idx != std::string::npos) {
+            doubleRel.replace(idx, 9, "/Double/");
+        }
+        std::string resolvedDouble = resolveAssetPath(basePath + doubleRel);
+        if (tex.loadFromFile(resolvedDouble, false)) {
+            return true;
+        }
+        std::string resolvedDefault = resolveAssetPath(basePath + relPath);
+        return tex.loadFromFile(resolvedDefault, false);
+    };
 
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(HudVertex), reinterpret_cast<void*>(offsetof(HudVertex, pos)));
+    // Marcos principales
+    loadTexture(m_texSpeedGaugeFrame, "Blue/Default/button_square_header_blade_rectangle_screws.png");
+    loadTexture(m_texLapTimerFrame, "Blue/Default/button_square_header_blade_rectangle.png");
+    loadTexture(m_texLapBadge, "Yellow/Default/button_square_header_small_square.png");
+    loadTexture(m_texTurboBoostBanner, "Red/Default/bar_square_gloss_large.png");
 
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(HudVertex), reinterpret_cast<void*>(offsetof(HudVertex, color)));
+    // Piezas modulares 3-Slice para la barra de velocidad (Contenedor Azul)
+    loadTexture(m_texSpeedBarContainerL, "Blue/Default/bar_round_gloss_large_l.png");
+    loadTexture(m_texSpeedBarContainerM, "Blue/Default/bar_round_gloss_large_m.png");
+    loadTexture(m_texSpeedBarContainerR, "Blue/Default/bar_round_gloss_large_r.png");
 
-    glBindVertexArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    // Piezas modulares 3-Slice para llenado nominal (Amarillo brillante)
+    loadTexture(m_texSpeedBarFillYellowL, "Yellow/Default/bar_round_gloss_large_l.png");
+    loadTexture(m_texSpeedBarFillYellowM, "Yellow/Default/bar_round_gloss_large_m.png");
+    loadTexture(m_texSpeedBarFillYellowR, "Yellow/Default/bar_round_gloss_large_r.png");
+
+    // Piezas modulares 3-Slice para llenado en Turbo/Boost (Rojo fuego)
+    loadTexture(m_texSpeedBarFillRedL, "Red/Default/bar_round_gloss_large_l.png");
+    loadTexture(m_texSpeedBarFillRedM, "Red/Default/bar_round_gloss_large_m.png");
+    loadTexture(m_texSpeedBarFillRedR, "Red/Default/bar_round_gloss_large_r.png");
+
+    // Fallbacks monocatenarios
+    loadTexture(m_texSpeedBarContainer, "Blue/Default/bar_round_gloss_large.png");
+    loadTexture(m_texSpeedBarFillYellow, "Yellow/Default/bar_round_gloss_large.png");
+    loadTexture(m_texSpeedBarFillRed, "Red/Default/bar_round_gloss_large.png");
 
     m_initialized = true;
-    std::cout << "[OK] [RacingHud] Interfaz de usuario HUD (Velocimetro + Cronometro) inicializada." << std::endl;
+    std::cout << "[OK] [RacingHud] HUD de Carreras (Kenney Space Expansion Pack - Modular 3-Slice & 9-Slice) inicializado exitosamente."
+              << std::endl;
     return true;
 }
 
+bool RacingHud::areTexturesLoaded() const {
+    return m_texSpeedGaugeFrame.isLoaded() &&
+           m_texSpeedBarContainerL.isLoaded() &&
+           m_texSpeedBarContainerM.isLoaded() &&
+           m_texSpeedBarContainerR.isLoaded() &&
+           m_texSpeedBarFillYellowL.isLoaded() &&
+           m_texSpeedBarFillYellowM.isLoaded() &&
+           m_texSpeedBarFillYellowR.isLoaded() &&
+           m_texLapTimerFrame.isLoaded() &&
+           m_texLapBadge.isLoaded() &&
+           m_texTurboBoostBanner.isLoaded();
+}
+
+void RacingHud::flush() {
+    // Implementado directamente por m_uiRenderer
+}
+
 void RacingHud::addQuad(float x, float y, float w, float h, const glm::vec4& color) {
-    float x1 = x;
-    float y1 = y;
-    float x2 = x + w;
-    float y2 = y + h;
-
-    m_vertices.push_back({{x1, y1}, color});
-    m_vertices.push_back({{x2, y1}, color});
-    m_vertices.push_back({{x2, y2}, color});
-
-    m_vertices.push_back({{x1, y1}, color});
-    m_vertices.push_back({{x2, y2}, color});
-    m_vertices.push_back({{x1, y2}, color});
+    m_uiRenderer.drawRect(x, y, w, h, color);
 }
 
 void RacingHud::addBorder(float x, float y, float w, float h, float thickness, const glm::vec4& color) {
-    addQuad(x, y, w, thickness, color); // Arriba
-    addQuad(x, y + h - thickness, w, thickness, color); // Abajo
-    addQuad(x, y + thickness, thickness, h - 2.0f * thickness, color); // Izquierda
-    addQuad(x + w - thickness, y + thickness, thickness, h - 2.0f * thickness, color); // Derecha
+    m_uiRenderer.drawBorder(x, y, w, h, thickness, color);
 }
 
 void RacingHud::drawText(float x, float y, const std::string& text, float scale, const glm::vec4& color) {
-    float curX = x;
-    for (char ch : text) {
-        char upper = static_cast<char>(std::toupper(static_cast<unsigned char>(ch)));
-        if (upper >= 32 && upper <= 90) {
-            int glyphIdx = upper - 32;
-            for (int r = 0; r < 7; ++r) {
-                uint8_t row = FONT_5X7[glyphIdx][r];
-                for (int c = 0; c < 5; ++c) {
-                    if (row & (1 << (4 - c))) {
-                        addQuad(curX + c * scale, y + r * scale, scale, scale, color);
-                    }
-                }
-            }
-        }
-        curX += 6.0f * scale;
-    }
+    m_uiRenderer.drawText(x, y, text, scale, color);
 }
 
 void RacingHud::draw7SegmentDigit(float x, float y, int digit, float w, float h, float thickness,
                                   const glm::vec4& activeColor, const glm::vec4& inactiveColor) {
-    // 7 segmentos: a, b, c, d, e, f, g
+    // Mascara de 7 segmentos: a, b, c, d, e, f, g
     static const uint8_t SEGMENTS[10] = {
         0b00111111, // 0: a, b, c, d, e, f
         0b00000110, // 1: b, c
@@ -239,30 +204,30 @@ void RacingHud::draw7SegmentDigit(float x, float y, int digit, float w, float h,
     };
 
     // Segmento A: horizontal superior
-    addQuad(x + thickness + gap, y, w - 2.0f * (thickness + gap), thickness, segColor(0));
+    m_uiRenderer.drawRect(x + thickness + gap, y, w - 2.0f * (thickness + gap), thickness, segColor(0));
     // Segmento B: vertical superior derecho
-    addQuad(x + w - thickness, y + thickness + gap, thickness, halfH - thickness - 2.0f * gap, segColor(1));
+    m_uiRenderer.drawRect(x + w - thickness, y + thickness + gap, thickness, halfH - thickness - 2.0f * gap, segColor(1));
     // Segmento C: vertical inferior derecho
-    addQuad(x + w - thickness, y + halfH + gap, thickness, halfH - thickness - 2.0f * gap, segColor(2));
+    m_uiRenderer.drawRect(x + w - thickness, y + halfH + gap, thickness, halfH - thickness - 2.0f * gap, segColor(2));
     // Segmento D: horizontal inferior
-    addQuad(x + thickness + gap, y + h - thickness, w - 2.0f * (thickness + gap), thickness, segColor(3));
+    m_uiRenderer.drawRect(x + thickness + gap, y + h - thickness, w - 2.0f * (thickness + gap), thickness, segColor(3));
     // Segmento E: vertical inferior izquierdo
-    addQuad(x, y + halfH + gap, thickness, halfH - thickness - 2.0f * gap, segColor(4));
+    m_uiRenderer.drawRect(x, y + halfH + gap, thickness, halfH - thickness - 2.0f * gap, segColor(4));
     // Segmento F: vertical superior izquierdo
-    addQuad(x, y + thickness + gap, thickness, halfH - thickness - 2.0f * gap, segColor(5));
+    m_uiRenderer.drawRect(x, y + thickness + gap, thickness, halfH - thickness - 2.0f * gap, segColor(5));
     // Segmento G: horizontal central
-    addQuad(x + thickness + gap, y + halfH - thickness * 0.5f, w - 2.0f * (thickness + gap), thickness, segColor(6));
+    m_uiRenderer.drawRect(x + thickness + gap, y + halfH - thickness * 0.5f, w - 2.0f * (thickness + gap), thickness, segColor(6));
 }
 
 void RacingHud::drawColon(float x, float y, float scale, const glm::vec4& color) {
     float size = 3.0f * scale;
-    addQuad(x, y + 6.0f * scale, size, size, color);
-    addQuad(x, y + 16.0f * scale, size, size, color);
+    m_uiRenderer.drawRect(x, y + 6.0f * scale, size, size, color);
+    m_uiRenderer.drawRect(x, y + 16.0f * scale, size, size, color);
 }
 
 void RacingHud::drawDot(float x, float y, float scale, const glm::vec4& color) {
     float size = 3.0f * scale;
-    addQuad(x, y + 19.0f * scale, size, size, color);
+    m_uiRenderer.drawRect(x, y + 19.0f * scale, size, size, color);
 }
 
 void RacingHud::draw7SegmentTime(float x, float y, float timeSeconds, float scale, const glm::vec4& color) {
@@ -315,72 +280,91 @@ void RacingHud::draw7SegmentTime(float x, float y, float timeSeconds, float scal
     }
 }
 
-void RacingHud::renderSpeedometer(float screenWidth, float screenHeight, const TelemetryData& t) {
-    float w = 270.0f;
-    float h = 150.0f;
+void RacingHud::renderSpeedometer(float screenWidth, float screenHeight, const TelemetryData& t, const LapTimingData& timing) {
+    float w = 320.0f;
+    float h = 160.0f;
     float x = screenWidth - w - 24.0f;
     float y = screenHeight - h - 24.0f;
 
-    // 1. Placa de fondo con efecto vidrio ahumado
-    addQuad(x, y, w, h, glm::vec4(0.03f, 0.05f, 0.08f, 0.88f));
+    // 1. Capa de fondo oscura ahumada para maximo contraste
+    m_uiRenderer.drawRect(x + 4.0f, y + 4.0f, w - 8.0f, h - 8.0f, glm::vec4(0.02f, 0.04f, 0.08f, 0.90f));
 
-    // Borde iluminado con respuesta a Turbo / Derrape
-    glm::vec4 borderColor = glm::vec4(0.0f, 0.80f, 1.0f, 0.55f);
+    // 2. Marco sci-fi con tornillos de fijacion mediante 9-Slice para esquinas no deformadas
+    glm::vec4 frameTint(1.0f, 1.0f, 1.0f, 0.95f);
     if (t.isBoosting) {
-        borderColor = glm::vec4(1.0f, 0.55f, 0.0f, 0.95f); // Brillo anaranjado en turbo
+        frameTint = glm::vec4(1.0f, 0.65f, 0.25f, 0.98f);
     } else if (t.isSkidding) {
-        borderColor = glm::vec4(1.0f, 0.85f, 0.0f, 0.85f); // Brillo dorado en derrape
+        frameTint = glm::vec4(1.0f, 0.88f, 0.35f, 0.95f);
     }
-    addBorder(x, y, w, h, 2.0f, borderColor);
+    m_uiRenderer.drawNineSlice(m_texSpeedGaugeFrame, x, y, w, h, 28.0f, 28.0f, frameTint);
 
-    // Barra de acento superior
-    addQuad(x, y, w, 3.5f, borderColor);
+    // Panel interior oscuro del cockpit
+    float innerX = x + 16.0f;
+    float innerY = y + 16.0f;
+    float innerW = w - 32.0f;
+    float innerH = h - 32.0f;
+    m_uiRenderer.drawRect(innerX, innerY, innerW, innerH, glm::vec4(0.01f, 0.02f, 0.05f, 0.78f));
+    m_uiRenderer.drawBorder(innerX, innerY, innerW, innerH, 1.5f,
+                            t.isBoosting ? glm::vec4(1.0f, 0.55f, 0.10f, 0.70f)
+                                         : glm::vec4(0.0f, 0.75f, 0.95f, 0.45f));
 
-    // 2. Tacometro / Barra de RPM LED interactiva
-    float barX = x + 18.0f;
-    float barY = y + 16.0f;
-    float barW = w - 36.0f;
-    float barH = 10.0f;
+    // 3. Contenedor de barra de velocidad modular 3-Slice con relleno progresivo dinamico
+    float barX = innerX + 12.0f;
+    float barY = innerY + 10.0f;
+    float barW = innerW - 24.0f;
+    float barH = 18.0f;
+
+    // Contenedor azul traslucido modular 3-Slice
+    m_uiRenderer.drawThreeSliceHorizontal(m_texSpeedBarContainerL, m_texSpeedBarContainerM, m_texSpeedBarContainerR,
+                                          barX, barY, barW, barH, 12.0f, glm::vec4(0.40f, 0.65f, 0.95f, 0.50f));
+
+    // Relleno progresivo dinamico modular 3-Slice basado en speedKmH / maxSpeedKmH
+    float fillRatio = std::clamp(t.speedKmH / std::max(t.maxSpeedKmH, 1.0f), 0.0f, 1.0f);
+    const auto& fillL = t.isBoosting ? m_texSpeedBarFillRedL : m_texSpeedBarFillYellowL;
+    const auto& fillM = t.isBoosting ? m_texSpeedBarFillRedM : m_texSpeedBarFillYellowM;
+    const auto& fillR = t.isBoosting ? m_texSpeedBarFillRedR : m_texSpeedBarFillYellowR;
+    m_uiRenderer.drawThreeSliceProgress(fillL, fillM, fillR, barX, barY, barW, barH, fillRatio, 12.0f, glm::vec4(1.0f));
+
+    // 4. Indicador tacometro LED interactivo (18 segmentos)
     int segCount = 18;
-    float gap = 2.5f;
-    float segW = (barW - (segCount - 1) * gap) / segCount;
-
-    float ratio = std::clamp(t.speedKmH / std::max(t.maxSpeedKmH, 1.0f), 0.0f, 1.0f);
-    int activeSegs = static_cast<int>(std::round(ratio * segCount));
+    float segGap = 2.0f;
+    float segW = (barW - (segCount - 1) * segGap) / segCount;
+    int activeSegs = static_cast<int>(std::round(fillRatio * segCount));
 
     for (int i = 0; i < segCount; ++i) {
-        glm::vec4 activeCol;
+        glm::vec4 segCol;
         if (i < 10) {
-            activeCol = glm::vec4(0.0f, 0.95f, 0.55f, 1.0f); // Verde neon
+            segCol = glm::vec4(0.0f, 0.95f, 0.55f, 1.0f); // Verde neon
         } else if (i < 14) {
-            activeCol = glm::vec4(1.0f, 0.80f, 0.0f, 1.0f); // Ambar de competicion
+            segCol = glm::vec4(1.0f, 0.80f, 0.0f, 1.0f);  // Ambar
         } else {
-            activeCol = glm::vec4(1.0f, 0.15f, 0.25f, 1.0f); // Rojo limite de corte (redline)
+            segCol = glm::vec4(1.0f, 0.15f, 0.25f, 1.0f);  // Rojo corte
         }
-        glm::vec4 inactiveCol = glm::vec4(activeCol.r * 0.2f, activeCol.g * 0.2f, activeCol.b * 0.2f, 0.15f);
 
-        glm::vec4 c = (i < activeSegs) ? activeCol : inactiveCol;
-        addQuad(barX + i * (segW + gap), barY, segW, barH, c);
+        if (i >= activeSegs) {
+            segCol = glm::vec4(segCol.r * 0.2f, segCol.g * 0.2f, segCol.b * 0.2f, 0.15f);
+        }
+        m_uiRenderer.drawRect(barX + i * (segW + segGap), barY + barH + 3.0f, segW, 4.0f, segCol);
     }
 
-    // 3. Velocidad digital grande (7 segmentos)
+    // 5. Numero de velocidad digital (7 segmentos)
     int spd = std::clamp(static_cast<int>(std::round(t.speedKmH)), 0, 999);
     int d0 = (spd / 100) % 10;
     int d1 = (spd / 10) % 10;
     int d2 = spd % 10;
 
-    glm::vec4 digitColor = glm::vec4(0.90f, 0.98f, 1.0f, 1.0f);
+    glm::vec4 digitColor = glm::vec4(0.92f, 0.98f, 1.0f, 1.0f);
     if (t.isBoosting) {
-        digitColor = glm::vec4(1.0f, 0.85f, 0.35f, 1.0f);
+        digitColor = glm::vec4(1.0f, 0.88f, 0.35f, 1.0f);
     }
-    glm::vec4 inactiveDigit(digitColor.r, digitColor.g, digitColor.b, 0.06f);
+    glm::vec4 inactiveDigit(digitColor.r, digitColor.g, digitColor.b, 0.07f);
 
-    float digW = 22.0f;
-    float digH = 44.0f;
-    float digThick = 4.8f;
-    float digGap = 8.0f;
-    float digStartX = x + 24.0f;
-    float digStartY = y + 38.0f;
+    float digW = 20.0f;
+    float digH = 40.0f;
+    float digThick = 4.2f;
+    float digGap = 7.0f;
+    float digStartX = innerX + 18.0f;
+    float digStartY = innerY + 38.0f;
 
     // Primer digito (centenas)
     draw7SegmentDigit(digStartX, digStartY, (spd >= 100) ? d0 : 0, digW, digH, digThick,
@@ -393,74 +377,112 @@ void RacingHud::renderSpeedometer(float screenWidth, float screenHeight, const T
                       digitColor, inactiveDigit);
 
     // Unidad "KM/H"
-    drawText(digStartX + 3.0f * (digW + digGap) + 8.0f, digStartY + 14.0f, "KM/H", 2.2f,
-             glm::vec4(0.0f, 0.85f, 1.0f, 0.90f));
+    m_uiRenderer.drawText(digStartX + 3.0f * (digW + digGap) + 10.0f, digStartY + 14.0f, "KM/H", 2.0f,
+                          glm::vec4(0.0f, 0.85f, 1.0f, 0.95f));
 
-    // 4. Insignias de Estado (Badges): Marcha, Turbo, Derrape, Offroad
-    float badgeY = y + 104.0f;
+    // 6. Selector de Marcha [ D ] / [ R ] e insignias de estado
+    float badgeY = innerY + 86.0f;
 
-    // Selector de Marcha [ D ] o [ R ]
+    // Marcha
     if (t.isReversing) {
-        addQuad(x + 18.0f, badgeY, 34.0f, 24.0f, glm::vec4(0.85f, 0.15f, 0.15f, 0.85f));
-        drawText(x + 28.0f, badgeY + 5.0f, "R", 2.0f, glm::vec4(1.0f));
+        m_uiRenderer.drawRect(innerX + 18.0f, badgeY, 32.0f, 22.0f, glm::vec4(0.85f, 0.15f, 0.15f, 0.85f));
+        m_uiRenderer.drawText(innerX + 27.0f, badgeY + 4.0f, "R", 2.0f, glm::vec4(1.0f));
     } else {
-        addQuad(x + 18.0f, badgeY, 34.0f, 24.0f, glm::vec4(0.0f, 0.50f, 0.70f, 0.85f));
-        drawText(x + 28.0f, badgeY + 5.0f, "D", 2.0f, glm::vec4(1.0f));
+        m_uiRenderer.drawRect(innerX + 18.0f, badgeY, 32.0f, 22.0f, glm::vec4(0.0f, 0.50f, 0.75f, 0.85f));
+        m_uiRenderer.drawText(innerX + 27.0f, badgeY + 4.0f, "D", 2.0f, glm::vec4(1.0f));
     }
 
-    // Badge TURBO
+    // Insignia TURBO
     if (t.isBoosting) {
-        addQuad(x + 60.0f, badgeY, 68.0f, 24.0f, glm::vec4(1.0f, 0.45f, 0.0f, 0.90f));
-        drawText(x + 66.0f, badgeY + 5.0f, "TURBO", 1.8f, glm::vec4(1.0f));
+        m_uiRenderer.drawRect(innerX + 58.0f, badgeY, 68.0f, 22.0f, glm::vec4(1.0f, 0.45f, 0.0f, 0.90f));
+        m_uiRenderer.drawText(innerX + 64.0f, badgeY + 4.0f, "TURBO", 1.8f, glm::vec4(1.0f));
     }
 
-    // Badge DERRAPE
+    // Insignia DERRAPE / OFFROAD
     if (t.isSkidding) {
-        addQuad(x + 136.0f, badgeY, 68.0f, 24.0f, glm::vec4(0.85f, 0.70f, 0.0f, 0.90f));
-        drawText(x + 144.0f, badgeY + 5.0f, "DRIFT", 1.8f, glm::vec4(0.05f, 0.05f, 0.05f, 1.0f));
+        m_uiRenderer.drawRect(innerX + 134.0f, badgeY, 68.0f, 22.0f, glm::vec4(0.95f, 0.75f, 0.0f, 0.90f));
+        m_uiRenderer.drawText(innerX + 140.0f, badgeY + 4.0f, "DRIFT", 1.8f, glm::vec4(0.05f, 0.05f, 0.05f, 1.0f));
     } else if (t.isOffRoad) {
-        addQuad(x + 136.0f, badgeY, 80.0f, 24.0f, glm::vec4(0.65f, 0.35f, 0.15f, 0.85f));
-        drawText(x + 140.0f, badgeY + 5.0f, "OFFROAD", 1.5f, glm::vec4(1.0f));
+        m_uiRenderer.drawRect(innerX + 134.0f, badgeY, 82.0f, 22.0f, glm::vec4(0.65f, 0.35f, 0.15f, 0.85f));
+        m_uiRenderer.drawText(innerX + 138.0f, badgeY + 4.0f, "OFFROAD", 1.5f, glm::vec4(1.0f));
+    }
+
+    // 7. Banner pulsante de alerta "¡TURBO BOOST!" sobre el velocimetro
+    if (t.isBoosting) {
+        float bannerW = w;
+        float bannerH = 36.0f;
+        float bannerX = x;
+        float bannerY = y - bannerH - 8.0f;
+
+        float animTime = (timing.totalRaceTime > 0.0f) ? timing.totalRaceTime : m_pulseTimer;
+        float pulse = 0.75f + 0.25f * std::sin(animTime * 12.0f);
+
+        m_uiRenderer.drawSprite(m_texTurboBoostBanner, bannerX, bannerY, bannerW, bannerH,
+                                glm::vec4(1.0f, 1.0f, 1.0f, pulse));
+        m_uiRenderer.drawTextCentered(bannerX, bannerY, bannerW, bannerH,
+                                      "! TURBO BOOST !", 2.0f,
+                                      glm::vec4(1.0f, 1.0f, 0.25f, pulse));
     }
 }
 
 void RacingHud::renderLapTimer(float screenWidth, float screenHeight, const LapTimingData& timing) {
-    (void)screenWidth;
     (void)screenHeight;
 
-    float w = 295.0f;
-    float h = 155.0f;
-    float x = 24.0f;
+    // Posicion en la esquina superior derecha
+    float w = 320.0f;
+    float h = 160.0f;
+    float x = screenWidth - w - 24.0f;
     float y = 24.0f;
 
-    // 1. Placa de fondo transparente ahumada
-    addQuad(x, y, w, h, glm::vec4(0.03f, 0.05f, 0.08f, 0.88f));
-    addBorder(x, y, w, h, 2.0f, glm::vec4(0.0f, 0.75f, 0.95f, 0.50f));
+    // 1. Placa de fondo transparente ahumada para legibilidad
+    m_uiRenderer.drawRect(x + 4.0f, y + 4.0f, w - 8.0f, h - 8.0f, glm::vec4(0.02f, 0.04f, 0.08f, 0.90f));
 
-    // Acento superior brillante
-    addQuad(x, y, w, 3.5f, glm::vec4(0.0f, 0.85f, 1.0f, 0.90f));
+    // 2. Marco sci-fi blade rectangle mediante 9-Slice para esquinas y muescas sin deformacion
+    m_uiRenderer.drawNineSlice(m_texLapTimerFrame, x, y, w, h, 28.0f, 28.0f, glm::vec4(1.0f, 1.0f, 1.0f, 0.95f));
 
-    // 2. Fila 1: Contador de Vuelta [VUELTA  1 / 3]
-    drawText(x + 16.0f, y + 14.0f, "VUELTA", 2.0f, glm::vec4(0.0f, 0.85f, 1.0f, 1.0f));
+    // Panel interior oscuro
+    float innerX = x + 16.0f;
+    float innerY = y + 16.0f;
+    float innerW = w - 32.0f;
+    float innerH = h - 32.0f;
+    m_uiRenderer.drawRect(innerX, innerY, innerW, innerH, glm::vec4(0.01f, 0.02f, 0.05f, 0.78f));
+    m_uiRenderer.drawBorder(innerX, innerY, innerW, innerH, 1.5f, glm::vec4(0.0f, 0.75f, 0.95f, 0.45f));
+
+    // 3. Fila superior: Insignia de vuelta (Kenney Space Expansion) + Contador de Vuelta [LAP 1 / 3]
+    float badgeSize = 34.0f;
+    float badgeX = innerX + 8.0f;
+    float badgeY = innerY + 6.0f;
+    m_uiRenderer.drawSprite(m_texLapBadge, badgeX, badgeY, badgeSize, badgeSize, glm::vec4(1.0f));
+
+    // Texto de vuelta al lado de la insignia
+    m_uiRenderer.drawText(badgeX + badgeSize + 10.0f, badgeY + 8.0f, "LAP", 2.0f,
+                          glm::vec4(0.0f, 0.85f, 1.0f, 1.0f));
 
     std::string lapStr = std::to_string(std::max(timing.currentLap, 1)) + " / " + std::to_string(timing.totalLaps);
-    drawText(x + 115.0f, y + 14.0f, lapStr, 2.0f, glm::vec4(1.0f, 0.95f, 0.40f, 1.0f));
+    m_uiRenderer.drawText(badgeX + badgeSize + 56.0f, badgeY + 8.0f, lapStr, 2.0f,
+                          glm::vec4(1.0f, 0.95f, 0.35f, 1.0f));
 
-    // Separador
-    addQuad(x + 16.0f, y + 36.0f, w - 32.0f, 1.0f, glm::vec4(0.2f, 0.35f, 0.5f, 0.45f));
+    // Separador horizontal
+    m_uiRenderer.drawRect(innerX + 8.0f, badgeY + badgeSize + 6.0f, innerW - 16.0f, 1.0f,
+                          glm::vec4(0.18f, 0.35f, 0.55f, 0.50f));
 
-    // 3. Fila 2: Tiempo de Vuelta Actual (Cronometro digital)
-    drawText(x + 16.0f, y + 48.0f, "TIEMPO", 1.6f, glm::vec4(0.70f, 0.85f, 0.95f, 0.90f));
-    draw7SegmentTime(x + 92.0f, y + 42.0f, timing.currentLapTime, 0.95f, glm::vec4(0.0f, 0.95f, 1.0f, 1.0f));
+    // 4. Fila 2: Tiempo de Vuelta Actual (Cronometro digital 7-segmentos)
+    float row1Y = innerY + 54.0f;
+    m_uiRenderer.drawText(innerX + 10.0f, row1Y + 3.0f, "TIME", 1.5f, glm::vec4(0.70f, 0.88f, 0.98f, 0.90f));
+    draw7SegmentTime(innerX + 68.0f, row1Y - 2.0f, timing.currentLapTime, 0.85f,
+                     glm::vec4(0.0f, 0.95f, 1.0f, 1.0f));
 
-    // 4. Fila 3: Mejor Vuelta (Best Lap)
-    drawText(x + 16.0f, y + 84.0f, "MEJOR", 1.6f, glm::vec4(1.0f, 0.80f, 0.20f, 0.95f));
-    draw7SegmentTime(x + 92.0f, y + 78.0f, (timing.bestLapTime > 0.0f) ? timing.bestLapTime : -1.0f, 0.95f,
+    // 5. Fila 3: Mejor Vuelta (Best Lap)
+    float row2Y = innerY + 82.0f;
+    m_uiRenderer.drawText(innerX + 10.0f, row2Y + 3.0f, "BEST", 1.5f, glm::vec4(1.0f, 0.80f, 0.20f, 0.95f));
+    draw7SegmentTime(innerX + 68.0f, row2Y - 2.0f, (timing.bestLapTime > 0.0f) ? timing.bestLapTime : -1.0f, 0.85f,
                      glm::vec4(1.0f, 0.82f, 0.15f, 1.0f));
 
-    // 5. Fila 4: Tiempo Total de Carrera
-    drawText(x + 16.0f, y + 120.0f, "TOTAL", 1.6f, glm::vec4(0.65f, 0.75f, 0.85f, 0.85f));
-    draw7SegmentTime(x + 92.0f, y + 114.0f, timing.totalRaceTime, 0.95f, glm::vec4(0.85f, 0.92f, 0.98f, 0.85f));
+    // 6. Fila 4: Tiempo Total de Carrera
+    float row3Y = innerY + 110.0f;
+    m_uiRenderer.drawText(innerX + 10.0f, row3Y + 3.0f, "TOTAL", 1.5f, glm::vec4(0.65f, 0.75f, 0.85f, 0.85f));
+    draw7SegmentTime(innerX + 68.0f, row3Y - 2.0f, timing.totalRaceTime, 0.85f,
+                     glm::vec4(0.85f, 0.92f, 0.98f, 0.85f));
 }
 
 void RacingHud::renderLapNotice(float screenWidth, float screenHeight, const LapTimingData& timing) {
@@ -476,16 +498,18 @@ void RacingHud::renderLapNotice(float screenWidth, float screenHeight, const Lap
     glm::vec4 borderCol = timing.isNewRecord ? glm::vec4(1.0f, 0.80f, 0.10f, alpha)
                                             : glm::vec4(0.0f, 0.85f, 1.0f, alpha);
 
-    addQuad(x, y, w, h, bgCol);
-    addBorder(x, y, w, h, 2.5f, borderCol);
+    m_uiRenderer.drawRect(x, y, w, h, bgCol);
+    m_uiRenderer.drawBorder(x, y, w, h, 2.5f, borderCol);
 
     if (timing.isNewRecord) {
-        drawText(x + 55.0f, y + 14.0f, "! NUEVO RECORD DE VUELTA !", 2.2f, glm::vec4(1.0f, 0.85f, 0.15f, alpha));
+        m_uiRenderer.drawText(x + 55.0f, y + 14.0f, "! NUEVO RECORD DE VUELTA !", 2.2f,
+                              glm::vec4(1.0f, 0.85f, 0.15f, alpha));
     } else {
-        drawText(x + 80.0f, y + 14.0f, "! VUELTA COMPLETADA !", 2.2f, glm::vec4(0.0f, 0.90f, 1.0f, alpha));
+        m_uiRenderer.drawText(x + 80.0f, y + 14.0f, "! VUELTA COMPLETADA !", 2.2f,
+                              glm::vec4(0.0f, 0.90f, 1.0f, alpha));
     }
 
-    drawText(x + 105.0f, y + 42.0f, "TIEMPO: ", 1.8f, glm::vec4(0.85f, 0.90f, 0.95f, alpha));
+    m_uiRenderer.drawText(x + 105.0f, y + 42.0f, "TIEMPO: ", 1.8f, glm::vec4(0.85f, 0.90f, 0.95f, alpha));
     draw7SegmentTime(x + 205.0f, y + 36.0f, timing.lastLapTime, 0.90f, borderCol);
 }
 
@@ -494,35 +518,18 @@ void RacingHud::render(float screenWidth, float screenHeight,
                        const LapTimingData& timing) {
     if (!m_initialized) return;
 
-    m_vertices.clear();
+    m_pulseTimer += 0.016f;
 
-    // Dibujar elementos de interfaz
-    renderSpeedometer(screenWidth, screenHeight, telemetry);
+    // Comenzar el pase de renderizado 2D por lotes
+    m_uiRenderer.begin(screenWidth, screenHeight);
+
+    // Renderizar elementos de interfaz de carreras
+    renderSpeedometer(screenWidth, screenHeight, telemetry, timing);
     renderLapTimer(screenWidth, screenHeight, timing);
     renderLapNotice(screenWidth, screenHeight, timing);
 
-    if (m_vertices.empty()) return;
-
-    // Configurar estado 2D
-    glDisable(GL_DEPTH_TEST);
-    glDisable(GL_CULL_FACE);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    m_orthoProj = glm::ortho(0.0f, screenWidth, screenHeight, 0.0f, -1.0f, 1.0f);
-
-    m_shader.use();
-    m_shader.setMat4("u_OrthoProj", m_orthoProj);
-
-    glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-    glBufferData(GL_ARRAY_BUFFER, m_vertices.size() * sizeof(HudVertex), m_vertices.data(), GL_DYNAMIC_DRAW);
-
-    glBindVertexArray(m_vao);
-    glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(m_vertices.size()));
-    glBindVertexArray(0);
-
-    glEnable(GL_CULL_FACE);
-    glEnable(GL_DEPTH_TEST);
+    // Finalizar el pase y vaciar los lotes a la GPU con restauracion de estados
+    m_uiRenderer.end();
 }
 
 } // namespace ui

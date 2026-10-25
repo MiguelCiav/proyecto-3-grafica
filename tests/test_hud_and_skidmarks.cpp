@@ -101,12 +101,14 @@ int main() {
     }
 
     // -------------------------------------------------------------------------
-    // TEST 4: Inicializacion y pase de renderizado de HUD (RacingHud)
+    // TEST 4: Inicializacion y pase de renderizado de HUD (RacingHud con Kenney Space Expansion)
     // -------------------------------------------------------------------------
     {
         ui::RacingHud hud;
         bool ok = hud.init();
         assert(ok && "RacingHud::init() debe retornar true");
+        assert(hud.isInitialized() && "RacingHud debe reportar estar inicializado");
+        assert(hud.areTexturesLoaded() && "Todas las texturas de Kenney Space Expansion deben cargarse correctamente");
         (void)ok;
 
         ui::TelemetryData telem;
@@ -125,14 +127,21 @@ int main() {
         timing.lastLapTime = 39.80f;
         timing.isNewRecord = true;
 
-        // Renderizado del HUD en lote 2D
+        // Renderizado del HUD en lote 2D con Turbo Boost activo
         hud.render(1280.0f, 720.0f, telem, timing);
-
         GLenum err = glGetError();
-        assert(err == GL_NO_ERROR && "No deben producirse errores de OpenGL en el renderizado de HUD");
+        assert(err == GL_NO_ERROR && "No deben producirse errores de OpenGL en el renderizado con Turbo Boost");
+
+        // Renderizado sin Turbo Boost y en resolucion Full HD
+        telem.isBoosting = false;
+        telem.isSkidding = false;
+        telem.speedKmH = 45.0f;
+        hud.render(1920.0f, 1080.0f, telem, timing);
+        err = glGetError();
+        assert(err == GL_NO_ERROR && "No deben producirse errores de OpenGL en el renderizado sin Turbo Boost");
         (void)err;
 
-        std::cout << "  [CHECK 3] Interfaz HUD (Velocimetro + Tacometro + Cronometro) validada." << std::endl;
+        std::cout << "  [CHECK 3] Interfaz HUD Sci-Fi (Kenney Space Pack + Velocimetro + Cronometro) validada." << std::endl;
     }
 
     glfwDestroyWindow(window);

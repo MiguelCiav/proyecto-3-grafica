@@ -472,9 +472,11 @@ add_executable(test_hud_and_skidmarks
     tests/test_hud_and_skidmarks.cpp
     src/vfx/SkidmarkManager.cpp
     src/ui/RacingHud.cpp
+    src/ui/UIRenderer.cpp
     src/animation/WheelAnimator.cpp
     src/physics/KartPhysics.cpp
     src/renderer/Shader.cpp
+    src/renderer/Texture.cpp
 )
 
 target_include_directories(test_hud_and_skidmarks PUBLIC
@@ -493,11 +495,83 @@ add_custom_command(TARGET test_hud_and_skidmarks POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_CURRENT_SOURCE_DIR}/shaders
         $<TARGET_FILE_DIR:test_hud_and_skidmarks>/shaders
-    COMMENT "Copiando shaders al directorio de salida de test_hud_and_skidmarks..."
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/assets
+        $<TARGET_FILE_DIR:test_hud_and_skidmarks>/assets
+    COMMENT "Copiando shaders y assets al directorio de salida de test_hud_and_skidmarks..."
 )
 
 # ==============================================================================
-# 19. Target de Empaquetado para Entrega UCV
+# 19. Ejecutable de Pruebas: Renderizador 2D de UI por Lotes (UIRenderer)
+# ==============================================================================
+add_executable(test_ui_renderer
+    tests/test_ui_renderer.cpp
+    src/ui/UIRenderer.cpp
+    src/renderer/Shader.cpp
+    src/renderer/Texture.cpp
+)
+
+target_include_directories(test_ui_renderer PUBLIC
+    ${PROJECT_INCLUDE_DIRS}
+)
+
+target_link_libraries(test_ui_renderer PRIVATE
+    OpenGL::GL
+    glad
+    glfw
+    glm::glm
+    ${CMAKE_DL_LIBS}
+)
+
+add_custom_command(TARGET test_ui_renderer POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
+        $<TARGET_FILE_DIR:test_ui_renderer>/shaders
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/assets
+        $<TARGET_FILE_DIR:test_ui_renderer>/assets
+    COMMENT "Copiando shaders y assets al directorio de salida de test_ui_renderer..."
+)
+
+# ==============================================================================
+# 20. Ejecutable de Pruebas: Menu Principal y Configuracion GUI (MainMenuUI)
+# ==============================================================================
+add_executable(test_main_menu_ui
+    tests/test_main_menu_ui.cpp
+    src/ui/MainMenuUI.cpp
+    src/ui/UIRenderer.cpp
+    src/renderer/Shader.cpp
+    src/renderer/Texture.cpp
+    src/lighting/LightManager.cpp
+    src/lighting/LightingController.cpp
+    src/core/Input.cpp
+    src/core/SceneManager.cpp
+)
+
+target_include_directories(test_main_menu_ui PUBLIC
+    ${PROJECT_INCLUDE_DIRS}
+)
+
+target_link_libraries(test_main_menu_ui PRIVATE
+    OpenGL::GL
+    glad
+    glfw
+    glm::glm
+    ${CMAKE_DL_LIBS}
+)
+
+add_custom_command(TARGET test_main_menu_ui POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
+        $<TARGET_FILE_DIR:test_main_menu_ui>/shaders
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/assets
+        $<TARGET_FILE_DIR:test_main_menu_ui>/assets
+    COMMENT "Copiando shaders y assets al directorio de salida de test_main_menu_ui..."
+)
+
+# ==============================================================================
+# 21. Target de Empaquetado para Entrega UCV
 # ==============================================================================
 find_package(Python3 QUIET COMPONENTS Interpreter)
 if(Python3_FOUND)
