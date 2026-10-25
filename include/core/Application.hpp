@@ -69,6 +69,12 @@ struct VehicleProfile {
     bool loaded{false};
 };
 
+enum class TrackTheme {
+    DAY_GRASSLAND,
+    NIGHT_NEON,
+    DESERT_DUNES
+};
+
 struct TrackProfile {
     std::string id;
     std::string name;
@@ -78,6 +84,7 @@ struct TrackProfile {
     int cols{12};
     int rows{12};
     bool isNight{false};
+    TrackTheme theme{TrackTheme::DAY_GRASSLAND};
 };
 
 struct AppConfig {
@@ -149,6 +156,7 @@ private:
     renderer::Texture m_paletteTexture;
     renderer::Skybox m_skyboxDay;
     renderer::Skybox m_skyboxNight;
+    renderer::Skybox m_skyboxDesert;
 
     // Mundo y Circuito Modular
     world::TrackGrid m_trackGrid;

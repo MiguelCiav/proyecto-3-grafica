@@ -20,6 +20,8 @@ public:
     void render(const world::TrackGrid& grid, const Shader& shader) const;
 
     int getRenderedTileCount() const { return m_renderedTileCount; }
+    void setGroundColor(const glm::vec4& color) { m_groundColor = color; }
+    glm::vec4 getGroundColor() const { return m_groundColor; }
 
 private:
     void createGroundPlane();
@@ -31,6 +33,7 @@ private:
 
     mutable int m_renderedTileCount{0};
     bool m_initialized{false};
+    glm::vec4 m_groundColor{0.28f, 0.62f, 0.28f, 1.0f};
 };
 
 } // namespace renderer

@@ -269,7 +269,8 @@ void Application::loadCatalog() {
             "Mega circuito profesional de 112 tramos diurno con multiples chicanas, horquillas y arco monumental.",
             "assets/levels/track_grand_circuit.txt",
             28, 25,
-            false // isNight
+            false, // isNight
+            TrackTheme::DAY_GRASSLAND
         },
         {
             "track-night-neon",
@@ -278,7 +279,18 @@ void Application::loadCatalog() {
             "Espectacular circuito nocturno de 90 tramos iluminado con farolas, arcos de neon y balizas luminosas.",
             "assets/levels/track_night_circuit.txt",
             26, 22,
-            true // isNight
+            true, // isNight
+            TrackTheme::NIGHT_NEON
+        },
+        {
+            "track-desert",
+            "Valle del Desierto UCV (Desert Rally)",
+            "Dakar ★★★",
+            "Rally por dunas de arena dorada, cañones de arenisca, cactus saguaro 3D y sol abrasador.",
+            "assets/levels/track_desert_dunes.txt",
+            26, 24,
+            false, // isNight
+            TrackTheme::DESERT_DUNES
         },
         {
             "track-oval",
@@ -287,7 +299,8 @@ void Application::loadCatalog() {
             "Circuito tradicional de alta velocidad con rectas largas y 4 curvas.",
             "assets/levels/track_oval.txt",
             12, 12,
-            false
+            false,
+            TrackTheme::DAY_GRASSLAND
         },
         {
             "track-gp",
@@ -296,7 +309,8 @@ void Application::loadCatalog() {
             "Circuito tecnico F1 con chicanas en 'S' y curvas que exigen frenado.",
             "assets/levels/track_grand_prix.txt",
             14, 14,
-            false
+            false,
+            TrackTheme::DAY_GRASSLAND
         },
         {
             "track-karto",
@@ -305,7 +319,8 @@ void Application::loadCatalog() {
             "Trazado corto y frenetico de karts con curvas cerradas continuas.",
             "assets/levels/track_kartodromo.txt",
             10, 10,
-            false
+            false,
+            TrackTheme::DAY_GRASSLAND
         },
         {
             "track-spd",
@@ -314,7 +329,8 @@ void Application::loadCatalog() {
             "Mega circuito gigante de 54 tramos disenado para maxima aceleracion.",
             "assets/levels/track_speedway.txt",
             17, 16,
-            false
+            false,
+            TrackTheme::DAY_GRASSLAND
         },
         {
             "track-tech",
@@ -323,7 +339,8 @@ void Application::loadCatalog() {
             "Trazado complejo con multiples curvas consecutivas y zonas estrechas.",
             "assets/levels/track_technical.txt",
             14, 14,
-            false
+            false,
+            TrackTheme::DAY_GRASSLAND
         }
     };
 }
@@ -376,9 +393,19 @@ void Application::selectTrack(int index) {
     // Cargar nuevo archivo de pista modular
     world::LevelLoader::loadFromFile(track.filePath, m_trackGrid);
 
-    // Regenerar obstaculos y triggers para la nueva pista (con props diurnos o nocturnos)
-    m_propSpawner.generateForGrid(m_trackGrid, track.isNight);
+    // Regenerar obstaculos y triggers para la nueva pista (con props diurnos, nocturnos o deserticos)
+    bool isDesert = (track.theme == TrackTheme::DESERT_DUNES);
+    m_propSpawner.generateForGrid(m_trackGrid, track.isNight, isDesert);
     m_zoneManager.autoGenerateFromGrid(m_trackGrid);
+
+    // Ajustar color del terreno segun el bioma
+    if (isDesert) {
+        m_trackRenderer.setGroundColor(glm::vec4(0.86f, 0.70f, 0.44f, 1.0f)); // Arena dorada del Sahara
+    } else if (track.isNight) {
+        m_trackRenderer.setGroundColor(glm::vec4(0.08f, 0.12f, 0.10f, 1.0f)); // Asfalto / césped nocturno
+    } else {
+        m_trackRenderer.setGroundColor(glm::vec4(0.28f, 0.62f, 0.28f, 1.0f)); // Césped verde clásico
+    }
 
     // Actualizar colisionadores
     setupColliders();
@@ -510,6 +537,12 @@ void Application::setupColliders() {
 }
 
 const renderer::Skybox& Application::getSkybox() const {
+    if (!m_tracks.empty() && m_selectedTrackIndex >= 0 && static_cast<size_t>(m_selectedTrackIndex) < m_tracks.size()) {
+        const auto& track = m_tracks[m_selectedTrackIndex];
+        if (track.theme == TrackTheme::DESERT_DUNES && m_skyboxDesert.isLoaded()) {
+            return m_skyboxDesert;
+        }
+    }
     if (m_lightingController.isNight() && m_skyboxNight.isLoaded()) {
         return m_skyboxNight;
     }
@@ -520,6 +553,8 @@ void Application::setupTrackLighting() {
     m_lightManager.clearPointLights();
     bool isNight = (!m_tracks.empty() && m_selectedTrackIndex >= 0 && static_cast<size_t>(m_selectedTrackIndex) < m_tracks.size())
                     ? m_tracks[m_selectedTrackIndex].isNight : false;
+    bool isDesert = (!m_tracks.empty() && m_selectedTrackIndex >= 0 && static_cast<size_t>(m_selectedTrackIndex) < m_tracks.size())
+                    ? (m_tracks[m_selectedTrackIndex].theme == TrackTheme::DESERT_DUNES) : false;
 
     // 1. Luz Direccional (Sol en el día o Luna en la noche)
     lighting::DirectionalLight sun;
@@ -528,6 +563,12 @@ void Application::setupTrackLighting() {
         sun.ambient   = glm::vec3(0.06f, 0.07f, 0.10f);
         sun.diffuse   = glm::vec3(0.08f, 0.08f, 0.12f);
         sun.specular  = glm::vec3(0.06f);
+    } else if (isDesert) {
+        // Sol abrasador brillante en el cenit del desierto con luz rebotada en la arena
+        sun.direction = glm::normalize(glm::vec3(0.40f, -0.72f, 0.56f));
+        sun.ambient   = glm::vec3(0.45f, 0.40f, 0.32f);
+        sun.diffuse   = glm::vec3(1.15f, 1.06f, 0.90f);
+        sun.specular  = glm::vec3(0.70f, 0.65f, 0.52f);
     } else {
         sun.direction = glm::normalize(glm::vec3(-0.35f, -0.85f, -0.40f));
         sun.ambient   = glm::vec3(0.28f, 0.28f, 0.30f);
@@ -536,6 +577,12 @@ void Application::setupTrackLighting() {
     }
     sun.enabled = true;
     m_lightManager.setDirectionalLight(sun);
+
+    // En el desierto salvaje no hay postes electricos
+    if (isDesert) {
+        std::cout << "[OK] [Lighting] Circuito configurado: BIOMA DESIERTO (Sol abrasador, dunas doradas)." << std::endl;
+        return;
+    }
 
     // 2. Extraer posiciones exactas de las farolas 3D generadas por PropSpawner
     const auto& lampPositions = m_propSpawner.getLampPositions();
@@ -738,6 +785,11 @@ bool Application::init() {
     if (!m_skyboxNight.loadShader("shaders/skybox.vert", "shaders/skybox.frag") ||
         !m_skyboxNight.loadFromDirectory("assets/textures/skybox_night", ".tga")) {
         std::cerr << "[AVISO] [Application] No se pudo cargar el Skybox nocturno." << std::endl;
+    }
+
+    if (!m_skyboxDesert.loadShader("shaders/skybox.vert", "shaders/skybox.frag") ||
+        !m_skyboxDesert.loadFromDirectory("assets/textures/skybox_desert", ".tga")) {
+        std::cerr << "[AVISO] [Application] No se pudo cargar el Skybox del desierto." << std::endl;
     }
 
     if (!m_kartEmitter.init() || !m_kartEmitter.loadShaders("shaders/particle.vert", "shaders/particle.frag")) {

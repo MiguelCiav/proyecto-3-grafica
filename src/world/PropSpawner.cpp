@@ -162,6 +162,35 @@ bool PropSpawner::init(const std::string& obstaclesDir) {
         renderer::MeshGL neonBeaconTop;
         neonBeaconTop.setup(createBoxSubMesh(0.18f, 0.12f, 0.18f));
         m_propMeshes["neonBeaconTop"] = std::move(neonBeaconTop);
+
+        // Elementos procedurales del Desierto (Cactus saguaro 3D y rocas de arenisca)
+        renderer::MeshGL cactusTrunk;
+        cactusTrunk.setup(createBoxSubMesh(0.18f, 1.25f, 0.18f));
+        m_propMeshes["cactusTrunk"] = std::move(cactusTrunk);
+
+        renderer::MeshGL cactusArmJoint;
+        cactusArmJoint.setup(createBoxSubMesh(0.24f, 0.10f, 0.10f));
+        m_propMeshes["cactusArmJoint"] = std::move(cactusArmJoint);
+
+        renderer::MeshGL cactusArmSpire;
+        cactusArmSpire.setup(createBoxSubMesh(0.12f, 0.50f, 0.12f));
+        m_propMeshes["cactusArmSpire"] = std::move(cactusArmSpire);
+
+        renderer::MeshGL desertRock;
+        desertRock.setup(createBoxSubMesh(0.65f, 0.55f, 0.65f));
+        m_propMeshes["desertRock"] = std::move(desertRock);
+
+        renderer::MeshGL desertMesaRock;
+        desertMesaRock.setup(createBoxSubMesh(1.20f, 0.85f, 1.10f));
+        m_propMeshes["desertMesaRock"] = std::move(desertMesaRock);
+
+        renderer::MeshGL desertArchPillar;
+        desertArchPillar.setup(createBoxSubMesh(0.40f, 2.50f, 0.40f));
+        m_propMeshes["desertArchPillar"] = std::move(desertArchPillar);
+
+        renderer::MeshGL desertArchBeam;
+        desertArchBeam.setup(createBoxSubMesh(2.90f, 0.35f, 0.45f));
+        m_propMeshes["desertArchBeam"] = std::move(desertArchBeam);
     }
 
     m_initialized = !m_propMeshes.empty();
@@ -222,6 +251,18 @@ void PropSpawner::addProp(const std::string& type, const glm::vec3& pos, float r
     } else if (type == "neonBeacon") {
         inst.aabbMin = glm::vec3(pos.x - 0.16f, 0.0f, pos.z - 0.16f);
         inst.aabbMax = glm::vec3(pos.x + 0.16f, 0.85f * scale.y, pos.z + 0.16f);
+    } else if (type == "cactusTrunk") {
+        inst.aabbMin = glm::vec3(pos.x - 0.22f, 0.0f, pos.z - 0.22f);
+        inst.aabbMax = glm::vec3(pos.x + 0.22f, 2.60f * scale.y, pos.z + 0.22f);
+    } else if (type == "desertRock") {
+        inst.aabbMin = glm::vec3(pos.x - 0.65f * scale.x, 0.0f, pos.z - 0.65f * scale.z);
+        inst.aabbMax = glm::vec3(pos.x + 0.65f * scale.x, 1.10f * scale.y, pos.z + 0.65f * scale.z);
+    } else if (type == "desertMesaRock") {
+        inst.aabbMin = glm::vec3(pos.x - 1.20f * scale.x, 0.0f, pos.z - 1.20f * scale.z);
+        inst.aabbMax = glm::vec3(pos.x + 1.20f * scale.x, 1.70f * scale.y, pos.z + 1.20f * scale.z);
+    } else if (type == "desertArchPillar") {
+        inst.aabbMin = glm::vec3(pos.x - 0.42f, 0.0f, pos.z - 0.42f);
+        inst.aabbMax = glm::vec3(pos.x + 0.42f, 5.0f * scale.y, pos.z + 0.42f);
     } else {
         // Elementos suspendidos (vigas a 4m de altura, luces, letrero de meta):
         glm::vec3 halfSize = scale * 0.5f;
@@ -232,7 +273,7 @@ void PropSpawner::addProp(const std::string& type, const glm::vec3& pos, float r
     m_props.push_back(inst);
 }
 
-void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight) {
+void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDesert) {
     m_props.clear();
     m_lampPositions.clear();
 
@@ -242,6 +283,116 @@ void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight) {
     // Recopilar losas de la pista
     std::vector<const TileData*> straightTiles;
     const TileData* startFinishTile = nullptr;
+
+    for (const auto& tile : grid.getAllTiles()) {
+        if (tile.type == TileType::START_FINISH) {
+            startFinishTile = &tile;
+        } else if (tile.type == TileType::ROAD_STRAIGHT) {
+            straightTiles.push_back(&tile);
+        }
+    }
+
+    if (isDesert) {
+        // =========================================================
+        // GENERACION BIOMA DESIERTO: Rally Dakar / Valle de Dunas
+        // =========================================================
+
+        // 1. Arco Natural de Piedra y Arenisca en la Salida / Meta
+        if (startFinishTile) {
+            bool isHorizontal = (startFinishTile->rotationDegrees == 90.0f || startFinishTile->rotationDegrees == 270.0f);
+            float beamRot = isHorizontal ? 90.0f : 0.0f;
+            float pillarOffset = 2.45f;
+            glm::vec3 pillarAOffset = isHorizontal ? glm::vec3(0.0f, 0.0f,  pillarOffset) : glm::vec3( pillarOffset, 0.0f, 0.0f);
+            glm::vec3 pillarBOffset = isHorizontal ? glm::vec3(0.0f, 0.0f, -pillarOffset) : glm::vec3(-pillarOffset, 0.0f, 0.0f);
+
+            glm::vec3 posA = startFinishTile->worldPos + pillarAOffset;
+            glm::vec3 posB = startFinishTile->worldPos + pillarBOffset;
+
+            // Pilares de piedra arenisca natural
+            addProp("desertArchPillar", glm::vec3(posA.x, 2.50f, posA.z), beamRot);
+            addProp("desertArchPillar", glm::vec3(posB.x, 2.50f, posB.z), beamRot);
+
+            // Viga superior de roca tallada conectando los pilares
+            glm::vec3 beamPos = (posA + posB) * 0.5f + glm::vec3(0.0f, 5.10f, 0.0f);
+            addProp("desertArchBeam", beamPos, beamRot);
+
+            // Monolitos protectores en las bases del arco
+            addProp("desertRock", posA + glm::vec3(0.8f, 0.55f, 0.0f), 25.0f, glm::vec3(1.1f));
+            addProp("desertRock", posB - glm::vec3(0.8f, -0.55f, 0.0f), 65.0f, glm::vec3(1.1f));
+        }
+
+        // 2. Obstaculos y decoraciones en curvas: Barreras de neumaticos, conos y rocas de arenisca
+        for (const auto& tile : grid.getAllTiles()) {
+            if (tile.type == TileType::ROAD_CORNER_SMALL || tile.type == TileType::ROAD_CORNER_LARGE) {
+                float rotRad = glm::radians(tile.rotationDegrees);
+                glm::vec3 outerDir(std::cos(rotRad + 0.785f), 0.0f, std::sin(rotRad + 0.785f));
+                
+                // Conos / neumaticos de aviso
+                addProp("debris-tire", tile.worldPos + outerDir * 2.2f, tile.rotationDegrees, glm::vec3(1.3f));
+                addProp("cone", tile.worldPos - outerDir * 1.8f, tile.rotationDegrees + 45.0f, glm::vec3(1.1f));
+
+                // Formaciones rocosas naturales de arenisca a los bordes
+                addProp("desertRock", tile.worldPos + outerDir * 3.8f, tile.rotationDegrees + 30.0f, glm::vec3(1.3f, 1.2f, 1.3f));
+                addProp("desertMesaRock", tile.worldPos + outerDir * 5.8f, tile.rotationDegrees + 75.0f, glm::vec3(1.4f, 1.5f, 1.2f));
+            }
+        }
+
+        // 3. Bosques de Cactus Saguaro 3D y Monolitos a lo largo de las rectas
+        for (size_t i = 0; i < straightTiles.size(); ++i) {
+            const auto* tile = straightTiles[i];
+            bool isHorizontal = (tile->rotationDegrees == 90.0f || tile->rotationDegrees == 270.0f);
+            float sideSign = (i % 2 == 0) ? 1.0f : -1.0f;
+            glm::vec3 sideDir = isHorizontal ? glm::vec3(0.0f, 0.0f, sideSign) : glm::vec3(sideSign, 0.0f, 0.0f);
+
+            // Generar Cactus Saguaro 3D cada 2 losas
+            if (i % 2 == 0) {
+                float dist = 3.6f + (i % 3) * 0.8f;
+                glm::vec3 cPos = tile->worldPos + sideDir * dist;
+                float cactusRot = static_cast<float>((i * 53) % 360);
+
+                // Tronco principal
+                addProp("cactusTrunk", cPos + glm::vec3(0.0f, 1.25f, 0.0f), cactusRot);
+                // Brazo izquierdo (ramificacion horizontal + vertical hacia arriba)
+                float rad = glm::radians(cactusRot);
+                glm::vec3 leftDir(-std::sin(rad), 0.0f, std::cos(rad));
+                glm::vec3 rightDir(std::sin(rad), 0.0f, -std::cos(rad));
+
+                addProp("cactusArmJoint", cPos + leftDir * 0.28f + glm::vec3(0.0f, 1.55f, 0.0f), cactusRot);
+                addProp("cactusArmSpire", cPos + leftDir * 0.42f + glm::vec3(0.0f, 1.95f, 0.0f), cactusRot);
+
+                // Brazo derecho
+                addProp("cactusArmJoint", cPos + rightDir * 0.28f + glm::vec3(0.0f, 1.15f, 0.0f), cactusRot);
+                addProp("cactusArmSpire", cPos + rightDir * 0.42f + glm::vec3(0.0f, 1.55f, 0.0f), cactusRot);
+
+                // Roca pequena en la base del cactus
+                if (i % 4 == 0) {
+                    addProp("desertRock", cPos + sideDir * 0.9f + glm::vec3(0.0f, 0.5f, 0.0f), cactusRot + 45.0f, glm::vec3(0.7f));
+                }
+            } else if (i % 3 == 0) {
+                // Grandes monolitos de arenisca en los laterales
+                float dist = 4.2f + (i % 2) * 1.2f;
+                glm::vec3 rockPos = tile->worldPos - sideDir * dist;
+                addProp("desertMesaRock", rockPos + glm::vec3(0.0f, 0.85f, 0.0f), static_cast<float>((i * 71) % 360), glm::vec3(1.2f));
+            }
+        }
+
+        // 4. Perimetro exterior: Grandes mesetas del canon
+        float halfW = (grid.getCols() * TrackGrid::TILE_SIZE) * 0.5f + 16.0f;
+        float halfD = (grid.getRows() * TrackGrid::TILE_SIZE) * 0.5f + 16.0f;
+
+        for (float x = -halfW; x <= halfW; x += 18.0f) {
+            addProp("desertMesaRock", glm::vec3(x, 1.2f, -halfD), 0.0f, glm::vec3(2.4f, 2.2f, 2.0f));
+            addProp("desertMesaRock", glm::vec3(x, 1.2f,  halfD), 180.0f, glm::vec3(2.4f, 2.2f, 2.0f));
+        }
+        for (float z = -halfD; z <= halfD; z += 18.0f) {
+            addProp("desertMesaRock", glm::vec3(-halfW, 1.2f, z), 90.0f, glm::vec3(2.4f, 2.2f, 2.0f));
+            addProp("desertMesaRock", glm::vec3( halfW, 1.2f, z), 270.0f, glm::vec3(2.4f, 2.2f, 2.0f));
+        }
+
+        std::cout << "[OK] [PropSpawner] Total de elementos generados: "
+                  << m_props.size() << " (Arco natural de arenisca, cactus saguaro 3D y formaciones rocosas del desierto)." << std::endl;
+        return;
+    }
 
     for (const auto& tile : grid.getAllTiles()) {
         if (tile.type == TileType::ROAD_STRAIGHT) {
@@ -578,6 +729,18 @@ void PropSpawner::render(const renderer::Shader& shader) const {
                 // Follaje de pino verde vivo superior
                 shader.setBool("u_UseTexture", false);
                 shader.setVec4("u_Color", glm::vec4(0.25f, 0.58f, 0.28f, 1.0f));
+            } else if (prop.type == "cactusTrunk" || prop.type == "cactusArmJoint" || prop.type == "cactusArmSpire") {
+                // Cactus Saguaro verde desierto vivo
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(0.20f, 0.48f, 0.22f, 1.0f));
+            } else if (prop.type == "desertRock" || prop.type == "desertMesaRock") {
+                // Formaciones de arenisca y monolitos rojizo/ocre del canon
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(0.76f, 0.46f, 0.28f, 1.0f));
+            } else if (prop.type == "desertArchPillar" || prop.type == "desertArchBeam") {
+                // Arco de piedra natural arenisca tallada
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(0.70f, 0.42f, 0.25f, 1.0f));
             } else {
                 // Mallas texturizadas con la paleta de Kenney
                 shader.setBool("u_UseTexture", true);
