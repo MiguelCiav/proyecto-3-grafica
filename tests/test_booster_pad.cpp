@@ -87,21 +87,23 @@ int main() {
         return 1;
     }
 
-    renderer::Shader shader;
-    bool shaderOk = shader.loadFromFiles("shaders/booster_procedural.vert", "shaders/booster_procedural.frag");
-    assert(shaderOk);
+    {
+        renderer::Shader shader;
+        bool shaderOk = shader.loadFromFiles("shaders/booster_procedural.vert", "shaders/booster_procedural.frag");
+        assert(shaderOk);
 
-    world::BoosterPad glPad(glm::vec3(5.0f, 0.0f, 10.0f), 45.0f, 3.2f, 4.8f);
-    glPad.draw(shader, 2.5f);
+        world::BoosterPad glPad(glm::vec3(5.0f, 0.0f, 10.0f), 45.0f, 3.2f, 4.8f);
+        glPad.draw(shader, 2.5f);
 
-    GLenum glErr = glGetError();
-    assert(glErr == GL_NO_ERROR);
-    std::cout << "  [CHECK 5] Pase de renderizado de BoosterPad con elevacion anti-z-fighting superado en GPU." << std::endl;
+        GLenum glErr = glGetError();
+        assert(glErr == GL_NO_ERROR);
+        std::cout << "  [CHECK 5] Pase de renderizado de BoosterPad con elevacion anti-z-fighting superado en GPU." << std::endl;
 
-    // 5. Semántica de movimiento
-    world::BoosterPad movedPad = std::move(glPad);
-    assert(movedPad.contains(glm::vec3(5.0f, 0.0f, 10.0f)));
-    std::cout << "  [CHECK 6] Semantica de movimiento de BoosterPad completada correctamente." << std::endl;
+        // 5. Semántica de movimiento
+        world::BoosterPad movedPad = std::move(glPad);
+        assert(movedPad.contains(glm::vec3(5.0f, 0.0f, 10.0f)));
+        std::cout << "  [CHECK 6] Semantica de movimiento de BoosterPad completada correctamente." << std::endl;
+    }
 
     glfwDestroyWindow(window);
     glfwTerminate();

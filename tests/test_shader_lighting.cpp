@@ -40,35 +40,38 @@ int main() {
 
     std::cout << "  [OK] Contexto OpenGL " << glGetString(GL_VERSION) << " inicializado." << std::endl;
 
-    // 2. Compilar shaders de iluminacion (lit.vert y lit.frag)
-    renderer::Shader litShader;
-    bool loadedLit = litShader.loadFromFiles("shaders/lit.vert", "shaders/lit.frag");
-    if (!loadedLit || !litShader.isValid()) {
-        std::cerr << "[FAIL] Error al compilar o enlazar shaders/lit.vert y shaders/lit.frag" << std::endl;
-        glfwDestroyWindow(window);
-        glfwTerminate();
-        return 1;
+    {
+        // 2. Compilar shaders de iluminacion (lit.vert y lit.frag)
+        renderer::Shader litShader;
+        bool loadedLit = litShader.loadFromFiles("shaders/lit.vert", "shaders/lit.frag");
+        if (!loadedLit || !litShader.isValid()) {
+            std::cerr << "[FAIL] Error al compilar o enlazar shaders/lit.vert y shaders/lit.frag" << std::endl;
+            glfwDestroyWindow(window);
+            glfwTerminate();
+            return 1;
+        }
+        std::cout << "  [CHECK 1] Shaders lit.vert y lit.frag compilados y enlazados exitosamente (Program ID: "
+                  << litShader.getID() << ")." << std::endl;
+
+        // 3. Probar vinculación y paso de uniforms desde LightManager
+        litShader.use();
+
+        lighting::LightManager lightManager;
+        lightManager.init();
+        lightManager.applyToShader(litShader, glm::vec3(0.0f, 5.0f, 10.0f));
+        std::cout << "  [CHECK 2] Uniforms de las 3 luces (Dir, " << lightManager.getPointLightCount()
+                  << "x Point, Spot) y Materiales transferidos al shader." << std::endl;
+
+        // 4. Probar paso de cada modelo de iluminación (0: Flat, 1: Lambert, 2: Blinn-Phong)
+        for (int model = 0; model < 3; ++model) {
+            lightManager.setLightingModel(static_cast<lighting::LightingModel>(model));
+            lightManager.applyToShader(litShader, glm::vec3(0.0f, 2.0f, 5.0f));
+        }
+        std::cout << "  [CHECK 3] Modelos de sombreado (0: Flat, 1: Lambert, 2: Blinn-Phong) alternados en GPU." << std::endl;
+
+        litShader.unbind();
     }
-    std::cout << "  [CHECK 1] Shaders lit.vert y lit.frag compilados y enlazados exitosamente (Program ID: "
-              << litShader.getID() << ")." << std::endl;
 
-    // 3. Probar vinculación y paso de uniforms desde LightManager
-    litShader.use();
-
-    lighting::LightManager lightManager;
-    lightManager.init();
-    lightManager.applyToShader(litShader, glm::vec3(0.0f, 5.0f, 10.0f));
-    std::cout << "  [CHECK 2] Uniforms de las 3 luces (Dir, " << lightManager.getPointLightCount()
-              << "x Point, Spot) y Materiales transferidos al shader." << std::endl;
-
-    // 4. Probar paso de cada modelo de iluminación (0: Flat, 1: Lambert, 2: Blinn-Phong)
-    for (int model = 0; model < 3; ++model) {
-        lightManager.setLightingModel(static_cast<lighting::LightingModel>(model));
-        lightManager.applyToShader(litShader, glm::vec3(0.0f, 2.0f, 5.0f));
-    }
-    std::cout << "  [CHECK 3] Modelos de sombreado (0: Flat, 1: Lambert, 2: Blinn-Phong) alternados en GPU." << std::endl;
-
-    litShader.unbind();
     glfwDestroyWindow(window);
     glfwTerminate();
 
