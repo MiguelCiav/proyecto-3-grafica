@@ -388,7 +388,7 @@ static geometry::SubMesh createSphereSubMesh(float radius, int rings = 6, int se
     return mesh;
 }
 
-static geometry::SubMesh createClamShellSubMesh(float radius = 0.48f, float openAngleDeg = 52.0f) {
+static geometry::SubMesh createClamShellSubMesh(float radius = 0.52f, float openAngleDeg = 68.0f) {
     geometry::SubMesh mesh;
     mesh.name = "Procedural_Scallop_Clam";
     const float PI = 3.14159265358979323846f;
@@ -444,16 +444,16 @@ static geometry::SubMesh createClamShellSubMesh(float radius = 0.48f, float open
                 float lyIn  = isUpper ? (dishDepth * cup) : (-dishDepth * cup);
 
                 if (isUpper) {
-                    // Rotar valva superior alrededor de la bisagra trasera (+X axis)
+                    // Rotar valva superior hacia ARRIBA y ATRÁS alrededor de la bisagra (+X axis)
                     float zRel = lz - hingeZ;
-                    float yRotOut = lyOut * cosT - zRel * sinT;
-                    float zRotOut = lyOut * sinT + zRel * cosT + hingeZ;
+                    float yRotOut = lyOut * cosT + zRel * sinT;
+                    float zRotOut = -lyOut * sinT + zRel * cosT + hingeZ;
 
-                    float yRotIn  = lyIn * cosT - zRel * sinT;
-                    float zRotIn  = lyIn * sinT + zRel * cosT + hingeZ;
+                    float yRotIn  = lyIn * cosT + zRel * sinT;
+                    float zRotIn  = -lyIn * sinT + zRel * cosT + hingeZ;
 
-                    rowOut.push_back(glm::vec3(lx, yRotOut + 0.04f, zRotOut));
-                    rowIn.push_back(glm::vec3(lx, yRotIn + 0.04f, zRotIn));
+                    rowOut.push_back(glm::vec3(lx, yRotOut + 0.02f, zRotOut));
+                    rowIn.push_back(glm::vec3(lx, yRotIn + 0.02f, zRotIn));
                 } else {
                     rowOut.push_back(glm::vec3(lx, lyOut, lz));
                     rowIn.push_back(glm::vec3(lx, lyIn, lz));
@@ -819,12 +819,12 @@ bool PropSpawner::init(const std::string& obstaclesDir) {
 
         // Ostra marina abierta para albergar la perla bioluminiscente
         renderer::MeshGL clamShell;
-        clamShell.setup(createClamShellSubMesh(0.50f, 50.0f));
+        clamShell.setup(createClamShellSubMesh(0.52f, 68.0f));
         m_propMeshes["clamShell"] = std::move(clamShell);
 
-        // Perla marina esférica bioluminiscente perfecta (reemplaza la estrella)
+        // Perla marina esférica bioluminiscente perfecta que descansa en el cuenco interior de la ostra
         renderer::MeshGL seaPearl;
-        seaPearl.setup(createSphereSubMesh(0.24f, 6, 10));
+        seaPearl.setup(createSphereSubMesh(0.18f, 6, 12));
         m_propMeshes["seaPearl"] = std::move(seaPearl);
 
         // Elementos procedurales del Bioma Volcánico (Basalto negro, magma, chimeneas y braseros de fuego)
@@ -1211,14 +1211,14 @@ void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDe
 
             addProp("seaPedestal", posA + sideDir * 1.8f + glm::vec3(0.0f, 0.75f, 0.0f), 0.0f, glm::vec3(1.0f), true);
             addProp("clamShell", posA + sideDir * 1.8f + glm::vec3(0.0f, 1.50f, 0.0f), rotA, glm::vec3(1.0f), false);
-            addProp("seaPearl", posA + sideDir * 1.8f + glm::vec3(0.0f, 1.62f, 0.0f), 0.0f, glm::vec3(1.0f), false);
+            addProp("seaPearl", posA + sideDir * 1.8f + glm::vec3(0.0f, 1.54f, 0.0f), 0.0f, glm::vec3(1.0f), false);
 
             addProp("seaPedestal", posB - sideDir * 1.8f + glm::vec3(0.0f, 0.75f, 0.0f), 0.0f, glm::vec3(1.0f), true);
             addProp("clamShell", posB - sideDir * 1.8f + glm::vec3(0.0f, 1.50f, 0.0f), rotB, glm::vec3(1.0f), false);
-            addProp("seaPearl", posB - sideDir * 1.8f + glm::vec3(0.0f, 1.62f, 0.0f), 0.0f, glm::vec3(1.0f), false);
+            addProp("seaPearl", posB - sideDir * 1.8f + glm::vec3(0.0f, 1.54f, 0.0f), 0.0f, glm::vec3(1.0f), false);
 
-            m_lampPositions.push_back(posA + sideDir * 1.8f + glm::vec3(0.0f, 1.62f, 0.0f));
-            m_lampPositions.push_back(posB - sideDir * 1.8f + glm::vec3(0.0f, 1.62f, 0.0f));
+            m_lampPositions.push_back(posA + sideDir * 1.8f + glm::vec3(0.0f, 1.54f, 0.0f));
+            m_lampPositions.push_back(posB - sideDir * 1.8f + glm::vec3(0.0f, 1.54f, 0.0f));
         }
 
         // 2. Obstáculos y Decoraciones del Arrecife en Curvas
@@ -1272,9 +1272,9 @@ void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDe
                 // Orientar la apertura de la ostra directamente hacia la calzada para que el corredor la aprecie
                 float clamFacingRot = glm::degrees(std::atan2(-sideDir.x, -sideDir.z));
                 addProp("clamShell", pPos + glm::vec3(0.0f, 1.50f, 0.0f), clamFacingRot, glm::vec3(1.0f), false);
-                addProp("seaPearl", pPos + glm::vec3(0.0f, 1.62f, 0.0f), 0.0f, glm::vec3(1.0f), false);
+                addProp("seaPearl", pPos + glm::vec3(0.0f, 1.54f, 0.0f), 0.0f, glm::vec3(1.0f), false);
 
-                m_lampPositions.push_back(pPos + glm::vec3(0.0f, 1.62f, 0.0f));
+                m_lampPositions.push_back(pPos + glm::vec3(0.0f, 1.54f, 0.0f));
                 pearlCount++;
             }
 
