@@ -80,13 +80,13 @@ void LightManager::init() {
     m_spotLight.position   = glm::vec3(0.0f, 0.45f, 0.0f);
     m_spotLight.direction  = glm::vec3(0.0f, -0.06f, 1.0f);
     m_spotLight.ambient    = glm::vec3(0.0f);
-    m_spotLight.diffuse    = glm::vec3(1.0f, 0.98f, 0.90f); // Luz xenón blanca brillante
-    m_spotLight.specular   = glm::vec3(1.0f, 1.0f, 1.0f);
-    m_spotLight.cutOff     = 0.9659f;  // cos(15.0 deg)
-    m_spotLight.outerCutOff = 0.9396f; // cos(20.0 deg)
+    m_spotLight.diffuse    = glm::vec3(1.60f, 1.55f, 1.45f); // Luz xenón brillante de faro
+    m_spotLight.specular   = glm::vec3(1.20f, 1.20f, 1.20f);
+    m_spotLight.cutOff     = 0.9135f;  // cos(24.0 deg) - Cono más amplio que baña la calzada
+    m_spotLight.outerCutOff = 0.8480f; // cos(32.0 deg) - Penumbra suave envolvente
     m_spotLight.constant   = 1.0f;
-    m_spotLight.linear     = 0.045f;
-    m_spotLight.quadratic  = 0.0075f;
+    m_spotLight.linear     = 0.035f;
+    m_spotLight.quadratic  = 0.0050f;
     m_spotLight.enabled    = true;
 
     // Propiedades de material base

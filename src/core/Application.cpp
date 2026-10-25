@@ -599,9 +599,11 @@ void Application::applyDayNightState(bool isNight) {
                     points[i].enabled   = true;
                 }
 
-                // Faros del kart con haz azulado proyectado en el espacio
-                spot.diffuse  = glm::vec3(1.30f, 1.30f, 1.45f);
-                spot.specular = glm::vec3(1.0f);
+                // Faros del kart con haz azulado proyectado en el espacio (cono amplio de alta visibilidad)
+                spot.diffuse     = glm::vec3(2.40f, 2.40f, 2.80f);
+                spot.specular    = glm::vec3(1.80f, 1.80f, 2.00f);
+                spot.cutOff      = 0.9135f; // cos(24.0 deg)
+                spot.outerCutOff = 0.8480f; // cos(32.0 deg)
                 m_lightingController.setHeadlights(true);
 
                 std::cout << "\n>>> [ILUMINACION - ESPACIO COSMICO]: Modo [PENUMBRA / ECLIPSE ESTELAR (Tecla N)]"
@@ -626,8 +628,10 @@ void Application::applyDayNightState(bool isNight) {
                     points[i].enabled   = true;
                 }
 
-                spot.diffuse  = glm::vec3(0.35f, 0.35f, 0.40f);
-                spot.specular = glm::vec3(0.20f);
+                spot.diffuse     = glm::vec3(0.60f, 0.60f, 0.70f);
+                spot.specular    = glm::vec3(0.40f);
+                spot.cutOff      = 0.9135f;
+                spot.outerCutOff = 0.8480f;
                 m_lightingController.setHeadlights(false);
 
                 std::cout << "\n>>> [ILUMINACION - ESPACIO COSMICO]: Modo [RADIACION ESTELAR / SUPERNOVA (Tecla N)]"
@@ -652,8 +656,10 @@ void Application::applyDayNightState(bool isNight) {
                 }
 
                 // Faros del kart de alta potencia iluminando el desierto nocturno
-                spot.diffuse  = glm::vec3(1.40f, 1.35f, 1.20f);
-                spot.specular = glm::vec3(1.0f);
+                spot.diffuse     = glm::vec3(1.80f, 1.70f, 1.45f);
+                spot.specular    = glm::vec3(1.20f);
+                spot.cutOff      = 0.9135f;
+                spot.outerCutOff = 0.8480f;
                 m_lightingController.setHeadlights(true);
 
                 // Dunas nocturnas azuladas bajo la luna
@@ -672,8 +678,10 @@ void Application::applyDayNightState(bool isNight) {
                     p.enabled = false;
                 }
 
-                spot.diffuse  = glm::vec3(0.30f, 0.30f, 0.25f);
-                spot.specular = glm::vec3(0.20f);
+                spot.diffuse     = glm::vec3(0.40f, 0.40f, 0.35f);
+                spot.specular    = glm::vec3(0.25f);
+                spot.cutOff      = 0.9135f;
+                spot.outerCutOff = 0.8480f;
                 m_lightingController.setHeadlights(false);
 
                 // Arena dorada cálida del Sahara
@@ -703,8 +711,10 @@ void Application::applyDayNightState(bool isNight) {
                     p.enabled  = true;
                 }
 
-                spot.diffuse  = glm::vec3(1.20f, 1.15f, 1.00f);
-                spot.specular = glm::vec3(1.0f);
+                spot.diffuse     = glm::vec3(1.80f, 1.70f, 1.45f);
+                spot.specular    = glm::vec3(1.20f);
+                spot.cutOff      = 0.9135f;
+                spot.outerCutOff = 0.8480f;
                 m_lightingController.setHeadlights(true);
 
                 // Césped/asfalto nocturno más oscuro
@@ -726,8 +736,10 @@ void Application::applyDayNightState(bool isNight) {
                     p.enabled  = false;
                 }
 
-                spot.diffuse  = glm::vec3(0.30f, 0.30f, 0.25f);
-                spot.specular = glm::vec3(0.20f);
+                spot.diffuse     = glm::vec3(0.40f, 0.40f, 0.35f);
+                spot.specular    = glm::vec3(0.25f);
+                spot.cutOff      = 0.9135f;
+                spot.outerCutOff = 0.8480f;
                 m_lightingController.setHeadlights(false);
 
                 // Césped verde diurno
