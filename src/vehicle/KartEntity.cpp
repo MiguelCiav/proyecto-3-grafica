@@ -64,7 +64,9 @@ void KartEntity::update(const glm::vec3& worldPos, float yawDegrees, const anima
 
     // 2. Actualizar rotaciones locales de ruedas delanteras (Roll en X + Steer en Y)
     float roll = animator.getRollAngle();
-    float steer = animator.getSteerAngle();
+    // Invertir signo: en coordenadas diestras de OpenGL (-Z adelante, +X derecha),
+    // el viraje a la derecha ('D') requiere rotacion negativa en Y para apuntar hacia +X.
+    float steer = -animator.getSteerAngle();
 
     if (m_wheelFLNode) {
         m_wheelFLNode->getTransform().rotationEuler = glm::vec3(roll, steer, 0.0f);

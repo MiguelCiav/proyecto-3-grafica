@@ -465,7 +465,31 @@ add_custom_command(TARGET test_final_integration POST_BUILD
 )
 
 # ==============================================================================
-# 18. Target de Empaquetado para Entrega UCV
+# 18. Ejecutable de Pruebas: Giro de Ruedas, Skidmarks y HUD de Carreras
+# ==============================================================================
+add_executable(test_hud_and_skidmarks
+    tests/test_hud_and_skidmarks.cpp
+    src/vfx/SkidmarkManager.cpp
+    src/ui/RacingHud.cpp
+    src/animation/WheelAnimator.cpp
+    src/physics/KartPhysics.cpp
+    src/renderer/Shader.cpp
+)
+
+target_include_directories(test_hud_and_skidmarks PUBLIC
+    ${PROJECT_INCLUDE_DIRS}
+)
+
+target_link_libraries(test_hud_and_skidmarks PRIVATE
+    OpenGL::GL
+    glad
+    glfw
+    glm::glm
+    ${CMAKE_DL_LIBS}
+)
+
+# ==============================================================================
+# 19. Target de Empaquetado para Entrega UCV
 # ==============================================================================
 find_package(Python3 QUIET COMPONENTS Interpreter)
 if(Python3_FOUND)

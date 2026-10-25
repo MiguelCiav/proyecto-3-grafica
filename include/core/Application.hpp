@@ -21,6 +21,8 @@
 #include "renderer/Skybox.hpp"
 #include "world/BoosterPad.hpp"
 #include "vfx/KartParticleEmitter.hpp"
+#include "vfx/SkidmarkManager.hpp"
+#include "ui/RacingHud.hpp"
 #include <memory>
 #include <string>
 #include <vector>
@@ -206,6 +208,19 @@ private:
     float m_finishLineCooldown{8.0f};
     float m_titleUpdateTimer{0.0f};
     int m_lapsCompleted{0};
+
+    // Efectos de marcas de derrape e interfaz HUD de carreras
+    vfx::SkidmarkManager m_skidmarkManager;
+    ui::RacingHud m_racingHud;
+
+    // Cronometraje de carreras y vueltas
+    float m_currentLapTime{0.0f};
+    float m_bestLapTime{0.0f};
+    float m_totalRaceTime{0.0f};
+    float m_lapNoticeTimer{0.0f};
+    float m_lastLapTime{0.0f};
+    bool m_isNewRecord{false};
+    int m_totalLaps{3};
 };
 
 } // namespace core

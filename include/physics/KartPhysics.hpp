@@ -26,6 +26,7 @@ public:
     [[nodiscard]] float getSpeed() const { return m_currentSpeed; }
     void resetSpeed() { m_currentSpeed = 0.0f; }
     [[nodiscard]] float getNormalizedSpeed() const { return std::abs(m_currentSpeed) / m_maxSpeed; }
+    [[nodiscard]] bool isReversing() const { return m_currentSpeed < -0.1f; }
     [[nodiscard]] float getSteeringAngle() const { return m_steeringAngle; }
 
     [[nodiscard]] glm::vec3 getForwardVector() const;

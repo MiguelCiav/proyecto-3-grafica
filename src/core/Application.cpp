@@ -427,6 +427,11 @@ void Application::selectTrack(int index) {
     m_wheelAnimator.reset();
     m_chaseCamera.reset(m_kartInitialPos, m_kartPhysics.getForwardVector());
     m_lapsCompleted = 0;
+    m_currentLapTime = 0.0f;
+    m_bestLapTime = 0.0f;
+    m_totalRaceTime = 0.0f;
+    m_lapNoticeTimer = 0.0f;
+    m_skidmarkManager.clear();
 
     printSelectionHUD();
 }
@@ -1209,6 +1214,14 @@ bool Application::init() {
         std::cerr << "[AVISO] [Application] No se pudo inicializar el sistema de particulas del kart." << std::endl;
     }
 
+    if (!m_skidmarkManager.init()) {
+        std::cerr << "[AVISO] [Application] No se pudo inicializar SkidmarkManager." << std::endl;
+    }
+
+    if (!m_racingHud.init()) {
+        std::cerr << "[AVISO] [Application] No se pudo inicializar RacingHud." << std::endl;
+    }
+
     if (!m_paletteTexture.loadFromFile("assets/textures/colormap.png")) {
         std::cerr << "[AVISO] [Application] No se pudo cargar colormap.png" << std::endl;
     }
@@ -1409,9 +1422,15 @@ void Application::processInput() {
         if (Input::isKeyJustPressed(GLFW_KEY_R)) {
             m_kartPhysics.setPosition(m_kartInitialPos);
             m_kartPhysics.setYaw(m_kartInitialYaw);
+            m_kartPhysics.resetSpeed();
             m_wheelAnimator.reset();
             m_chaseCamera.reset(m_kartInitialPos, m_kartPhysics.getForwardVector());
-            std::cout << "[Kart] Posicion reiniciada a la linea de salida de "
+            m_lapsCompleted = 0;
+            m_currentLapTime = 0.0f;
+            m_totalRaceTime = 0.0f;
+            m_lapNoticeTimer = 0.0f;
+            m_skidmarkManager.clear();
+            std::cout << "[Kart] Posicion y cronometros reiniciados a la linea de salida de "
                       << m_tracks[m_selectedTrackIndex].name << "." << std::endl;
         }
 
@@ -1538,6 +1557,13 @@ void Application::update(float deltaTime) {
         m_kartPhysics.setSurfaceFriction(1.0f);
     }
 
+    // 0. Actualizar cronometros de carrera y notificacion de vuelta
+    m_currentLapTime += deltaTime;
+    m_totalRaceTime += deltaTime;
+    if (m_lapNoticeTimer > 0.0f) {
+        m_lapNoticeTimer -= deltaTime;
+    }
+
     // 3. Actualizar modelo de dinamica de vehiculo
     m_kartPhysics.update(deltaTime, accel, brake, steer);
 
@@ -1557,12 +1583,25 @@ void Application::update(float deltaTime) {
         if (hitZone->type == world::ZoneType::BOOST) {
             m_kartPhysics.applyBoost(hitZone->durationSeconds, hitZone->speedMultiplier);
         } else if (hitZone->type == world::ZoneType::FINISH_LINE && m_finishLineCooldown <= 0.0f && m_kartPhysics.getSpeed() > 1.5f) {
-            m_lapsCompleted++;
-            m_finishLineCooldown = 5.0f;
-            std::cout << ">>> [META!] Vuelta " << m_lapsCompleted << " completada en "
-                      << m_tracks[m_selectedTrackIndex].name << " con "
-                      << m_vehicles[m_selectedVehicleIndex].name << " ("
-                      << m_drivers[m_selectedDriverIndex].name << ")! <<<" << std::endl;
+            if (m_currentLapTime > 3.0f) {
+                m_lapsCompleted++;
+                m_finishLineCooldown = 5.0f;
+                m_lastLapTime = m_currentLapTime;
+                if (m_bestLapTime <= 0.0f || m_currentLapTime < m_bestLapTime) {
+                    m_bestLapTime = m_currentLapTime;
+                    m_isNewRecord = true;
+                } else {
+                    m_isNewRecord = false;
+                }
+                m_currentLapTime = 0.0f;
+                m_lapNoticeTimer = 3.5f;
+
+                std::cout << ">>> [META!] Vuelta " << m_lapsCompleted << " completada en "
+                          << m_tracks[m_selectedTrackIndex].name << " con "
+                          << m_vehicles[m_selectedVehicleIndex].name << " ("
+                          << m_drivers[m_selectedDriverIndex].name << ")! Tiempo: "
+                          << m_lastLapTime << " s <<<" << std::endl;
+            }
         }
     }
 
@@ -1572,6 +1611,11 @@ void Application::update(float deltaTime) {
 
     // Actualizar emisor de particulas (humo de escape y turbo del kart)
     m_kartEmitter.update(deltaTime, m_kartPhysics, accel);
+
+    // Actualizar marcas de derrape en el asfalto (ruedas traseras)
+    bool isBraking = brake && (m_kartPhysics.getSpeed() > 1.5f);
+    m_skidmarkManager.update(deltaTime, m_kartPhysics.getPosition(), m_kartPhysics.getYaw(),
+                             m_kartPhysics.getSpeed(), steer, isBraking, m_kartPhysics.isBoosting());
 
     // Sincronizar faros moviles del kart (SpotLight) con la posicion y giro del morro
     m_lightingController.update(m_kartPhysics.getPosition(), m_kartPhysics.getForwardVector(), deltaTime);
@@ -1824,14 +1868,42 @@ void Application::render() {
         }
     }
 
-    // 5. Renderizar efectos visuales de particulas del kart (humo de escape y turbo)
+    // 5. Renderizar marcas de derrape en el asfalto (calcomanias sobre la pista)
+    m_skidmarkManager.render(view, proj);
+
+    // 6. Renderizar efectos visuales de particulas del kart (humo de escape y turbo)
     m_kartEmitter.render(view, proj);
 
-    // 6. Renderizar Skybox 3D inmersivo con optimizacion GL_LEQUAL al fondo de la escena
+    // 7. Renderizar Skybox 3D inmersivo con optimizacion GL_LEQUAL al fondo de la escena
     const auto& skybox = getSkybox();
     if (skybox.isLoaded()) {
         skybox.draw(view, proj);
     }
+
+    // 8. Renderizar interfaces de usuario HUD (Velocimetro/Tacometro + Cronometro y Vueltas)
+    ui::TelemetryData telem;
+    telem.speedKmH = std::abs(m_kartPhysics.getSpeed()) * 3.6f;
+    telem.maxSpeedKmH = (!m_vehicles.empty() && m_selectedVehicleIndex < static_cast<int>(m_vehicles.size()))
+                            ? m_vehicles[m_selectedVehicleIndex].maxSpeed * 3.6f : 80.0f;
+    telem.isBoosting = m_kartPhysics.isBoosting();
+    telem.isBraking = (Input::isKeyPressed(GLFW_KEY_S) || Input::isKeyPressed(GLFW_KEY_DOWN) || Input::isKeyPressed(GLFW_KEY_SPACE))
+                      && (m_kartPhysics.getSpeed() > 1.5f);
+    telem.isReversing = m_kartPhysics.isReversing();
+    telem.isSkidding = m_skidmarkManager.isCurrentlySkidding();
+    telem.isOffRoad = (m_kartPhysics.getSurfaceFriction() < 0.9f);
+
+    ui::LapTimingData timing;
+    timing.currentLap = m_lapsCompleted + 1;
+    timing.totalLaps = m_totalLaps;
+    timing.currentLapTime = m_currentLapTime;
+    timing.bestLapTime = m_bestLapTime;
+    timing.totalRaceTime = m_totalRaceTime;
+    timing.lapNoticeTimer = m_lapNoticeTimer;
+    timing.lastLapTime = m_lastLapTime;
+    timing.isNewRecord = m_isNewRecord;
+
+    m_racingHud.render(static_cast<float>(m_window->getWidth()), static_cast<float>(m_window->getHeight()),
+                       telem, timing);
 }
 
 void Application::run() {

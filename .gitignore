@@ -34,3 +34,5 @@ PROY3_*.zip
 # Source pack unzipped folders
 kenney_car-kit/
 *.zip
+scratch/
+__pycache__/
