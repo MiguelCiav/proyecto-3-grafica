@@ -301,6 +301,16 @@ void Application::loadCatalog() {
             26, 26,
             true, // isNight
             TrackTheme::COSMIC_SPACE
+        },
+        {
+            "track-aquatic",
+            "Arrecife Abisal UCV (Aquatic Deep Reef)",
+            "Acuatico ★★★",
+            "Circuito submarino en las profundidades oceanicas con corales bioluminiscentes, bosques de algas y templo atlante.",
+            "assets/levels/track_aquatic_reef.txt",
+            26, 26,
+            false, // isNight
+            TrackTheme::AQUATIC_REEF
         }
     };
 }
@@ -353,15 +363,18 @@ void Application::selectTrack(int index) {
     // Cargar nuevo archivo de pista modular
     world::LevelLoader::loadFromFile(track.filePath, m_trackGrid);
 
-    // Regenerar obstaculos y triggers para la nueva pista (con props diurnos, nocturnos, deserticos o espaciales)
+    // Regenerar obstaculos y triggers para la nueva pista (con props diurnos, nocturnos, deserticos, espaciales o acuaticos)
     bool isDesert = (track.theme == TrackTheme::DESERT_DUNES);
     bool isSpace = (track.theme == TrackTheme::COSMIC_SPACE);
-    m_propSpawner.generateForGrid(m_trackGrid, track.isNight, isDesert, isSpace);
+    bool isAquatic = (track.theme == TrackTheme::AQUATIC_REEF);
+    m_propSpawner.generateForGrid(m_trackGrid, track.isNight, isDesert, isSpace, isAquatic);
     m_zoneManager.autoGenerateFromGrid(m_trackGrid);
 
     // Ajustar color del terreno segun el bioma
     if (isSpace) {
         m_trackRenderer.setGroundColor(glm::vec4(0.012f, 0.010f, 0.024f, 1.0f)); // Vacio cosmico abisal
+    } else if (isAquatic) {
+        m_trackRenderer.setGroundColor(glm::vec4(0.04f, 0.16f, 0.22f, 1.0f)); // Fondo marino / lecho abisal turquesa
     } else if (isDesert) {
         m_trackRenderer.setGroundColor(glm::vec4(0.89f, 0.74f, 0.48f, 1.0f)); // Arena dorada cálida del Sahara
     } else if (track.isNight) {
@@ -506,6 +519,9 @@ const renderer::Skybox& Application::getSkybox() const {
         if (track.theme == TrackTheme::COSMIC_SPACE && m_skyboxCosmic.isLoaded()) {
             return m_skyboxCosmic;
         }
+        if (track.theme == TrackTheme::AQUATIC_REEF && m_skyboxAquatic.isLoaded()) {
+            return m_skyboxAquatic;
+        }
         if (track.theme == TrackTheme::DESERT_DUNES) {
             if (m_lightingController.isNight() && m_skyboxNight.isLoaded()) {
                 return m_skyboxNight;
@@ -529,6 +545,8 @@ void Application::setupTrackLighting() {
                     ? (m_tracks[m_selectedTrackIndex].theme == TrackTheme::DESERT_DUNES) : false;
     bool isSpace = (!m_tracks.empty() && m_selectedTrackIndex >= 0 && static_cast<size_t>(m_selectedTrackIndex) < m_tracks.size())
                     ? (m_tracks[m_selectedTrackIndex].theme == TrackTheme::COSMIC_SPACE) : false;
+    bool isAquatic = (!m_tracks.empty() && m_selectedTrackIndex >= 0 && static_cast<size_t>(m_selectedTrackIndex) < m_tracks.size())
+                    ? (m_tracks[m_selectedTrackIndex].theme == TrackTheme::AQUATIC_REEF) : false;
 
     // 1. Registrar fuentes de luz puntual según el bioma
     if (isSpace) {
@@ -545,6 +563,22 @@ void Application::setupTrackLighting() {
             pl.quadratic = 0.020f;
             pl.enabled   = true;
             m_lightManager.addPointLight(pl);
+        }
+    } else if (isAquatic) {
+        // En el arrecife abisal, las perlas marinas emiten luz bioluminiscente turquesa/aguamarina
+        const auto& lampPositions = m_propSpawner.getLampPositions();
+        for (const auto& pos : lampPositions) {
+            if (m_lightManager.getPointLightCount() >= lighting::LightManager::MAX_POINT_LIGHTS) break;
+            lighting::PointLight pearl;
+            pearl.position  = pos;
+            pearl.ambient   = glm::vec3(0.06f, 0.16f, 0.18f);
+            pearl.diffuse   = glm::vec3(1.40f, 2.60f, 2.40f); // Radiante resplandor turquesa/aguamarina
+            pearl.specular  = glm::vec3(1.20f, 2.20f, 2.00f);
+            pearl.constant  = 1.0f;
+            pearl.linear    = 0.06f;
+            pearl.quadratic = 0.016f;
+            pearl.enabled   = true;
+            m_lightManager.addPointLight(pearl);
         }
     } else if (!isDesert) {
         // En circuitos urbanos/GP, extraer posiciones exactas de las farolas 3D generadas por PropSpawner
@@ -582,6 +616,66 @@ void Application::applyDayNightState(bool isNight) {
     auto& points = m_lightManager.getPointLights();
 
     switch (theme) {
+        case TrackTheme::AQUATIC_REEF: {
+            if (isNight) {
+                // Modo Abismo Nocturno / Fosa Marina Océano Profundo
+                sun.direction = glm::normalize(glm::vec3(-0.20f, -0.75f, -0.40f));
+                sun.ambient   = glm::vec3(0.03f, 0.08f, 0.12f);
+                sun.diffuse   = glm::vec3(0.08f, 0.22f, 0.32f);
+                sun.specular  = glm::vec3(0.10f, 0.25f, 0.30f);
+
+                for (auto& p : points) {
+                    p.ambient   = glm::vec3(0.06f, 0.16f, 0.18f);
+                    p.diffuse   = glm::vec3(1.60f, 2.80f, 2.60f); // Perlas y corales bioluminiscentes intensos
+                    p.specular  = glm::vec3(1.40f, 2.40f, 2.20f);
+                    p.constant  = 1.0f;
+                    p.linear    = 0.06f;
+                    p.quadratic = 0.016f;
+                    p.enabled   = true;
+                }
+
+                spot.diffuse     = glm::vec3(2.20f, 2.40f, 2.60f); // Faros submarinos penetrantes
+                spot.specular    = glm::vec3(1.60f, 1.80f, 2.00f);
+                spot.cutOff      = 0.9135f;
+                spot.outerCutOff = 0.8480f;
+                m_lightingController.setHeadlights(true);
+
+                m_trackRenderer.setGroundColor(glm::vec4(0.02f, 0.09f, 0.14f, 1.0f));
+
+                std::cout << "\n>>> [ILUMINACION - ARRECIFE ABISAL]: Modo [FOSA ABISAL NOCTURNA (Tecla N)]"
+                          << "\n    -> Bioluminiscencia marina, rayos crepusculares profundos y faros sumergidos. <<<\n" << std::endl;
+            } else {
+                // Modo Arrecife Sumergido Diurno (Aguas cristalinas turquesas con rayos cáusticos)
+                sun.direction = glm::normalize(glm::vec3(0.15f, -0.85f, 0.25f));
+                sun.ambient   = glm::vec3(0.12f, 0.28f, 0.32f); // Ambiente acuático turquesa
+                sun.diffuse   = glm::vec3(0.35f, 0.85f, 0.95f); // Luz solar penetrando el agua
+                sun.specular  = glm::vec3(0.50f, 0.80f, 0.90f);
+
+                for (auto& p : points) {
+                    p.ambient   = glm::vec3(0.04f, 0.12f, 0.14f);
+                    p.diffuse   = glm::vec3(1.20f, 2.20f, 2.00f);
+                    p.specular  = glm::vec3(1.00f, 1.80f, 1.60f);
+                    p.constant  = 1.0f;
+                    p.linear    = 0.06f;
+                    p.quadratic = 0.016f;
+                    p.enabled   = true;
+                }
+
+                spot.diffuse     = glm::vec3(0.60f, 0.80f, 0.85f);
+                spot.specular    = glm::vec3(0.40f, 0.60f, 0.65f);
+                spot.cutOff      = 0.9135f;
+                spot.outerCutOff = 0.8480f;
+                m_lightingController.setHeadlights(false);
+
+                m_trackRenderer.setGroundColor(glm::vec4(0.04f, 0.16f, 0.22f, 1.0f));
+
+                std::cout << "\n>>> [ILUMINACION - ARRECIFE ABISAL]: Modo [ARRECIFE TURQUESA DIURNO (Tecla N)]"
+                          << "\n    -> Rayos causticos solares submarinos, corales luminosos y aguas turquesas. <<<\n" << std::endl;
+            }
+            sun.enabled = true;
+            break;
+        }
+
         case TrackTheme::COSMIC_SPACE: {
             if (isNight) {
                 // Modo Penumbra Cósmica / Eclipse Espacial
@@ -797,6 +891,25 @@ void Application::toggleTrackPointLights() {
                   << (turnOn ? "[ENCENDIDAS (Tecla P)] - Estrellas neon brillando en sus colores unicos (cian, magenta, oro, verde, violeta)"
                              : "[APAGADAS (Tecla P)] - Estrellas neon en reposo estelar")
                   << " <<<\n" << std::endl;
+    } else if (theme == TrackTheme::AQUATIC_REEF) {
+        for (auto& p : points) {
+            p.enabled = turnOn;
+            if (turnOn) {
+                p.ambient   = glm::vec3(0.06f, 0.16f, 0.18f);
+                p.diffuse   = glm::vec3(1.60f, 2.80f, 2.60f);
+                p.specular  = glm::vec3(1.40f, 2.40f, 2.20f);
+                p.constant  = 1.0f;
+                p.linear    = 0.06f;
+                p.quadratic = 0.016f;
+            } else {
+                p.ambient  = glm::vec3(0.0f);
+                p.diffuse  = glm::vec3(0.0f);
+                p.specular = glm::vec3(0.0f);
+            }
+        }
+        std::cout << "\n>>> [PERLAS MARINAS BIOLUMINISCENTES]: "
+                  << (turnOn ? "[ENCENDIDAS (Tecla P)]" : "[APAGADAS (Tecla P)]")
+                  << " <<<\n" << std::endl;
     } else {
         for (auto& p : points) {
             p.enabled = turnOn;
@@ -964,6 +1077,11 @@ bool Application::init() {
     if (!m_skyboxCosmic.loadShader("shaders/skybox.vert", "shaders/skybox.frag") ||
         !m_skyboxCosmic.loadFromDirectory("assets/textures/skybox_cosmic", ".tga")) {
         std::cerr << "[AVISO] [Application] No se pudo cargar el Skybox cosmico." << std::endl;
+    }
+
+    if (!m_skyboxAquatic.loadShader("shaders/skybox.vert", "shaders/skybox.frag") ||
+        !m_skyboxAquatic.loadFromDirectory("assets/textures/skybox_aquatic", ".tga")) {
+        std::cerr << "[AVISO] [Application] No se pudo cargar el Skybox acuatico." << std::endl;
     }
 
     if (!m_kartEmitter.init() || !m_kartEmitter.loadShaders("shaders/particle.vert", "shaders/particle.frag")) {
@@ -1383,9 +1501,14 @@ void Application::render() {
                         ? (m_tracks[m_selectedTrackIndex].theme == TrackTheme::COSMIC_SPACE) : false;
         bool isDesert = (!m_tracks.empty() && m_selectedTrackIndex >= 0 && static_cast<size_t>(m_selectedTrackIndex) < m_tracks.size())
                         ? (m_tracks[m_selectedTrackIndex].theme == TrackTheme::DESERT_DUNES) : false;
+        bool isAquatic = (!m_tracks.empty() && m_selectedTrackIndex >= 0 && static_cast<size_t>(m_selectedTrackIndex) < m_tracks.size())
+                        ? (m_tracks[m_selectedTrackIndex].theme == TrackTheme::AQUATIC_REEF) : false;
 
         if (isSpace) {
             m_window->clear(0.008f, 0.006f, 0.016f, 1.0f);
+        } else if (isAquatic) {
+            if (isNight) m_window->clear(0.01f, 0.04f, 0.08f, 1.0f);
+            else         m_window->clear(0.03f, 0.22f, 0.32f, 1.0f);
         } else if (isDesert) {
             if (isNight) m_window->clear(0.02f, 0.03f, 0.06f, 1.0f);
             else         m_window->clear(0.50f, 0.72f, 0.95f, 1.0f);
@@ -1501,9 +1624,14 @@ void Application::render() {
                     ? (m_tracks[m_selectedTrackIndex].theme == TrackTheme::COSMIC_SPACE) : false;
     bool isDesert = (!m_tracks.empty() && m_selectedTrackIndex >= 0 && static_cast<size_t>(m_selectedTrackIndex) < m_tracks.size())
                     ? (m_tracks[m_selectedTrackIndex].theme == TrackTheme::DESERT_DUNES) : false;
+    bool isAquatic = (!m_tracks.empty() && m_selectedTrackIndex >= 0 && static_cast<size_t>(m_selectedTrackIndex) < m_tracks.size())
+                    ? (m_tracks[m_selectedTrackIndex].theme == TrackTheme::AQUATIC_REEF) : false;
 
     if (isSpace) {
         m_window->clear(0.006f, 0.004f, 0.012f, 1.0f);
+    } else if (isAquatic) {
+        if (isNight) m_window->clear(0.01f, 0.04f, 0.07f, 1.0f);
+        else         m_window->clear(0.03f, 0.20f, 0.30f, 1.0f);
     } else if (isDesert) {
         if (isNight) m_window->clear(0.02f, 0.03f, 0.06f, 1.0f);
         else         m_window->clear(0.45f, 0.72f, 0.96f, 1.0f);

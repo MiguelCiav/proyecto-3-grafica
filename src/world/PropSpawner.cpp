@@ -286,6 +286,51 @@ bool PropSpawner::init(const std::string& obstaclesDir) {
         renderer::MeshGL starMesh;
         starMesh.setup(createStarSubMesh(0.55f, 0.22f, 0.18f));
         m_propMeshes["floatingStar"] = std::move(starMesh);
+
+        // Elementos procedurales del Bioma Acuático (Corales 3D, algas marinas, rocas submarinas, arco atlante y perlas)
+        renderer::MeshGL coralBranchTall;
+        coralBranchTall.setup(createBoxSubMesh(0.14f, 1.10f, 0.14f));
+        m_propMeshes["coralBranchTall"] = std::move(coralBranchTall);
+
+        renderer::MeshGL coralBranchSide;
+        coralBranchSide.setup(createBoxSubMesh(0.12f, 0.50f, 0.12f));
+        m_propMeshes["coralBranchSide"] = std::move(coralBranchSide);
+
+        renderer::MeshGL coralBrain;
+        coralBrain.setup(createBoxSubMesh(0.48f, 0.40f, 0.48f));
+        m_propMeshes["coralBrain"] = std::move(coralBrain);
+
+        renderer::MeshGL kelpSegment;
+        kelpSegment.setup(createBoxSubMesh(0.24f, 0.85f, 0.06f));
+        m_propMeshes["kelpSegment"] = std::move(kelpSegment);
+
+        renderer::MeshGL bubbleColumn;
+        bubbleColumn.setup(createBoxSubMesh(0.20f, 1.80f, 0.20f));
+        m_propMeshes["bubbleColumn"] = std::move(bubbleColumn);
+
+        renderer::MeshGL seaRock;
+        seaRock.setup(createBoxSubMesh(0.70f, 0.55f, 0.70f));
+        m_propMeshes["seaRock"] = std::move(seaRock);
+
+        renderer::MeshGL seaArchPillar;
+        seaArchPillar.setup(createBoxSubMesh(0.22f, 2.50f, 0.22f));
+        m_propMeshes["seaArchPillar"] = std::move(seaArchPillar);
+
+        renderer::MeshGL seaArchBeam;
+        seaArchBeam.setup(createBoxSubMesh(2.80f, 0.25f, 0.30f));
+        m_propMeshes["seaArchBeam"] = std::move(seaArchBeam);
+
+        renderer::MeshGL seaArchTrim;
+        seaArchTrim.setup(createBoxSubMesh(2.80f, 0.08f, 0.36f));
+        m_propMeshes["seaArchTrim"] = std::move(seaArchTrim);
+
+        renderer::MeshGL seaPedestal;
+        seaPedestal.setup(createBoxSubMesh(0.22f, 0.75f, 0.22f));
+        m_propMeshes["seaPedestal"] = std::move(seaPedestal);
+
+        renderer::MeshGL seaPearl;
+        seaPearl.setup(createStarSubMesh(0.40f, 0.22f, 0.20f));
+        m_propMeshes["seaPearl"] = std::move(seaPearl);
     }
 
     m_initialized = !m_propMeshes.empty();
@@ -377,6 +422,21 @@ void PropSpawner::addProp(const std::string& type, const glm::vec3& pos, float r
     } else if (type == "spaceBeacon") {
         inst.aabbMin = glm::vec3(pos.x - 0.18f, 0.0f, pos.z - 0.18f);
         inst.aabbMax = glm::vec3(pos.x + 0.18f, 0.90f * scale.y, pos.z + 0.18f);
+    } else if (type == "seaArchPillar") {
+        inst.aabbMin = glm::vec3(pos.x - 0.24f, 0.0f, pos.z - 0.24f);
+        inst.aabbMax = glm::vec3(pos.x + 0.24f, 5.0f * scale.y, pos.z + 0.24f);
+    } else if (type == "seaRock") {
+        inst.aabbMin = glm::vec3(pos.x - 0.70f * scale.x, 0.0f, pos.z - 0.70f * scale.z);
+        inst.aabbMax = glm::vec3(pos.x + 0.70f * scale.x, 1.10f * scale.y, pos.z + 0.70f * scale.z);
+    } else if (type == "seaPedestal") {
+        inst.aabbMin = glm::vec3(pos.x - 0.24f, 0.0f, pos.z - 0.24f);
+        inst.aabbMax = glm::vec3(pos.x + 0.24f, 1.50f * scale.y, pos.z + 0.24f);
+    } else if (type == "coralBranchTall") {
+        inst.aabbMin = glm::vec3(pos.x - 0.16f, 0.0f, pos.z - 0.16f);
+        inst.aabbMax = glm::vec3(pos.x + 0.16f, 2.20f * scale.y, pos.z + 0.16f);
+    } else if (type == "coralBrain") {
+        inst.aabbMin = glm::vec3(pos.x - 0.50f * scale.x, 0.0f, pos.z - 0.50f * scale.z);
+        inst.aabbMax = glm::vec3(pos.x + 0.50f * scale.x, 0.80f * scale.y, pos.z + 0.50f * scale.z);
     } else {
         // Elementos suspendidos (vigas a 4m de altura, luces, letrero de meta):
         glm::vec3 halfSize = scale * 0.5f;
@@ -394,9 +454,9 @@ void PropSpawner::update(float dt) {
         m_starRotation -= 360.0f;
     }
 
-    // Animar giro 3D continuo y levitación vertical armónica de las estrellas flotantes
+    // Animar giro 3D continuo y levitación vertical armónica de las estrellas flotantes y perlas marinas
     for (auto& prop : m_props) {
-        if (prop.type == "floatingStar") {
+        if (prop.type == "floatingStar" || prop.type == "seaPearl") {
             float bob = std::sin(m_animTime * 2.8f + prop.position.x * 0.4f + prop.position.z * 0.4f) * 0.08f;
             glm::vec3 animatedPos = prop.position + glm::vec3(0.0f, bob, 0.0f);
 
@@ -408,7 +468,7 @@ void PropSpawner::update(float dt) {
     }
 }
 
-void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDesert, bool isSpace) {
+void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDesert, bool isSpace, bool isAquatic) {
     m_props.clear();
     m_lampPositions.clear();
 
@@ -425,6 +485,108 @@ void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDe
         } else if (tile.type == TileType::ROAD_STRAIGHT) {
             straightTiles.push_back(&tile);
         }
+    }
+
+    if (isAquatic) {
+        // =========================================================
+        // GENERACION BIOMA ACUATICO: Arrecife Abisal UCV (Deep Reef)
+        // =========================================================
+
+        // 1. Gran Portal Atlante de Coral y Nácar en la Salida / Meta
+        if (startFinishTile) {
+            bool isHorizontal = (startFinishTile->rotationDegrees == 90.0f || startFinishTile->rotationDegrees == 270.0f);
+            float beamRot = isHorizontal ? 90.0f : 0.0f;
+            float pillarOffset = 2.65f;
+            glm::vec3 sideDir = isHorizontal ? glm::vec3(0.0f, 0.0f, 1.0f) : glm::vec3(1.0f, 0.0f, 0.0f);
+            glm::vec3 pillarAOffset = sideDir * pillarOffset;
+            glm::vec3 pillarBOffset = -sideDir * pillarOffset;
+
+            glm::vec3 posA = startFinishTile->worldPos + pillarAOffset;
+            glm::vec3 posB = startFinishTile->worldPos + pillarBOffset;
+
+            // Pilares de templo atlante marino
+            addProp("seaArchPillar", glm::vec3(posA.x, 2.50f, posA.z), beamRot, glm::vec3(1.0f), true);
+            addProp("seaArchPillar", glm::vec3(posB.x, 2.50f, posB.z), beamRot, glm::vec3(1.0f), true);
+
+            // Viga superior con ribete nacarado luminoso
+            glm::vec3 beamPos = (posA + posB) * 0.5f + glm::vec3(0.0f, 5.00f, 0.0f);
+            addProp("seaArchBeam", beamPos, beamRot, glm::vec3(1.0f), false);
+            addProp("seaArchTrim", beamPos - glm::vec3(0.0f, 0.20f, 0.0f), beamRot, glm::vec3(1.0f), false);
+
+            // Rocas marinas y perlas resplandecientes en las bases exteriores
+            addProp("seaRock", posA + sideDir * 1.2f, 30.0f, glm::vec3(1.2f), true);
+            addProp("seaRock", posB - sideDir * 1.2f, 60.0f, glm::vec3(1.2f), true);
+
+            addProp("seaPedestal", posA + sideDir * 1.8f + glm::vec3(0.0f, 0.75f, 0.0f), 0.0f, glm::vec3(1.0f), true);
+            addProp("seaPearl", posA + sideDir * 1.8f + glm::vec3(0.0f, 1.70f, 0.0f), 0.0f, glm::vec3(1.0f), false);
+
+            addProp("seaPedestal", posB - sideDir * 1.8f + glm::vec3(0.0f, 0.75f, 0.0f), 0.0f, glm::vec3(1.0f), true);
+            addProp("seaPearl", posB - sideDir * 1.8f + glm::vec3(0.0f, 1.70f, 0.0f), 0.0f, glm::vec3(1.0f), false);
+
+            m_lampPositions.push_back(posA + sideDir * 1.8f + glm::vec3(0.0f, 1.70f, 0.0f));
+            m_lampPositions.push_back(posB - sideDir * 1.8f + glm::vec3(0.0f, 1.70f, 0.0f));
+        }
+
+        // 2. Obstáculos y Decoraciones del Arrecife en Curvas
+        for (const auto& tile : grid.getAllTiles()) {
+            if (tile.type == TileType::ROAD_CORNER_SMALL || tile.type == TileType::ROAD_CORNER_LARGE) {
+                float rotRad = glm::radians(tile.rotationDegrees);
+                glm::vec3 outerDir(std::cos(rotRad + 0.785f), 0.0f, std::sin(rotRad + 0.785f));
+
+                addProp("cone", tile.worldPos - outerDir * 1.9f, tile.rotationDegrees + 45.0f, glm::vec3(1.15f), true);
+                addProp("debris-tire", tile.worldPos + outerDir * 2.45f, tile.rotationDegrees, glm::vec3(1.3f), true);
+
+                addProp("seaRock", tile.worldPos + outerDir * 4.0f, tile.rotationDegrees + 25.0f, glm::vec3(1.3f), true);
+                addProp("coralBrain", tile.worldPos + outerDir * 3.2f + glm::vec3(0.0f, 0.40f, 0.0f), tile.rotationDegrees + 60.0f, glm::vec3(1.2f), true);
+                addProp("bubbleColumn", tile.worldPos + outerDir * 5.2f + glm::vec3(0.0f, 1.80f, 0.0f), 0.0f, glm::vec3(1.0f), false);
+            }
+        }
+
+        // 3. Bosques de Algas Kelp, Ramas de Coral 3D y Pedestales con Perlas en las Rectas
+        int pearlCount = 0;
+        for (size_t i = 0; i < straightTiles.size(); ++i) {
+            const auto* tile = straightTiles[i];
+            bool isHorizontal = (tile->rotationDegrees == 90.0f || tile->rotationDegrees == 270.0f);
+            float sideSign = (i % 2 == 0) ? 1.0f : -1.0f;
+            glm::vec3 sideDir = isHorizontal ? glm::vec3(0.0f, 0.0f, sideSign) : glm::vec3(sideSign, 0.0f, 0.0f);
+
+            // Algas Kelp marinas altas en los bordes
+            float kelpDist = 3.6f + (i % 3) * 0.7f;
+            glm::vec3 kelpPos = tile->worldPos + sideDir * kelpDist;
+            float kelpRot = static_cast<float>((i * 47) % 360);
+
+            addProp("kelpSegment", kelpPos + glm::vec3(0.0f, 0.85f, 0.0f), kelpRot, glm::vec3(1.0f), false);
+            addProp("kelpSegment", kelpPos + glm::vec3(0.0f, 2.35f, 0.0f), kelpRot + 25.0f, glm::vec3(0.9f, 0.85f, 0.9f), false);
+            addProp("kelpSegment", kelpPos + glm::vec3(0.0f, 3.75f, 0.0f), kelpRot + 50.0f, glm::vec3(0.8f, 0.80f, 0.8f), false);
+
+            // Racimos de coral 3D
+            if (i % 2 == 0) {
+                glm::vec3 coralPos = tile->worldPos - sideDir * (3.8f + (i % 2) * 0.6f);
+                float coralRot = static_cast<float>((i * 63) % 360);
+                addProp("coralBranchTall", coralPos + glm::vec3(0.0f, 1.10f, 0.0f), coralRot, glm::vec3(1.0f), true);
+                addProp("coralBranchSide", coralPos + glm::vec3(0.25f, 0.75f, 0.0f), coralRot + 45.0f, glm::vec3(1.0f), false);
+                addProp("coralBranchSide", coralPos + glm::vec3(-0.25f, 0.95f, 0.0f), coralRot - 45.0f, glm::vec3(1.0f), false);
+                addProp("coralBrain", coralPos + glm::vec3(0.6f, 0.40f, 0.3f), coralRot + 90.0f, glm::vec3(0.9f), false);
+            }
+
+            // Pedestales con Perlas Bioluminiscentes cada 5 losas (emiten luz puntual acuática)
+            if (i % 5 == 1 && pearlCount < 6) {
+                float pearlDist = 2.65f;
+                glm::vec3 pPos = tile->worldPos + sideDir * pearlDist;
+                addProp("seaPedestal", pPos + glm::vec3(0.0f, 0.75f, 0.0f), 0.0f, glm::vec3(1.0f), true);
+
+                glm::vec3 pearlPos = pPos + glm::vec3(0.0f, 1.70f, 0.0f);
+                addProp("seaPearl", pearlPos, 0.0f, glm::vec3(1.0f), false);
+
+                m_lampPositions.push_back(pearlPos);
+                pearlCount++;
+            }
+        }
+
+        std::cout << "[OK] [PropSpawner] Total de elementos generados: "
+                  << m_props.size() << " (Arco Atlante, " << pearlCount
+                  << " perlas bioluminiscentes, bosques de algas kelp y corales 3D)." << std::endl;
+        return;
     }
 
     if (isSpace) {
@@ -1028,6 +1190,42 @@ void PropSpawner::render(const renderer::Shader& shader) const {
                 // Estrella flotante por defecto en cian neón brillante
                 shader.setBool("u_UseTexture", false);
                 shader.setVec4("u_Color", glm::vec4(0.0f, 0.95f, 1.0f, 1.0f));
+            } else if (prop.type == "coralBranchTall" || prop.type == "coralBranchSide") {
+                // Ramas de coral naranja vibrante
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(1.0f, 0.45f, 0.18f, 1.0f));
+            } else if (prop.type == "coralBrain") {
+                // Coral cerebro violeta/magenta bioluminiscente
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(0.85f, 0.22f, 0.65f, 1.0f));
+            } else if (prop.type == "kelpSegment") {
+                // Algas marinas Kelp verde esmeralda marino
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(0.08f, 0.68f, 0.38f, 1.0f));
+            } else if (prop.type == "bubbleColumn") {
+                // Columna de burbujas marinas cian celeste
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(0.40f, 0.85f, 0.95f, 1.0f));
+            } else if (prop.type == "seaRock") {
+                // Rocas submarinas de basalto oceánico
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(0.12f, 0.22f, 0.28f, 1.0f));
+            } else if (prop.type == "seaArchPillar" || prop.type == "seaArchBeam") {
+                // Templo Atlante de piedra marina aguamarina
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(0.18f, 0.42f, 0.48f, 1.0f));
+            } else if (prop.type == "seaArchTrim") {
+                // Ribete nacarado de conchas luminiscentes
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(0.45f, 0.95f, 0.90f, 1.0f));
+            } else if (prop.type == "seaPedestal") {
+                // Pedestal de piedra marina
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(0.15f, 0.25f, 0.30f, 1.0f));
+            } else if (prop.type == "seaPearl") {
+                // Perla marina con brillo turquesa bioluminiscente intenso
+                shader.setBool("u_UseTexture", false);
+                shader.setVec4("u_Color", glm::vec4(0.20f, 0.98f, 0.88f, 1.0f));
             } else {
                 // Mallas texturizadas con la paleta de Kenney
                 shader.setBool("u_UseTexture", true);

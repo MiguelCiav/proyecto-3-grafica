@@ -37,7 +37,7 @@ public:
     bool init(const std::string& obstaclesDir = "assets/models/obstacles");
 
     // Genera automáticamente barreras y conos alrededor del circuito
-    void generateForGrid(const TrackGrid& grid, bool isNight = false, bool isDesert = false, bool isSpace = false);
+    void generateForGrid(const TrackGrid& grid, bool isNight = false, bool isDesert = false, bool isSpace = false, bool isAquatic = false);
 
     // Actualiza animaciones de props dinámicos (giro y levitación de estrellas)
     void update(float dt);
