@@ -101,26 +101,22 @@ void LightingController::togglePointLights() {
     auto& points = m_lightManager->getPointLights();
     if (points.empty()) return;
 
-    bool wasOn = points[0].enabled && (glm::length(points[0].diffuse) > 0.05f);
+    bool wasOn = points[0].enabled;
     bool turnOn = !wasOn;
 
     for (auto& p : points) {
         p.enabled = turnOn;
-        if (turnOn) {
-            p.ambient  = glm::vec3(0.06f, 0.05f, 0.02f);
-            p.diffuse  = m_isNight ? glm::vec3(2.2f, 1.8f, 0.75f) : glm::vec3(0.80f, 0.68f, 0.30f);
-            p.specular = glm::vec3(1.0f, 0.8f, 0.4f);
-        } else {
-            p.ambient  = glm::vec3(0.0f);
-            p.diffuse  = glm::vec3(0.0f);
-            p.specular = glm::vec3(0.0f);
-        }
     }
-    std::cout << "\n>>> [FAROLAS DE PISTA]: " << (turnOn ? "[ENCENDIDAS (Tecla P)]" : "[APAGADAS (Tecla P)]") << " <<<\n" << std::endl;
+    std::cout << "\n>>> [LUCES DE PISTA]: " << (turnOn ? "[ENCENDIDAS (Tecla P)]" : "[APAGADAS (Tecla P)]") << " <<<\n" << std::endl;
 }
 
 void LightingController::setDayNight(bool night) {
     m_isNight = night;
+    if (m_onDayNightChanged) {
+        m_onDayNightChanged(m_isNight);
+        return;
+    }
+
     if (!m_lightManager) return;
 
     auto& sun = m_lightManager->getDirectionalLight();

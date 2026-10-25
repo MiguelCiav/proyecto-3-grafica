@@ -506,8 +506,13 @@ const renderer::Skybox& Application::getSkybox() const {
         if (track.theme == TrackTheme::COSMIC_SPACE && m_skyboxCosmic.isLoaded()) {
             return m_skyboxCosmic;
         }
-        if (track.theme == TrackTheme::DESERT_DUNES && m_skyboxDesert.isLoaded()) {
-            return m_skyboxDesert;
+        if (track.theme == TrackTheme::DESERT_DUNES) {
+            if (m_lightingController.isNight() && m_skyboxNight.isLoaded()) {
+                return m_skyboxNight;
+            }
+            if (m_skyboxDesert.isLoaded()) {
+                return m_skyboxDesert;
+            }
         }
     }
     if (m_lightingController.isNight() && m_skyboxNight.isLoaded()) {
@@ -525,42 +530,15 @@ void Application::setupTrackLighting() {
     bool isSpace = (!m_tracks.empty() && m_selectedTrackIndex >= 0 && static_cast<size_t>(m_selectedTrackIndex) < m_tracks.size())
                     ? (m_tracks[m_selectedTrackIndex].theme == TrackTheme::COSMIC_SPACE) : false;
 
-    // 1. Luz Direccional (Sol en el día o Luna en la noche)
-    lighting::DirectionalLight sun;
+    // 1. Registrar fuentes de luz puntual según el bioma
     if (isSpace) {
-        // Iluminación cósmica: estrella distante brillante con halo azulado y luz ambiental de nebulosa
-        sun.direction = glm::normalize(glm::vec3(-0.45f, -0.60f, -0.65f));
-        sun.ambient   = glm::vec3(0.12f, 0.08f, 0.20f);
-        sun.diffuse   = glm::vec3(0.95f, 0.90f, 1.15f);
-        sun.specular  = glm::vec3(1.10f, 1.05f, 1.30f);
-    } else if (isNight) {
-        sun.direction = glm::normalize(glm::vec3(-0.25f, -0.65f, -0.50f));
-        sun.ambient   = glm::vec3(0.06f, 0.07f, 0.10f);
-        sun.diffuse   = glm::vec3(0.08f, 0.08f, 0.12f);
-        sun.specular  = glm::vec3(0.06f);
-    } else if (isDesert) {
-        // Sol abrasador brillante en el cenit del desierto con luz rebotada en la arena
-        sun.direction = glm::normalize(glm::vec3(0.40f, -0.72f, 0.56f));
-        sun.ambient   = glm::vec3(0.45f, 0.40f, 0.32f);
-        sun.diffuse   = glm::vec3(1.15f, 1.06f, 0.90f);
-        sun.specular  = glm::vec3(0.70f, 0.65f, 0.52f);
-    } else {
-        sun.direction = glm::normalize(glm::vec3(-0.35f, -0.85f, -0.40f));
-        sun.ambient   = glm::vec3(0.28f, 0.28f, 0.30f);
-        sun.diffuse   = glm::vec3(0.82f, 0.80f, 0.76f);
-        sun.specular  = glm::vec3(0.40f);
-    }
-    sun.enabled = true;
-    m_lightManager.setDirectionalLight(sun);
-
-    // En el espacio, configurar las estrellas flotantes como fuentes de luz puntual neón no-blancas
-    if (isSpace) {
+        // En el espacio, registrar las estrellas flotantes como fuentes de luz puntual neón no-blancas
         for (const auto& star : m_propSpawner.getStarLights()) {
             if (m_lightManager.getPointLightCount() >= lighting::LightManager::MAX_POINT_LIGHTS) break;
             lighting::PointLight pl;
             pl.position  = star.position;
             pl.ambient   = star.diffuseColor * 0.12f;
-            pl.diffuse   = star.diffuseColor * 2.4f; // Iluminación neón intensa no-blanca sobre la pista y el kart
+            pl.diffuse   = star.diffuseColor * 2.4f;
             pl.specular  = star.diffuseColor * 1.8f;
             pl.constant  = 1.0f;
             pl.linear    = 0.12f;
@@ -568,80 +546,194 @@ void Application::setupTrackLighting() {
             pl.enabled   = true;
             m_lightManager.addPointLight(pl);
         }
-        std::cout << "[OK] [Lighting] Circuito configurado: BIOMA ESPACIAL ("
-                  << m_lightManager.getPointLightCount()
-                  << " luces puntuales neon estelares no-blancas activadas)." << std::endl;
-        return;
-    }
-    if (isDesert) {
-        std::cout << "[OK] [Lighting] Circuito configurado: BIOMA DESIERTO (Sol abrasador, dunas doradas)." << std::endl;
-        return;
-    }
-
-    // 2. Extraer posiciones exactas de las farolas 3D generadas por PropSpawner
-    const auto& lampPositions = m_propSpawner.getLampPositions();
-    if (!lampPositions.empty()) {
-        for (const auto& pos : lampPositions) {
-            lighting::PointLight lamp;
-            lamp.position = pos;
-            if (isNight) {
-                // Iluminación nocturna suave y cálida: conos dorados focalizados sin quemar el asfalto
-                lamp.ambient  = glm::vec3(0.04f, 0.03f, 0.01f);
-                lamp.diffuse  = glm::vec3(1.15f, 0.95f, 0.42f);
-                lamp.specular = glm::vec3(0.60f, 0.50f, 0.25f);
-                lamp.enabled  = true;
-            } else {
-                // De día, las farolas se mantienen en reposo para no quemar el asfalto
-                lamp.ambient  = glm::vec3(0.0f);
-                lamp.diffuse  = glm::vec3(0.0f);
-                lamp.specular = glm::vec3(0.0f);
-                lamp.enabled  = false;
-            }
-            lamp.constant  = 1.0f;
-            lamp.linear    = 0.09f;
-            lamp.quadratic = 0.030f;
-            m_lightManager.addPointLight(lamp);
-        }
-    } else {
-        std::vector<glm::vec3> roadPositions;
-        for (const auto& tile : m_trackGrid.getAllTiles()) {
-            if (tile.type != world::TileType::EMPTY && tile.type != world::TileType::OFFROAD_GRASS) {
-                roadPositions.push_back(tile.worldPos);
-            }
-        }
-        if (roadPositions.size() >= 4) {
-            size_t n = roadPositions.size();
-            size_t count = std::min<size_t>(6, n);
-
-            for (size_t i = 0; i < count; ++i) {
-                size_t idx = (i * n) / count;
+    } else if (!isDesert) {
+        // En circuitos urbanos/GP, extraer posiciones exactas de las farolas 3D generadas por PropSpawner
+        const auto& lampPositions = m_propSpawner.getLampPositions();
+        if (!lampPositions.empty()) {
+            for (const auto& pos : lampPositions) {
                 lighting::PointLight lamp;
-                lamp.position = roadPositions[idx] + glm::vec3(0.0f, 4.2f, 0.0f);
-                if (isNight) {
-                    lamp.ambient  = glm::vec3(0.04f, 0.03f, 0.01f);
-                    lamp.diffuse  = glm::vec3(1.15f, 0.95f, 0.42f);
-                    lamp.specular = glm::vec3(0.60f, 0.50f, 0.25f);
-                    lamp.enabled  = true;
-                } else {
-                    lamp.ambient  = glm::vec3(0.0f);
-                    lamp.diffuse  = glm::vec3(0.0f);
-                    lamp.specular = glm::vec3(0.0f);
-                    lamp.enabled  = false;
-                }
+                lamp.position  = pos;
                 lamp.constant  = 1.0f;
                 lamp.linear    = 0.09f;
                 lamp.quadratic = 0.030f;
+                lamp.enabled   = isNight;
                 m_lightManager.addPointLight(lamp);
             }
         }
     }
 
-    // 3. Sincronizar controlador de iluminacion y faros frontales
+    // 2. Aplicar iluminación temática y sincronizar ciclo día/noche
     m_lightingController.setDayNight(isNight);
+}
 
-    std::cout << "[OK] [Lighting] Circuito configurado: "
-              << (isNight ? "MODO NOCHE (Farolas activas, luna azulada)" : "MODO DIA (Sol brillante, farolas en reposo)")
-              << " (" << m_lightManager.getPointLightCount() << " farolas registradas)." << std::endl;
+void Application::applyDayNightState(bool isNight) {
+    TrackTheme theme = TrackTheme::DAY_GRASSLAND;
+    std::string trackName = "Pista";
+    if (!m_tracks.empty() && m_selectedTrackIndex >= 0 && static_cast<size_t>(m_selectedTrackIndex) < m_tracks.size()) {
+        theme = m_tracks[m_selectedTrackIndex].theme;
+        trackName = m_tracks[m_selectedTrackIndex].name;
+    }
+
+    auto& sun = m_lightManager.getDirectionalLight();
+    auto& spot = m_lightManager.getSpotLight();
+    auto& points = m_lightManager.getPointLights();
+
+    switch (theme) {
+        case TrackTheme::COSMIC_SPACE: {
+            if (isNight) {
+                // Modo Penumbra Cósmica / Eclipse Espacial
+                sun.direction = glm::normalize(glm::vec3(-0.45f, -0.60f, -0.65f));
+                sun.ambient   = glm::vec3(0.05f, 0.03f, 0.10f); // Penumbra azul-violeta profunda
+                sun.diffuse   = glm::vec3(0.28f, 0.22f, 0.45f);
+                sun.specular  = glm::vec3(0.35f, 0.30f, 0.50f);
+
+                // Las estrellas flotantes neón brillan con intensidad máxima en el vacío
+                const auto& stars = m_propSpawner.getStarLights();
+                for (size_t i = 0; i < points.size() && i < stars.size(); ++i) {
+                    points[i].ambient  = stars[i].diffuseColor * 0.18f;
+                    points[i].diffuse  = stars[i].diffuseColor * 3.0f;
+                    points[i].specular = stars[i].diffuseColor * 2.2f;
+                    points[i].enabled  = true;
+                }
+
+                // Faros del kart con haz azulado proyectado en el espacio
+                spot.diffuse  = glm::vec3(1.30f, 1.30f, 1.45f);
+                spot.specular = glm::vec3(1.0f);
+                m_lightingController.setHeadlights(true);
+
+                std::cout << "\n>>> [ILUMINACION - ESPACIO COSMICO]: Modo [PENUMBRA / ECLIPSE ESTELAR (Tecla N)]"
+                          << "\n    -> Estrellas neon flotantes resplandecen en el vacio cosmico."
+                          << "\n    -> Faros del kart encendidos proyector xenon. <<<\n" << std::endl;
+            } else {
+                // Modo Radiación Estelar / Supernova cercana
+                sun.direction = glm::normalize(glm::vec3(-0.45f, -0.60f, -0.65f));
+                sun.ambient   = glm::vec3(0.16f, 0.12f, 0.26f); // Luz ambiental de nebulosa estelar
+                sun.diffuse   = glm::vec3(1.05f, 0.98f, 1.25f); // Estrella radiante
+                sun.specular  = glm::vec3(1.20f, 1.10f, 1.40f);
+
+                // Estrellas flotantes con brillo neón vivo
+                const auto& stars = m_propSpawner.getStarLights();
+                for (size_t i = 0; i < points.size() && i < stars.size(); ++i) {
+                    points[i].ambient  = stars[i].diffuseColor * 0.12f;
+                    points[i].diffuse  = stars[i].diffuseColor * 2.2f;
+                    points[i].specular = stars[i].diffuseColor * 1.6f;
+                    points[i].enabled  = true;
+                }
+
+                spot.diffuse  = glm::vec3(0.35f, 0.35f, 0.40f);
+                spot.specular = glm::vec3(0.20f);
+                m_lightingController.setHeadlights(false);
+
+                std::cout << "\n>>> [ILUMINACION - ESPACIO COSMICO]: Modo [RADIACION ESTELAR / SUPERNOVA (Tecla N)]"
+                          << "\n    -> Luz brillante de estrella cercana y resplandor de nebulosa cosmica."
+                          << "\n    -> Estrellas neon flotantes activas con sus tonalidades unicas. <<<\n" << std::endl;
+            }
+            sun.enabled = true;
+            m_trackRenderer.setGroundColor(glm::vec4(0.012f, 0.010f, 0.024f, 1.0f));
+            break;
+        }
+
+        case TrackTheme::DESERT_DUNES: {
+            if (isNight) {
+                // Noche Estrellada en las Dunas del Sahara
+                sun.direction = glm::normalize(glm::vec3(0.40f, -0.72f, 0.56f));
+                sun.ambient   = glm::vec3(0.07f, 0.08f, 0.12f);
+                sun.diffuse   = glm::vec3(0.14f, 0.16f, 0.22f); // Luna límpida sobre la arena
+                sun.specular  = glm::vec3(0.15f, 0.15f, 0.20f);
+
+                for (auto& p : points) {
+                    p.enabled = false;
+                }
+
+                // Faros del kart de alta potencia iluminando el desierto nocturno
+                spot.diffuse  = glm::vec3(1.40f, 1.35f, 1.20f);
+                spot.specular = glm::vec3(1.0f);
+                m_lightingController.setHeadlights(true);
+
+                // Dunas nocturnas azuladas bajo la luna
+                m_trackRenderer.setGroundColor(glm::vec4(0.20f, 0.19f, 0.23f, 1.0f));
+
+                std::cout << "\n>>> [ILUMINACION - VALLE DEL DESIERTO]: Modo [NOCHE ESTRELLADA EN LAS DUNAS (Tecla N)]"
+                          << "\n    -> Luna fria del Sahara, cielo estrellado nocturno y faros del kart activos. <<<\n" << std::endl;
+            } else {
+                // Sol abrasador diurno del Sahara
+                sun.direction = glm::normalize(glm::vec3(0.40f, -0.72f, 0.56f));
+                sun.ambient   = glm::vec3(0.45f, 0.40f, 0.32f); // Luz rebotada en la arena dorada
+                sun.diffuse   = glm::vec3(1.15f, 1.06f, 0.90f); // Sol ardiente en el cenit
+                sun.specular  = glm::vec3(0.70f, 0.65f, 0.52f);
+
+                for (auto& p : points) {
+                    p.enabled = false;
+                }
+
+                spot.diffuse  = glm::vec3(0.30f, 0.30f, 0.25f);
+                spot.specular = glm::vec3(0.20f);
+                m_lightingController.setHeadlights(false);
+
+                // Arena dorada cálida del Sahara
+                m_trackRenderer.setGroundColor(glm::vec4(0.89f, 0.74f, 0.48f, 1.0f));
+
+                std::cout << "\n>>> [ILUMINACION - VALLE DEL DESIERTO]: Modo [SOL ABRASADOR DIURNO (Tecla N)]"
+                          << "\n    -> Sol calido del Sahara sobre dunas de arena dorada. <<<\n" << std::endl;
+            }
+            sun.enabled = true;
+            break;
+        }
+
+        case TrackTheme::DAY_GRASSLAND:
+        case TrackTheme::NIGHT_NEON:
+        default: {
+            if (isNight) {
+                // Modo Noche GP: Luna azulada, farolas de pista encendidas, faros del kart activos
+                sun.direction = glm::normalize(glm::vec3(-0.25f, -0.65f, -0.50f));
+                sun.ambient   = glm::vec3(0.06f, 0.07f, 0.10f);
+                sun.diffuse   = glm::vec3(0.08f, 0.08f, 0.12f);
+                sun.specular  = glm::vec3(0.06f);
+
+                for (auto& p : points) {
+                    p.ambient  = glm::vec3(0.04f, 0.03f, 0.01f);
+                    p.diffuse  = glm::vec3(1.20f, 1.00f, 0.45f);
+                    p.specular = glm::vec3(0.70f, 0.60f, 0.30f);
+                    p.enabled  = true;
+                }
+
+                spot.diffuse  = glm::vec3(1.20f, 1.15f, 1.00f);
+                spot.specular = glm::vec3(1.0f);
+                m_lightingController.setHeadlights(true);
+
+                // Césped/asfalto nocturno más oscuro
+                m_trackRenderer.setGroundColor(glm::vec4(0.08f, 0.12f, 0.10f, 1.0f));
+
+                std::cout << "\n>>> [ILUMINACION - " << trackName << "]: Modo [NOCHE GP ACTIVADO (Tecla N)]"
+                          << "\n    -> Luna azulada, farolas de circuito encendidas y faros del kart activos. <<<\n" << std::endl;
+            } else {
+                // Modo Día GP: Sol brillante, farolas apagadas en reposo, cielo despejado
+                sun.direction = glm::normalize(glm::vec3(-0.35f, -0.85f, -0.40f));
+                sun.ambient   = glm::vec3(0.28f, 0.28f, 0.30f);
+                sun.diffuse   = glm::vec3(0.82f, 0.80f, 0.76f);
+                sun.specular  = glm::vec3(0.40f);
+
+                for (auto& p : points) {
+                    p.ambient  = glm::vec3(0.0f);
+                    p.diffuse  = glm::vec3(0.0f);
+                    p.specular = glm::vec3(0.0f);
+                    p.enabled  = false;
+                }
+
+                spot.diffuse  = glm::vec3(0.30f, 0.30f, 0.25f);
+                spot.specular = glm::vec3(0.20f);
+                m_lightingController.setHeadlights(false);
+
+                // Césped verde diurno
+                m_trackRenderer.setGroundColor(glm::vec4(0.28f, 0.62f, 0.28f, 1.0f));
+
+                std::cout << "\n>>> [ILUMINACION - " << trackName << "]: Modo [DIA GP ACTIVADO (Tecla N)]"
+                          << "\n    -> Sol brillante natural, farolas en reposo y cielo despejado. <<<\n" << std::endl;
+            }
+            sun.enabled = true;
+            break;
+        }
+    }
 }
 
 void Application::setupBoosterPads() {
@@ -816,6 +908,9 @@ bool Application::init() {
     // Inicializar sistema y controlador de iluminacion
     m_lightManager.init();
     m_lightingController.init(&m_lightManager);
+    m_lightingController.setOnDayNightChanged([this](bool isNight) {
+        applyDayNightState(isNight);
+    });
 
     // 4. Cargar la primera pista por defecto (Ovalo Clasico)
     selectTrack(0);
@@ -1198,10 +1293,19 @@ void Application::render() {
     // -------------------------------------------------------------
     if (m_gameState == GameState::MAIN_MENU) {
         bool isNight = m_lightingController.isNight();
-        if (isNight) {
-            m_window->clear(0.04f, 0.05f, 0.09f, 1.0f);
+        bool isSpace = (!m_tracks.empty() && m_selectedTrackIndex >= 0 && static_cast<size_t>(m_selectedTrackIndex) < m_tracks.size())
+                        ? (m_tracks[m_selectedTrackIndex].theme == TrackTheme::COSMIC_SPACE) : false;
+        bool isDesert = (!m_tracks.empty() && m_selectedTrackIndex >= 0 && static_cast<size_t>(m_selectedTrackIndex) < m_tracks.size())
+                        ? (m_tracks[m_selectedTrackIndex].theme == TrackTheme::DESERT_DUNES) : false;
+
+        if (isSpace) {
+            m_window->clear(0.008f, 0.006f, 0.016f, 1.0f);
+        } else if (isDesert) {
+            if (isNight) m_window->clear(0.02f, 0.03f, 0.06f, 1.0f);
+            else         m_window->clear(0.50f, 0.72f, 0.95f, 1.0f);
         } else {
-            m_window->clear(0.40f, 0.68f, 0.95f, 1.0f);
+            if (isNight) m_window->clear(0.04f, 0.05f, 0.09f, 1.0f);
+            else         m_window->clear(0.40f, 0.68f, 0.95f, 1.0f);
         }
         renderer::Shader& shader = m_litShader.isValid() ? m_litShader : m_basicShader;
         if (!shader.isValid()) return;
@@ -1307,10 +1411,19 @@ void Application::render() {
     // RENDERIZADO: RACING (Modo Carrera activo)
     // -------------------------------------------------------------
     bool isNight = m_lightingController.isNight();
-    if (isNight) {
-        m_window->clear(0.03f, 0.04f, 0.08f, 1.0f);
+    bool isSpace = (!m_tracks.empty() && m_selectedTrackIndex >= 0 && static_cast<size_t>(m_selectedTrackIndex) < m_tracks.size())
+                    ? (m_tracks[m_selectedTrackIndex].theme == TrackTheme::COSMIC_SPACE) : false;
+    bool isDesert = (!m_tracks.empty() && m_selectedTrackIndex >= 0 && static_cast<size_t>(m_selectedTrackIndex) < m_tracks.size())
+                    ? (m_tracks[m_selectedTrackIndex].theme == TrackTheme::DESERT_DUNES) : false;
+
+    if (isSpace) {
+        m_window->clear(0.006f, 0.004f, 0.012f, 1.0f);
+    } else if (isDesert) {
+        if (isNight) m_window->clear(0.02f, 0.03f, 0.06f, 1.0f);
+        else         m_window->clear(0.45f, 0.72f, 0.96f, 1.0f);
     } else {
-        m_window->clear(0.42f, 0.70f, 0.95f, 1.0f);
+        if (isNight) m_window->clear(0.03f, 0.04f, 0.08f, 1.0f);
+        else         m_window->clear(0.42f, 0.70f, 0.95f, 1.0f);
     }
     renderer::Shader& shader = m_litShader.isValid() ? m_litShader : m_basicShader;
     if (!shader.isValid()) return;

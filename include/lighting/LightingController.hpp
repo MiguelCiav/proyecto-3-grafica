@@ -2,6 +2,7 @@
 
 #include "lighting/LightManager.hpp"
 #include <glm/glm.hpp>
+#include <functional>
 
 namespace lighting {
 
@@ -11,6 +12,7 @@ namespace lighting {
  * 1. Sincroniza en cada fotograma el Spotlight movil con el morro delantero del kart.
  * 2. Captura las teclas 1, 2 y 3 para conmutar instantaneamente entre Flat, Lambert y Blinn-Phong.
  * 3. Captura la tecla L para alternar el encendido/apagado de los faros del kart.
+ * 4. Captura la tecla N para alternar dia/noche de forma tematica por bioma.
  */
 class LightingController {
 public:
@@ -26,7 +28,7 @@ public:
     //          spot.direction = kartForward
     void update(const glm::vec3& kartPosition, const glm::vec3& kartForward, float deltaTime = 0.0f);
 
-    // Procesa las pulsaciones de teclado (Teclas 1, 2, 3 y Tecla L)
+    // Procesa las pulsaciones de teclado (Teclas 1, 2, 3 y Tecla L, P, N)
     void handleInput();
 
     // Control de faros delanteros (Spotlight)
@@ -39,6 +41,11 @@ public:
     void toggleDayNight();
     void setDayNight(bool isNight);
     bool isNight() const { return m_isNight; }
+
+    // Callback temático para cuando cambia el ciclo día/noche
+    void setOnDayNightChanged(std::function<void(bool)> callback) {
+        m_onDayNightChanged = std::move(callback);
+    }
 
     // Control de modelo de sombreado
     void setLightingModel(LightingModel model);
@@ -56,6 +63,7 @@ private:
     float m_frontOffset{0.75f};
     bool m_headlightsOn{true};
     bool m_isNight{false};
+    std::function<void(bool)> m_onDayNightChanged;
 };
 
 } // namespace lighting
