@@ -388,14 +388,14 @@ static geometry::SubMesh createSphereSubMesh(float radius, int rings = 6, int se
     return mesh;
 }
 
-static geometry::SubMesh createClamShellSubMesh(float radius, float openAngleDeg = 50.0f) {
+static geometry::SubMesh createClamShellSubMesh(float radius = 0.48f, float openAngleDeg = 52.0f) {
     geometry::SubMesh mesh;
-    mesh.name = "Procedural_Clam_Shell";
+    mesh.name = "Procedural_Scallop_Clam";
     const float PI = 3.14159265358979323846f;
 
     auto addTri = [&](const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2) {
         glm::vec3 norm = glm::normalize(glm::cross(v1 - v0, v2 - v0));
-        if (glm::length(norm) < 0.001f) norm = glm::vec3(0.0f, 1.0f, 0.0f);
+        if (glm::length(norm) < 0.001f) return;
         uint32_t base = static_cast<uint32_t>(mesh.vertices.size());
         auto uv = [&](const glm::vec3& p) {
             return glm::vec2(0.5f + p.x / (radius * 2.0f), 0.5f + p.z / (radius * 2.0f));
@@ -408,57 +408,110 @@ static geometry::SubMesh createClamShellSubMesh(float radius, float openAngleDeg
         mesh.indices.push_back(base + 2);
     };
 
-    const int segments = 12;
-    glm::vec3 hinge(0.0f, 0.05f, -radius * 0.45f);
-    float radAngle = glm::radians(openAngleDeg);
-    float cosT = std::cos(radAngle);
-    float sinT = std::sin(radAngle);
+    const int uSegs = 14; // Segmentos radiales a lo largo del abanico simétrico (-X a +X)
+    const int vSegs = 5;  // Segmentos desde la bisagra trasera hasta el borde festoneado
+    const float thickness = 0.035f;
+    const float dishDepth = 0.14f;
+    const float hingeZ = -radius * 0.40f;
 
     for (int valve = 0; valve < 2; ++valve) {
-        std::vector<glm::vec3> rimOuter;
-        std::vector<glm::vec3> rimInner;
+        bool isUpper = (valve == 1);
+        float tiltRad = glm::radians(isUpper ? openAngleDeg : 0.0f);
+        float cosT = std::cos(tiltRad);
+        float sinT = std::sin(tiltRad);
 
-        for (int s = 0; s <= segments; ++s) {
-            float t = (static_cast<float>(s) / static_cast<float>(segments)) * PI;
-            float angle = t - PI * 0.5f;
-            float rib = 1.0f + 0.10f * std::cos(angle * 7.0f);
-            float lx = radius * rib * std::cos(angle);
-            float lz = radius * rib * std::sin(angle) * 0.75f;
+        std::vector<std::vector<glm::vec3>> gridOut;
+        std::vector<std::vector<glm::vec3>> gridIn;
 
-            float distSq = (lx * lx + lz * lz) / (radius * radius);
-            float curveY = 0.22f * (1.0f - std::min(1.0f, distSq));
+        for (int vI = 0; vI <= vSegs; ++vI) {
+            float v = static_cast<float>(vI) / static_cast<float>(vSegs);
+            std::vector<glm::vec3> rowOut, rowIn;
 
-            if (valve == 0) {
-                // Valva inferior cóncava
-                float yOut = -curveY;
-                float yIn  = -curveY * 0.65f + 0.02f;
-                rimOuter.push_back(glm::vec3(lx, yOut, lz));
-                rimInner.push_back(glm::vec3(lx * 0.92f, yIn, lz * 0.92f));
-            } else {
-                // Valva superior abierta e inclinada en la bisagra
-                float yOut = curveY + 0.06f;
-                float yIn  = curveY * 0.65f + 0.04f;
+            for (int uI = 0; uI <= uSegs; ++uI) {
+                float u = static_cast<float>(uI) / static_cast<float>(uSegs) * PI;
+                float fanAngle = u - PI * 0.5f; // Ángulo simétrico entre -PI/2 (izquierda) y +PI/2 (derecha)
 
-                float zRel = lz - hinge.z;
-                float yRot = yOut * cosT - zRel * sinT;
-                float zRot = yOut * sinT + zRel * cosT + hinge.z;
-                rimOuter.push_back(glm::vec3(lx, yRot, zRot));
+                // Ondulaciones / estrías clásicas de concha marina de almeja/vieira
+                float ribFactor = 1.0f + 0.075f * std::cos(fanAngle * 8.0f);
 
-                float zRelIn = (lz * 0.92f) - hinge.z;
-                float yRotIn = yIn * cosT - zRelIn * sinT;
-                float zRotIn = yIn * sinT + zRelIn * cosT + hinge.z;
-                rimInner.push_back(glm::vec3(lx * 0.92f, yRotIn, zRotIn));
+                float dist = (0.12f + 0.88f * v) * radius * ribFactor;
+                float lx = dist * std::sin(fanAngle) * 1.18f;
+                float lz = hingeZ + dist * std::cos(fanAngle) * 1.32f;
+
+                // Curvatura de cuenco / concavidad (dish)
+                float cup = std::sin(v * PI * 0.85f) * std::cos(fanAngle);
+                float lyOut = isUpper ? (dishDepth * cup + thickness) : (-dishDepth * cup - thickness);
+                float lyIn  = isUpper ? (dishDepth * cup) : (-dishDepth * cup);
+
+                if (isUpper) {
+                    // Rotar valva superior alrededor de la bisagra trasera (+X axis)
+                    float zRel = lz - hingeZ;
+                    float yRotOut = lyOut * cosT - zRel * sinT;
+                    float zRotOut = lyOut * sinT + zRel * cosT + hingeZ;
+
+                    float yRotIn  = lyIn * cosT - zRel * sinT;
+                    float zRotIn  = lyIn * sinT + zRel * cosT + hingeZ;
+
+                    rowOut.push_back(glm::vec3(lx, yRotOut + 0.04f, zRotOut));
+                    rowIn.push_back(glm::vec3(lx, yRotIn + 0.04f, zRotIn));
+                } else {
+                    rowOut.push_back(glm::vec3(lx, lyOut, lz));
+                    rowIn.push_back(glm::vec3(lx, lyIn, lz));
+                }
+            }
+            gridOut.push_back(rowOut);
+            gridIn.push_back(rowIn);
+        }
+
+        // Superficie exterior
+        for (int vI = 0; vI < vSegs; ++vI) {
+            for (int uI = 0; uI < uSegs; ++uI) {
+                if (!isUpper) {
+                    addTri(gridOut[vI][uI], gridOut[vI+1][uI], gridOut[vI+1][uI+1]);
+                    addTri(gridOut[vI][uI], gridOut[vI+1][uI+1], gridOut[vI][uI+1]);
+                } else {
+                    addTri(gridOut[vI][uI], gridOut[vI+1][uI+1], gridOut[vI+1][uI]);
+                    addTri(gridOut[vI][uI], gridOut[vI][uI+1], gridOut[vI+1][uI+1]);
+                }
             }
         }
 
-        glm::vec3 h(hinge.x, hinge.y + (valve == 1 ? 0.06f : 0.0f), hinge.z);
-        for (int s = 0; s < segments; ++s) {
-            if (valve == 0) {
-                addTri(h, rimOuter[s], rimOuter[s+1]);
-                addTri(h, rimInner[s+1], rimInner[s]);
+        // Superficie interior
+        for (int vI = 0; vI < vSegs; ++vI) {
+            for (int uI = 0; uI < uSegs; ++uI) {
+                if (!isUpper) {
+                    addTri(gridIn[vI][uI], gridIn[vI+1][uI+1], gridIn[vI+1][uI]);
+                    addTri(gridIn[vI][uI], gridIn[vI][uI+1], gridIn[vI+1][uI+1]);
+                } else {
+                    addTri(gridIn[vI][uI], gridIn[vI+1][uI], gridIn[vI+1][uI+1]);
+                    addTri(gridIn[vI][uI], gridIn[vI+1][uI+1], gridIn[vI][uI+1]);
+                }
+            }
+        }
+
+        // Borde frontal festoneado (unión entre superficie exterior e interior)
+        for (int uI = 0; uI < uSegs; ++uI) {
+            if (!isUpper) {
+                addTri(gridOut[vSegs][uI], gridIn[vSegs][uI], gridIn[vSegs][uI+1]);
+                addTri(gridOut[vSegs][uI], gridIn[vSegs][uI+1], gridOut[vSegs][uI+1]);
             } else {
-                addTri(h, rimOuter[s+1], rimOuter[s]);
-                addTri(h, rimInner[s], rimInner[s+1]);
+                addTri(gridOut[vSegs][uI], gridIn[vSegs][uI+1], gridIn[vSegs][uI]);
+                addTri(gridOut[vSegs][uI], gridOut[vSegs][uI+1], gridIn[vSegs][uI+1]);
+            }
+        }
+
+        // Costuras laterales en los extremos izquierdo (u = 0) y derecho (u = uSegs)
+        for (int vI = 0; vI < vSegs; ++vI) {
+            if (!isUpper) {
+                addTri(gridOut[vI][0], gridOut[vI+1][0], gridIn[vI+1][0]);
+                addTri(gridOut[vI][0], gridIn[vI+1][0], gridIn[vI][0]);
+                addTri(gridOut[vI][uSegs], gridIn[vI+1][uSegs], gridOut[vI+1][uSegs]);
+                addTri(gridOut[vI][uSegs], gridIn[vI][uSegs], gridIn[vI+1][uSegs]);
+            } else {
+                addTri(gridOut[vI][0], gridIn[vI+1][0], gridOut[vI+1][0]);
+                addTri(gridOut[vI][0], gridIn[vI][0], gridIn[vI+1][0]);
+                addTri(gridOut[vI][uSegs], gridOut[vI+1][uSegs], gridIn[vI+1][uSegs]);
+                addTri(gridOut[vI][uSegs], gridIn[vI+1][uSegs], gridIn[vI][uSegs]);
             }
         }
     }
@@ -1152,12 +1205,16 @@ void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDe
             addProp("seaRock", posA + sideDir * 1.2f, 30.0f, glm::vec3(1.2f), true);
             addProp("seaRock", posB - sideDir * 1.2f, 60.0f, glm::vec3(1.2f), true);
 
+            // Orientar la apertura de las ostras hacia el centro de la pista de meta
+            float rotA = glm::degrees(std::atan2(-sideDir.x, -sideDir.z));
+            float rotB = glm::degrees(std::atan2(sideDir.x, sideDir.z));
+
             addProp("seaPedestal", posA + sideDir * 1.8f + glm::vec3(0.0f, 0.75f, 0.0f), 0.0f, glm::vec3(1.0f), true);
-            addProp("clamShell", posA + sideDir * 1.8f + glm::vec3(0.0f, 1.50f, 0.0f), beamRot + 90.0f, glm::vec3(1.0f), false);
+            addProp("clamShell", posA + sideDir * 1.8f + glm::vec3(0.0f, 1.50f, 0.0f), rotA, glm::vec3(1.0f), false);
             addProp("seaPearl", posA + sideDir * 1.8f + glm::vec3(0.0f, 1.62f, 0.0f), 0.0f, glm::vec3(1.0f), false);
 
             addProp("seaPedestal", posB - sideDir * 1.8f + glm::vec3(0.0f, 0.75f, 0.0f), 0.0f, glm::vec3(1.0f), true);
-            addProp("clamShell", posB - sideDir * 1.8f + glm::vec3(0.0f, 1.50f, 0.0f), beamRot + 90.0f, glm::vec3(1.0f), false);
+            addProp("clamShell", posB - sideDir * 1.8f + glm::vec3(0.0f, 1.50f, 0.0f), rotB, glm::vec3(1.0f), false);
             addProp("seaPearl", posB - sideDir * 1.8f + glm::vec3(0.0f, 1.62f, 0.0f), 0.0f, glm::vec3(1.0f), false);
 
             m_lampPositions.push_back(posA + sideDir * 1.8f + glm::vec3(0.0f, 1.62f, 0.0f));
@@ -1212,8 +1269,9 @@ void PropSpawner::generateForGrid(const TrackGrid& grid, bool isNight, bool isDe
                 glm::vec3 pPos = tile->worldPos + sideDir * pearlDist;
                 addProp("seaPedestal", pPos + glm::vec3(0.0f, 0.75f, 0.0f), 0.0f, glm::vec3(1.0f), true);
 
-                float clamRot = isHorizontal ? 0.0f : 90.0f;
-                addProp("clamShell", pPos + glm::vec3(0.0f, 1.50f, 0.0f), clamRot, glm::vec3(1.0f), false);
+                // Orientar la apertura de la ostra directamente hacia la calzada para que el corredor la aprecie
+                float clamFacingRot = glm::degrees(std::atan2(-sideDir.x, -sideDir.z));
+                addProp("clamShell", pPos + glm::vec3(0.0f, 1.50f, 0.0f), clamFacingRot, glm::vec3(1.0f), false);
                 addProp("seaPearl", pPos + glm::vec3(0.0f, 1.62f, 0.0f), 0.0f, glm::vec3(1.0f), false);
 
                 m_lampPositions.push_back(pPos + glm::vec3(0.0f, 1.62f, 0.0f));
