@@ -173,13 +173,13 @@ int main() {
     {
         Engine::Physics::KartPhysics kart;
 
-        // 1. Validar colisionadores reducidos al 70% (0.70x)
+        // 1. Validar colisionadores reducidos al 58% (0.58x)
         auto sphere = kart.getBoundingSphere();
-        assert(std::abs(sphere.radius - 0.34f) < 0.001f && "Radio de esfera debe ser 0.34f");
+        assert(std::abs(sphere.radius - 0.28f) < 0.001f && "Radio de esfera debe ser 0.28f");
         auto box = kart.getBoundingBox();
-        assert(std::abs(box.halfExtents.x - 0.38f) < 0.001f && "Half-extent X de caja debe ser 0.38f");
-        assert(std::abs(box.halfExtents.y - 0.28f) < 0.001f && "Half-extent Y de caja debe ser 0.28f");
-        assert(std::abs(box.halfExtents.z - 0.56f) < 0.001f && "Half-extent Z de caja debe ser 0.56f");
+        assert(std::abs(box.halfExtents.x - 0.31f) < 0.001f && "Half-extent X de caja debe ser 0.31f");
+        assert(std::abs(box.halfExtents.y - 0.22f) < 0.001f && "Half-extent Y de caja debe ser 0.22f");
+        assert(std::abs(box.halfExtents.z - 0.46f) < 0.001f && "Half-extent Z de caja debe ser 0.46f");
         (void)sphere;
         (void)box;
 

@@ -20,9 +20,9 @@ bool KartEntity::setup(const geometry::KartAssembly& assembly) {
 
     // 2. Construir el Grafo de Escena Jerarquico
     // Nodo Raiz: Chasis (Gobierna la traslacion en el mundo y el yaw global)
-    // Escala al 70% (0.70x) para una proporcion visual y espacial optima con el ancho de pista
+    // Escala al 58% (0.58x) para una proporcion visual y espacial optima con el ancho de pista
     m_rootNode = std::make_unique<scene::SceneNode>("Kart_Root_Chassis");
-    m_rootNode->getTransform().scale = glm::vec3(0.70f);
+    m_rootNode->getTransform().scale = glm::vec3(0.58f);
     m_rootNode->setMesh(&m_chassisMesh);
 
     // Piloto: Anclado relativo al habitaculo del chasis con offset configurable por vehiculo

@@ -93,29 +93,30 @@ void KartPhysics::update(float deltaTime, bool accelerate, bool brake, float ste
         }
     }
 
-    // 3. Direccion, viraje angular (yaw) y mecanica de Derrape (Power Slide)
+    // 3. Direccion, viraje angular (yaw) y mecanica de Derrape (Power Slide / Handbrake)
     float clampedSteer = std::clamp(steerInput, -1.0f, 1.0f);
     m_steeringAngle = clampedSteer * m_maxSteerAngle;
 
-    // Bandera de derrape activa si el jugador presiona drift y gira
-    m_isDrifting = drift && (std::abs(clampedSteer) > 0.1f);
+    // Derrape activo si el jugador presiona ESPACIO/SHIFT o realiza viraje con freno activo (Handbrake Slide)
+    bool handbrakeSlide = brake && (std::abs(clampedSteer) > 0.15f) && (m_currentSpeed > 2.0f);
+    m_isDrifting = (drift || handbrakeSlide) && (std::abs(clampedSteer) > 0.1f);
 
-    // "Scrubbing" de velocidad en curvas cerradas si no esta derrapando (ayuda a cerrar la trazada)
-    if (std::abs(clampedSteer) > 0.7f && !m_isDrifting) {
-        if (m_currentSpeed > 0.0f) {
-            m_currentSpeed -= 3.0f * std::abs(clampedSteer) * deltaTime;
-            if (m_currentSpeed < 0.0f) m_currentSpeed = 0.0f;
+    // "Scrubbing" dinamico de velocidad en curvas cerradas si no esta derrapando (ayuda a cerrar la trazada)
+    if (std::abs(clampedSteer) > 0.6f && !m_isDrifting) {
+        if (m_currentSpeed > 5.0f) {
+            m_currentSpeed -= 6.5f * std::abs(clampedSteer) * deltaTime;
+            if (m_currentSpeed < 5.0f) m_currentSpeed = 5.0f;
         }
     }
 
-    // El viraje solo es efectivo si el vehiculo esta en movimiento
-    float speedRatio = std::clamp(std::abs(m_currentSpeed) / (m_maxSpeed * 0.5f), 0.0f, 1.0f);
+    // Viraje progresivo segun velocidad (con respuesta minima de 0.35 para no quedar atascado a baja velocidad)
+    float speedRatio = std::clamp(std::abs(m_currentSpeed) / (m_maxSpeed * 0.35f), 0.35f, 1.0f);
     float directionMultiplier = (m_currentSpeed >= 0.0f) ? 1.0f : -1.0f; // Invertir viraje en reversa
 
-    // Tasa de viraje: incremento de 1.35x en modo derrape
-    float effectiveTurnSpeed = m_turnSpeed * (m_isDrifting ? 1.35f : 1.0f);
+    // Tasa de viraje: 220 deg/s base, incrementada a 1.40x (~308 deg/s) en modo derrape/handbrake
+    float effectiveTurnSpeed = m_turnSpeed * (m_isDrifting ? 1.40f : 1.0f);
 
-    if (std::abs(clampedSteer) > 0.01f && speedRatio > 0.05f) {
+    if (std::abs(clampedSteer) > 0.01f) {
         // En nuestro sistema de coordenadas:
         // yaw=0 -> (0, 0, 1). steerInput > 0 (derecha) rota en sentido horario (yaw negativo)
         // sin(yaw): yaw positivo rota hacia +X (derecha del eje +Z).

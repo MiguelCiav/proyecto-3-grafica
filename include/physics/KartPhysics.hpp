@@ -33,11 +33,11 @@ public:
     [[nodiscard]] glm::vec3 getForwardVector() const;
 
     [[nodiscard]] BoundingSphere getBoundingSphere() const {
-        return BoundingSphere(m_position + glm::vec3(0.0f, 0.25f, 0.07f), 0.34f);
+        return BoundingSphere(m_position + glm::vec3(0.0f, 0.20f, 0.05f), 0.28f);
     }
 
     [[nodiscard]] BoundingBox getBoundingBox() const {
-        return BoundingBox::fromCenterHalfExtents(m_position + glm::vec3(0.0f, 0.28f, 0.0f), glm::vec3(0.38f, 0.28f, 0.56f));
+        return BoundingBox::fromCenterHalfExtents(m_position + glm::vec3(0.0f, 0.22f, 0.0f), glm::vec3(0.31f, 0.22f, 0.46f));
     }
 
     void applyBoost(float duration = 1.2f, float multiplier = 1.28f, float instantImpulse = 3.5f);
@@ -58,11 +58,11 @@ public:
 
     // Parametros configurables
     float m_acceleration = 11.5f;
-    float m_maxSpeed = 14.5f;
+    float m_maxSpeed = 13.0f;
     float m_maxReverseSpeed = 4.5f;
     float m_drag = 5.0f;
     float m_brakingRate = 22.0f;
-    float m_turnSpeed = 155.0f;
+    float m_turnSpeed = 220.0f;
     float m_maxSteerAngle = 28.0f; // Grados visuales de giro de ruedas
 
 private:
