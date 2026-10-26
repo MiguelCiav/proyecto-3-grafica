@@ -33,14 +33,14 @@ public:
     [[nodiscard]] glm::vec3 getForwardVector() const;
 
     [[nodiscard]] BoundingSphere getBoundingSphere() const {
-        return BoundingSphere(m_position + glm::vec3(0.0f, 0.20f, 0.05f), 0.28f);
+        return BoundingSphere(m_position + glm::vec3(0.0f, 0.17f, 0.05f), 0.24f);
     }
 
     [[nodiscard]] BoundingBox getBoundingBox() const {
-        return BoundingBox::fromCenterHalfExtents(m_position + glm::vec3(0.0f, 0.22f, 0.0f), glm::vec3(0.31f, 0.22f, 0.46f));
+        return BoundingBox::fromCenterHalfExtents(m_position + glm::vec3(0.0f, 0.19f, 0.0f), glm::vec3(0.27f, 0.19f, 0.40f));
     }
 
-    void applyBoost(float duration = 1.2f, float multiplier = 1.28f, float instantImpulse = 3.5f);
+    void applyBoost(float duration = 1.2f, float multiplier = 1.28f, float instantImpulse = 2.8f);
     [[nodiscard]] bool isBoosting() const { return m_boostTimer > 0.0f; }
     [[nodiscard]] float getBoostTimer() const { return m_boostTimer; }
     [[nodiscard]] float getBoostMultiplier() const { return m_boostMultiplier; }
@@ -57,11 +57,11 @@ public:
     void onCollision(const glm::vec3& mtv, float reboundFactor = 0.2f);
 
     // Parametros configurables
-    float m_acceleration = 11.5f;
-    float m_maxSpeed = 13.0f;
-    float m_maxReverseSpeed = 4.5f;
-    float m_drag = 5.0f;
-    float m_brakingRate = 22.0f;
+    float m_acceleration = 9.5f;
+    float m_maxSpeed = 11.2f;
+    float m_maxReverseSpeed = 3.8f;
+    float m_drag = 4.5f;
+    float m_brakingRate = 18.0f;
     float m_turnSpeed = 220.0f;
     float m_maxSteerAngle = 28.0f; // Grados visuales de giro de ruedas
 

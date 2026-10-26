@@ -11,7 +11,7 @@ namespace camera {
  */
 class ChaseCamera : public ICamera {
 public:
-    explicit ChaseCamera(float distance = 2.6f, float height = 1.15f, float lookAhead = 1.0f);
+    explicit ChaseCamera(float distance = 2.2f, float height = 0.95f, float lookAhead = 0.85f);
 
     void update(float deltaTime, const glm::vec3& targetPos, const glm::vec3& targetForward);
     void reset(const glm::vec3& targetPos, const glm::vec3& targetForward);
