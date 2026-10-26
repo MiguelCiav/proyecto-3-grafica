@@ -96,10 +96,10 @@ void ShowroomScene::render(int windowWidth, int windowHeight) {
         shader.use();
 
         float aspect = static_cast<float>(windowWidth) / static_cast<float>(windowHeight > 0 ? windowHeight : 1);
-        // Desplazamiento sutil de la cámara (0.35f) para encuadrar perfectamente el kart
+        // Desplazamiento sutil de la cámara (0.28f) para encuadrar perfectamente el kart
         // a la izquierda del panel lateral de estadísticas
-        glm::vec3 camPos(0.35f, 1.35f, 3.4f);
-        glm::mat4 view = glm::lookAt(camPos, glm::vec3(0.35f, 0.40f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::vec3 camPos(0.28f, 0.85f, 2.1f);
+        glm::mat4 view = glm::lookAt(camPos, glm::vec3(0.28f, 0.25f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         glm::mat4 proj = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
 
         if (m_ctx.lightManager) {
