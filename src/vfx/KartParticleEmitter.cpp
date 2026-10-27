@@ -8,7 +8,7 @@
 namespace vfx {
 
 static float getRandomFloat(float minVal, float maxVal) {
-    static std::mt19937 gen(1337);
+    static thread_local std::mt19937 gen(std::random_device{}());
     std::uniform_real_distribution<float> dis(minVal, maxVal);
     return dis(gen);
 }
@@ -91,17 +91,25 @@ void KartParticleEmitter::triggerBoostBurst(const glm::vec3& kartPos, float kart
     }
 }
 
-void KartParticleEmitter::update(float deltaTime, const Engine::Physics::KartPhysics& physics, bool isAccelerating) {
+void KartParticleEmitter::update(float deltaTime, const physics::KartPhysics& physics, bool accelerate) {
     KartMotionState motion;
     motion.position = physics.getPosition();
     motion.yawDegrees = physics.getYaw();
     motion.speed = physics.getSpeed();
     motion.isBoosting = physics.isBoosting();
-    motion.isAccelerating = isAccelerating;
-    update(deltaTime, motion);
+    motion.isAccelerating = accelerate;
+    update(deltaTime, motion, accelerate);
 }
 
-void KartParticleEmitter::update(float deltaTime, const KartMotionState& motion) {
+void KartParticleEmitter::update(float deltaTime, const Engine::Physics::KartPhysics& physics, bool accelerate) {
+    update(deltaTime, static_cast<const ::physics::KartPhysics&>(physics), accelerate);
+}
+
+void KartParticleEmitter::update(float deltaTime, const KartMotionState& motionState) {
+    update(deltaTime, motionState, motionState.isAccelerating);
+}
+
+void KartParticleEmitter::update(float deltaTime, const KartMotionState& motion, bool isAccelerating) {
     if (deltaTime <= 0.0f) return;
 
     // Configurar flotabilidad del sistema de partículas según si está sumergido en agua o en tierra firme
@@ -117,7 +125,6 @@ void KartParticleEmitter::update(float deltaTime, const KartMotionState& motion)
     const float kartYaw = motion.yawDegrees;
     const float speed = motion.speed;
     const bool isBoosting = motion.isBoosting;
-    const bool isAccelerating = motion.isAccelerating;
 
     float rad = glm::radians(kartYaw);
     glm::vec3 forward(std::sin(rad), 0.0f, std::cos(rad));

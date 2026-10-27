@@ -3,19 +3,78 @@
 #include <cmath>
 #include <algorithm>
 #include <iostream>
-#include <cstring>
+#include <cstdint>
 
 namespace vfx {
 
 SkidmarkManager::SkidmarkManager(size_t maxSegments)
-    : m_maxSegments(maxSegments) {
-    m_vertexCache.reserve(maxSegments * 4);
+    : m_maxSegments(maxSegments == 0 ? 1600 : maxSegments),
+      m_headIndex(0),
+      m_count(0),
+      m_totalTime(0.0f),
+      m_fadeDuration(4.0f),
+      m_segments(maxSegments == 0 ? 1600 : maxSegments) {
 }
 
 SkidmarkManager::~SkidmarkManager() {
     if (m_vao) glDeleteVertexArrays(1, &m_vao);
     if (m_vbo) glDeleteBuffers(1, &m_vbo);
     if (m_ebo) glDeleteBuffers(1, &m_ebo);
+}
+
+SkidmarkManager::SkidmarkManager(SkidmarkManager&& other) noexcept
+    : m_maxSegments(other.m_maxSegments),
+      m_headIndex(other.m_headIndex),
+      m_count(other.m_count),
+      m_totalTime(other.m_totalTime),
+      m_fadeDuration(other.m_fadeDuration),
+      m_segments(std::move(other.m_segments)),
+      m_currentlySkidding(other.m_currentlySkidding),
+      m_vao(other.m_vao),
+      m_vbo(other.m_vbo),
+      m_ebo(other.m_ebo),
+      m_shader(std::move(other.m_shader)),
+      m_initialized(other.m_initialized) {
+    m_wheelTrails[0] = other.m_wheelTrails[0];
+    m_wheelTrails[1] = other.m_wheelTrails[1];
+
+    other.m_vao = 0;
+    other.m_vbo = 0;
+    other.m_ebo = 0;
+    other.m_initialized = false;
+    other.m_count = 0;
+    other.m_headIndex = 0;
+}
+
+SkidmarkManager& SkidmarkManager::operator=(SkidmarkManager&& other) noexcept {
+    if (this != &other) {
+        if (m_vao) glDeleteVertexArrays(1, &m_vao);
+        if (m_vbo) glDeleteBuffers(1, &m_vbo);
+        if (m_ebo) glDeleteBuffers(1, &m_ebo);
+
+        m_maxSegments = other.m_maxSegments;
+        m_headIndex = other.m_headIndex;
+        m_count = other.m_count;
+        m_totalTime = other.m_totalTime;
+        m_fadeDuration = other.m_fadeDuration;
+        m_segments = std::move(other.m_segments);
+        m_currentlySkidding = other.m_currentlySkidding;
+        m_wheelTrails[0] = other.m_wheelTrails[0];
+        m_wheelTrails[1] = other.m_wheelTrails[1];
+        m_vao = other.m_vao;
+        m_vbo = other.m_vbo;
+        m_ebo = other.m_ebo;
+        m_shader = std::move(other.m_shader);
+        m_initialized = other.m_initialized;
+
+        other.m_vao = 0;
+        other.m_vbo = 0;
+        other.m_ebo = 0;
+        other.m_initialized = false;
+        other.m_count = 0;
+        other.m_headIndex = 0;
+    }
+    return *this;
 }
 
 bool SkidmarkManager::init(const std::string& vertPath, const std::string& fragPath) {
@@ -32,7 +91,10 @@ bool SkidmarkManager::init(const std::string& vertPath, const std::string& fragP
 
     glGenBuffers(1, &m_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-    glBufferData(GL_ARRAY_BUFFER, m_maxSegments * 4 * sizeof(SkidVertex), nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER,
+                 static_cast<GLsizeiptr>(m_maxSegments * 4 * sizeof(SkidVertex)),
+                 nullptr,
+                 GL_DYNAMIC_DRAW);
 
     // Pre-poblar índices EBO estáticos una sola vez (0,1,2, 0,2,3 para cada quad)
     std::vector<unsigned int> staticIndices;
@@ -49,14 +111,17 @@ bool SkidmarkManager::init(const std::string& vertPath, const std::string& fragP
 
     glGenBuffers(1, &m_ebo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, staticIndices.size() * sizeof(unsigned int), staticIndices.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                 static_cast<GLsizeiptr>(staticIndices.size() * sizeof(unsigned int)),
+                 staticIndices.data(),
+                 GL_STATIC_DRAW);
 
     // Atributo 0: Posicion 3D (x, y, z)
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(SkidVertex),
                           reinterpret_cast<void*>(offsetof(SkidVertex, position)));
 
-    // Atributo 1: Color y Alpha (r, g, b, a)
+    // Atributo 1: Color y Alpha base (r, g, b, a)
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(SkidVertex),
                           reinterpret_cast<void*>(offsetof(SkidVertex, color)));
@@ -66,18 +131,24 @@ bool SkidmarkManager::init(const std::string& vertPath, const std::string& fragP
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(SkidVertex),
                           reinterpret_cast<void*>(offsetof(SkidVertex, uv)));
 
+    // Atributo 3: Spawn time (float) para cálculo analítico de desvanecimiento en GPU
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(SkidVertex),
+                          reinterpret_cast<void*>(offsetof(SkidVertex, spawnTime)));
+
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
     m_initialized = true;
-    std::cout << "[OK] [SkidmarkManager] Sistema de marcas de derrape inicializado (capacidad: "
-              << m_maxSegments << " segmentos continuos)." << std::endl;
+    std::cout << "[OK] [SkidmarkManager] Sistema de marcas de derrape inicializado (Ring Buffer: "
+              << m_maxSegments << " segmentos continuos, GPU decay)." << std::endl;
     return true;
 }
 
 void SkidmarkManager::clear() {
-    m_segments.clear();
+    m_count = 0;
+    m_headIndex = 0;
     m_wheelTrails[0] = WheelTrailState{};
     m_wheelTrails[1] = WheelTrailState{};
     m_currentlySkidding = false;
@@ -129,20 +200,33 @@ void SkidmarkManager::addWheelPoint(int wheelIdx, const glm::vec3& currentPos, f
     glm::vec4 rubberColor(0.04f, 0.04f, 0.05f, alpha); // Negro carbón de caucho caliente
 
     SkidSegment seg;
-    seg.lifetime = 12.0f;
+    seg.lifetime = m_fadeDuration;
     seg.age = 0.0f;
     seg.maxAlpha = alpha;
+    seg.spawnTime = m_totalTime;
 
-    // Cuadrilátero continuo con mapeo UV para antialiasing de bordes
-    seg.v[0] = {prevLeft, rubberColor, glm::vec2(0.0f, 0.0f)};
-    seg.v[1] = {prevRight, rubberColor, glm::vec2(1.0f, 0.0f)};
-    seg.v[2] = {curRight, rubberColor, glm::vec2(1.0f, 1.0f)};
-    seg.v[3] = {curLeft, rubberColor, glm::vec2(0.0f, 1.0f)};
+    // Cuadrilátero continuo con mapeo UV y tiempo de creación para GPU decay
+    seg.v[0] = {prevLeft, rubberColor, glm::vec2(0.0f, 0.0f), m_totalTime};
+    seg.v[1] = {prevRight, rubberColor, glm::vec2(1.0f, 0.0f), m_totalTime};
+    seg.v[2] = {curRight, rubberColor, glm::vec2(1.0f, 1.0f), m_totalTime};
+    seg.v[3] = {curLeft, rubberColor, glm::vec2(0.0f, 1.0f), m_totalTime};
 
-    if (m_segments.size() >= m_maxSegments) {
-        m_segments.pop_front();
+    size_t writeIdx = m_headIndex;
+    m_segments[writeIdx] = seg;
+    m_headIndex = (m_headIndex + 1) % m_maxSegments;
+    if (m_count < m_maxSegments) {
+        m_count++;
     }
-    m_segments.push_back(seg);
+
+    // Subir a la GPU únicamente el nuevo segmento (< 1 KB) en lugar de todo el buffer
+    if (m_initialized && m_vbo) {
+        glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
+        glBufferSubData(GL_ARRAY_BUFFER,
+                        static_cast<GLintptr>(writeIdx * 4 * sizeof(SkidVertex)),
+                        static_cast<GLsizeiptr>(4 * sizeof(SkidVertex)),
+                        seg.v);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
 
     // Actualizar extremos para la siguiente iteración
     trail.lastLeftEdge = curLeft;
@@ -155,19 +239,16 @@ void SkidmarkManager::updateWithWheelPositions(float deltaTime,
                                               const glm::vec3& leftTirePos,
                                               const glm::vec3& rightTirePos,
                                               float speed, float steerInput, bool isBraking, bool isBoosting) {
-    // 1. Envejecimiento y desvanecimiento progresivo de las marcas en pista
-    while (!m_segments.empty() && m_segments.front().age >= m_segments.front().lifetime) {
-        m_segments.pop_front();
-    }
+    m_totalTime += deltaTime;
 
-    for (auto& seg : m_segments) {
-        seg.age += deltaTime;
-        float remaining = 1.0f - (seg.age / seg.lifetime);
-        float currentAlpha = seg.maxAlpha * std::clamp(remaining * remaining, 0.0f, 1.0f);
-        seg.v[0].color.a = currentAlpha;
-        seg.v[1].color.a = currentAlpha;
-        seg.v[2].color.a = currentAlpha;
-        seg.v[3].color.a = currentAlpha;
+    // 1. Envejecimiento y desvanecimiento progresivo: retirar segmentos expirados en O(1)
+    while (m_count > 0) {
+        size_t tailIdx = (m_headIndex + m_maxSegments - m_count) % m_maxSegments;
+        if ((m_totalTime - m_segments[tailIdx].spawnTime) >= m_fadeDuration) {
+            m_count--;
+        } else {
+            break;
+        }
     }
 
     // 2. Detección física natural de derrape y pérdida de tracción
@@ -216,15 +297,7 @@ void SkidmarkManager::update(float deltaTime, const glm::vec3& kartPos, float ka
 }
 
 void SkidmarkManager::render(const glm::mat4& view, const glm::mat4& projection) {
-    if (!m_initialized || m_segments.empty()) return;
-
-    m_vertexCache.resize(m_segments.size() * 4);
-    for (size_t i = 0; i < m_segments.size(); ++i) {
-        std::memcpy(&m_vertexCache[i * 4], m_segments[i].v, sizeof(SkidVertex) * 4);
-    }
-
-    glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, m_vertexCache.size() * sizeof(SkidVertex), m_vertexCache.data());
+    if (!m_initialized || m_count == 0) return;
 
     // Configuración de renderizado para calcomanías sobre el asfalto
     glEnable(GL_BLEND);
@@ -237,9 +310,36 @@ void SkidmarkManager::render(const glm::mat4& view, const glm::mat4& projection)
     m_shader.use();
     m_shader.setMat4("u_View", view);
     m_shader.setMat4("u_Projection", projection);
+    m_shader.setFloat("u_CurrentTime", m_totalTime);
+    m_shader.setFloat("u_FadeDuration", m_fadeDuration);
 
     glBindVertexArray(m_vao);
-    glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(m_segments.size() * 6), GL_UNSIGNED_INT, nullptr);
+
+    size_t tail = (m_headIndex + m_maxSegments - m_count) % m_maxSegments;
+    if (tail + m_count <= m_maxSegments) {
+        // Bloque contiguo único
+        uintptr_t byteOffset = tail * 6 * sizeof(unsigned int);
+        glDrawElements(GL_TRIANGLES,
+                       static_cast<GLsizei>(m_count * 6),
+                       GL_UNSIGNED_INT,
+                       reinterpret_cast<void*>(byteOffset));
+    } else {
+        // Dos bloques contiguos debido al wrap-around del ring buffer
+        size_t firstCount = m_maxSegments - tail;
+        size_t secondCount = m_count - firstCount;
+
+        uintptr_t firstOffset = tail * 6 * sizeof(unsigned int);
+        glDrawElements(GL_TRIANGLES,
+                       static_cast<GLsizei>(firstCount * 6),
+                       GL_UNSIGNED_INT,
+                       reinterpret_cast<void*>(firstOffset));
+
+        glDrawElements(GL_TRIANGLES,
+                       static_cast<GLsizei>(secondCount * 6),
+                       GL_UNSIGNED_INT,
+                       nullptr);
+    }
+
     glBindVertexArray(0);
 
     glDisable(GL_POLYGON_OFFSET_FILL);

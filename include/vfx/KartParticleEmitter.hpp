@@ -1,8 +1,13 @@
 #pragma once
 
 #include <glm/glm.hpp>
+#include <string>
 #include "vfx/ParticleSystem.hpp"
 #include "vfx/KartMotionState.hpp"
+
+namespace physics {
+    class KartPhysics;
+}
 
 namespace Engine::Physics {
     class KartPhysics;
@@ -12,22 +17,35 @@ namespace vfx {
 
 /**
  * @brief Emisor especializado para efectos visuales del kart (humo de escape y ráfaga de turbo).
+ * Desacoplado del subsistema de físicas mediante KartMotionState.
  */
 class KartParticleEmitter {
 public:
     explicit KartParticleEmitter(size_t maxSmokeParticles = 250, size_t maxBoostParticles = 350);
     ~KartParticleEmitter() = default;
 
+    // No copiable
+    KartParticleEmitter(const KartParticleEmitter&) = delete;
+    KartParticleEmitter& operator=(const KartParticleEmitter&) = delete;
+
+    // Movible
+    KartParticleEmitter(KartParticleEmitter&&) noexcept = default;
+    KartParticleEmitter& operator=(KartParticleEmitter&&) noexcept = default;
+
     // Inicialización de subsistemas y buffers GPU
     bool init();
     bool loadShaders(const std::string& vertPath = "shaders/particle.vert",
                      const std::string& fragPath = "shaders/particle.frag");
 
-    // Actualización desacoplada mediante Value Object plano
-    void update(float deltaTime, const KartMotionState& motion);
+    // Método principal desacoplado mediante Value Object plano y aceleración explícita
+    void update(float deltaTime, const KartMotionState& motionState, bool accelerate);
 
-    // Adaptador de compatibilidad para KartPhysics
-    void update(float deltaTime, const Engine::Physics::KartPhysics& physics, bool isAccelerating);
+    // Sobrecarga desacoplada directa usando motionState.isAccelerating
+    void update(float deltaTime, const KartMotionState& motionState);
+
+    // Adaptadores de compatibilidad para KartPhysics
+    void update(float deltaTime, const physics::KartPhysics& physics, bool accelerate);
+    void update(float deltaTime, const Engine::Physics::KartPhysics& physics, bool accelerate);
 
     // Renderizado en dos fases: humo translúcido y ráfaga aditiva luminosa
     void render(const glm::mat4& view, const glm::mat4& projection);

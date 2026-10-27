@@ -2,23 +2,24 @@
 
 #include <glm/glm.hpp>
 #include <vector>
-#include <deque>
 #include <string>
 #include "renderer/Shader.hpp"
 
 namespace vfx {
 
 struct SkidVertex {
-    glm::vec3 position;
-    glm::vec4 color;
-    glm::vec2 uv;
+    glm::vec3 position{0.0f};
+    glm::vec4 color{1.0f};
+    glm::vec2 uv{0.0f};
+    float spawnTime{0.0f};
 };
 
 struct SkidSegment {
     SkidVertex v[4];
-    float lifetime{12.0f}; // Segundos antes de desvanecerse por completo
+    float lifetime{4.0f}; // Segundos antes de desvanecerse por completo
     float age{0.0f};
     float maxAlpha{0.75f};
+    float spawnTime{0.0f};
 };
 
 struct WheelTrailState {
@@ -30,16 +31,21 @@ struct WheelTrailState {
 
 /**
  * @brief Gestor procedural de marcas de neumaticos y derrape en el asfalto.
- * Genera cintas de cuadrilateros continuas y suavizadas directamente en el punto
- * exacto de contacto de las ruedas traseras con la pista.
+ * Implementa un Ring Buffer circular continuo en GPU con desvanecimiento
+ * analítico en shader (GPU-based fade), eliminando re-uploads masivos de vértices por PCIe.
  */
 class SkidmarkManager {
 public:
     explicit SkidmarkManager(size_t maxSegments = 1600);
     ~SkidmarkManager();
 
+    // No copiable
     SkidmarkManager(const SkidmarkManager&) = delete;
     SkidmarkManager& operator=(const SkidmarkManager&) = delete;
+
+    // Movible con garantías noexcept (Regla de los 5 y RAII)
+    SkidmarkManager(SkidmarkManager&& other) noexcept;
+    SkidmarkManager& operator=(SkidmarkManager&& other) noexcept;
 
     bool init(const std::string& vertPath = "shaders/skidmark.vert",
               const std::string& fragPath = "shaders/skidmark.frag");
@@ -58,13 +64,22 @@ public:
     void clear();
 
     [[nodiscard]] bool isCurrentlySkidding() const { return m_currentlySkidding; }
-    [[nodiscard]] size_t getActiveSegmentCount() const { return m_segments.size(); }
+    [[nodiscard]] size_t getActiveSegmentCount() const { return m_count; }
+    [[nodiscard]] size_t getMaxSegments() const { return m_maxSegments; }
+
+    void setFadeDuration(float duration) { m_fadeDuration = duration; }
+    [[nodiscard]] float getFadeDuration() const { return m_fadeDuration; }
 
 private:
     void addWheelPoint(int wheelIdx, const glm::vec3& currentPos, float intensity);
 
     size_t m_maxSegments{1600};
-    std::deque<SkidSegment> m_segments;
+    size_t m_headIndex{0};
+    size_t m_count{0};
+    float m_totalTime{0.0f};
+    float m_fadeDuration{4.0f};
+
+    std::vector<SkidSegment> m_segments;
 
     bool m_currentlySkidding{false};
     WheelTrailState m_wheelTrails[2];
@@ -75,8 +90,6 @@ private:
     unsigned int m_ebo{0};
     renderer::Shader m_shader;
     bool m_initialized{false};
-
-    std::vector<SkidVertex> m_vertexCache;
 };
 
 } // namespace vfx

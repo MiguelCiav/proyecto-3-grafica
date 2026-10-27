@@ -441,6 +441,7 @@ add_executable(test_final_integration
     src/world/ZoneTrigger.cpp
     src/physics/KartPhysics.cpp
     src/physics/CollisionSystem.cpp
+    src/physics/CollisionSolver.cpp
     src/camera/Camera.cpp
     src/camera/ChaseCamera.cpp
     src/core/Input.cpp

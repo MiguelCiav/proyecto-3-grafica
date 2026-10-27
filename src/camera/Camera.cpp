@@ -1,5 +1,6 @@
 #include "camera/Camera.hpp"
 #include "physics/CollisionSystem.hpp"
+#include "physics/CollisionSolver.hpp"
 #include <algorithm>
 
 namespace camera {
@@ -31,19 +32,23 @@ void Camera::processKeyboard(CameraMovement direction, float deltaTime) {
     if (direction == CameraMovement::DOWN)     m_position -= m_worldUp * velocity;
 }
 
-void Camera::processKeyboardWithCollision(CameraMovement direction, float deltaTime, const Engine::Physics::CollisionSystem& collisionSystem) {
+void Camera::processKeyboardWithCollision(CameraMovement direction, float deltaTime, const physics::CollisionSystem& collisionSystem) {
     processKeyboard(direction, deltaTime);
     if (m_collisionEnabled) {
         resolveCollision(collisionSystem);
     }
 }
 
+void Camera::processKeyboardWithCollision(CameraMovement direction, float deltaTime, const Engine::Physics::CollisionSystem& collisionSystem) {
+    processKeyboardWithCollision(direction, deltaTime, static_cast<const physics::CollisionSystem&>(collisionSystem));
+}
+
+void Camera::resolveCollision(const physics::CollisionSystem& collisionSystem) {
+    m_position = physics::CollisionSolver::resolveCameraPosition(m_position, m_collisionRadius, collisionSystem, m_minY, m_maxY);
+}
+
 void Camera::resolveCollision(const Engine::Physics::CollisionSystem& collisionSystem) {
-    m_position = collisionSystem.resolveSpherePosition(m_position, m_collisionRadius, 3);
-    // Evitar que la camara atraviese el suelo (plano Y = 0.2f minimo)
-    if (m_position.y < m_collisionRadius + 0.1f) {
-        m_position.y = m_collisionRadius + 0.1f;
-    }
+    resolveCollision(static_cast<const physics::CollisionSystem&>(collisionSystem));
 }
 
 void Camera::processMouseMovement(float xoffset, float yoffset, bool constrainPitch) {

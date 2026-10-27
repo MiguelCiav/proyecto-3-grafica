@@ -4,6 +4,10 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+namespace physics {
+    class CollisionSystem;
+}
+
 namespace Engine::Physics {
     class CollisionSystem;
 }
@@ -32,11 +36,13 @@ public:
 
     // Control de movimiento interactivo FPS
     void processKeyboard(CameraMovement direction, float deltaTime);
+    void processKeyboardWithCollision(CameraMovement direction, float deltaTime, const physics::CollisionSystem& collisionSystem);
     void processKeyboardWithCollision(CameraMovement direction, float deltaTime, const Engine::Physics::CollisionSystem& collisionSystem);
     void processMouseMovement(float xoffset, float yoffset, bool constrainPitch = true);
     void processMouseScroll(float yoffset);
 
     // Resolucion de colision contra obstaculos (PDF Requisito Minimo)
+    void resolveCollision(const physics::CollisionSystem& collisionSystem);
     void resolveCollision(const Engine::Physics::CollisionSystem& collisionSystem);
 
     // Getters polimorficos (ICamera)
@@ -54,6 +60,8 @@ public:
     float getSpeed() const { return m_movementSpeed; }
     float getSensitivity() const { return m_mouseSensitivity; }
     float getCollisionRadius() const { return m_collisionRadius; }
+    float getMinY() const { return m_minY; }
+    float getMaxY() const { return m_maxY; }
 
     void setPosition(const glm::vec3& pos) { m_position = pos; }
     void setSpeed(float speed) { m_movementSpeed = speed; }
@@ -62,6 +70,9 @@ public:
     void setCollisionRadius(float radius) { m_collisionRadius = radius; }
     void setCollisionEnabled(bool enabled) { m_collisionEnabled = enabled; }
     bool isCollisionEnabled() const { return m_collisionEnabled; }
+    void setMinY(float minY) { m_minY = minY; }
+    void setMaxY(float maxY) { m_maxY = maxY; }
+    void setVerticalBounds(float minY, float maxY) { m_minY = minY; m_maxY = maxY; }
 
     void lookAtTarget(const glm::vec3& target);
 
@@ -88,6 +99,8 @@ private:
     // Restriccion de colision (Requisito UCV)
     float m_collisionRadius{0.45f};
     bool m_collisionEnabled{true};
+    float m_minY{0.5f};
+    float m_maxY{80.0f};
 };
 
 } // namespace camera
