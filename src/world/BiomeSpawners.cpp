@@ -177,13 +177,13 @@ void GrasslandPropSpawner::spawnProps(const TrackGrid& grid, PropSpawner& spawne
                 spawner.addProp("debris-tire", tirePos2, rot + 45.0f, glm::vec3(1.0f));
 
                 glm::vec3 barPos = cornerPos + glm::vec3(xSign * halfTile * 0.88f, 0.0f, zSign * halfTile * 0.40f);
-                spawner.addProp("barrierRed", barPos, rot + 30.0f, glm::vec3(1.1f));
+                spawner.addProp("barrierRed", barPos, rot + 30.0f, glm::vec3(2.5f, 3.5f, 2.5f));
             } else {
                 glm::vec3 barrier1Pos = cornerPos + glm::vec3(xSign * halfTile * 0.88f, 0.0f, zSign * halfTile * 0.40f);
-                spawner.addProp("barrierRed", barrier1Pos, rot + 30.0f, glm::vec3(1.1f));
+                spawner.addProp("barrierRed", barrier1Pos, rot + 30.0f, glm::vec3(2.5f, 3.5f, 2.5f));
 
                 glm::vec3 barrier2Pos = cornerPos + glm::vec3(xSign * halfTile * 0.40f, 0.0f, zSign * halfTile * 0.88f);
-                spawner.addProp("barrierWhite", barrier2Pos, rot + 60.0f, glm::vec3(1.1f));
+                spawner.addProp("barrierWhite", barrier2Pos, rot + 60.0f, glm::vec3(2.5f, 3.5f, 2.5f));
 
                 glm::vec3 tirePos = cornerPos + glm::vec3(xSign * (halfTile * 1.05f), 0.25f, zSign * (halfTile * 1.05f));
                 spawner.addProp("debris-tire", tirePos, rot + 45.0f, glm::vec3(1.1f));
@@ -199,8 +199,8 @@ void GrasslandPropSpawner::spawnProps(const TrackGrid& grid, PropSpawner& spawne
             glm::vec3 wallOffset1 = isHorizontal ? glm::vec3(0.0f, 0.0f, -halfTile * 0.95f) : glm::vec3(-halfTile * 0.95f, 0.0f, 0.0f);
             glm::vec3 wallOffset2 = isHorizontal ? glm::vec3(0.0f, 0.0f,  halfTile * 0.95f) : glm::vec3( halfTile * 0.95f, 0.0f, 0.0f);
 
-            spawner.addProp("barrierWall", tile.worldPos + wallOffset1, tile.rotationDegrees, glm::vec3(1.0f));
-            spawner.addProp("barrierWall", tile.worldPos + wallOffset2, tile.rotationDegrees, glm::vec3(1.0f));
+            spawner.addProp("barrierWall", tile.worldPos + wallOffset1, tile.rotationDegrees, glm::vec3(4.0f, 6.0f, 4.0f));
+            spawner.addProp("barrierWall", tile.worldPos + wallOffset2, tile.rotationDegrees, glm::vec3(4.0f, 6.0f, 4.0f));
 
             glm::vec3 boxPos = tile.worldPos + wallOffset2 + (isHorizontal ? glm::vec3(1.2f, 0.0f, 0.8f) : glm::vec3(0.8f, 0.0f, 1.2f));
             spawner.addProp("box", boxPos, 15.0f, glm::vec3(1.0f));
@@ -216,9 +216,9 @@ void GrasslandPropSpawner::spawnProps(const TrackGrid& grid, PropSpawner& spawne
                 glm::vec3 propOffset = isHorizontal ? glm::vec3(0.0f, 0.0f, side * lateralDist) : glm::vec3(side * lateralDist, 0.0f, 0.0f);
 
                 if (propIndex % 4 == 0) {
-                    spawner.addProp("barrierRed", tile.worldPos + propOffset, tile.rotationDegrees, glm::vec3(1.0f));
+                    spawner.addProp("barrierRed", tile.worldPos + propOffset, tile.rotationDegrees, glm::vec3(2.5f, 3.5f, 2.5f));
                 } else if (propIndex % 4 == 2) {
-                    spawner.addProp("barrierWhite", tile.worldPos + propOffset, tile.rotationDegrees, glm::vec3(1.0f));
+                    spawner.addProp("barrierWhite", tile.worldPos + propOffset, tile.rotationDegrees, glm::vec3(2.5f, 3.5f, 2.5f));
                 } else {
                     spawner.addProp("cone", tile.worldPos + propOffset, 0.0f, glm::vec3(1.0f));
                 }
@@ -287,12 +287,12 @@ void GrasslandPropSpawner::spawnProps(const TrackGrid& grid, PropSpawner& spawne
 
     // Vallas de contención de estadio alrededor de la pista
     for (float x = -halfW + 12.0f; x <= halfW - 12.0f; x += 12.0f) {
-        spawner.addProp("barrierWall", glm::vec3(x, 0.0f, -halfD), 0.0f, glm::vec3(2.5f));
-        spawner.addProp("barrierWall", glm::vec3(x, 0.0f,  halfD), 0.0f, glm::vec3(2.5f));
+        spawner.addProp("barrierWall", glm::vec3(x, 0.0f, -halfD), 0.0f, glm::vec3(5.0f, 7.0f, 5.0f));
+        spawner.addProp("barrierWall", glm::vec3(x, 0.0f,  halfD), 0.0f, glm::vec3(5.0f, 7.0f, 5.0f));
     }
     for (float z = -halfD + 12.0f; z <= halfD - 12.0f; z += 12.0f) {
-        spawner.addProp("barrierWall", glm::vec3(-halfW, 0.0f, z), 90.0f, glm::vec3(2.5f));
-        spawner.addProp("barrierWall", glm::vec3( halfW, 0.0f, z), 90.0f, glm::vec3(2.5f));
+        spawner.addProp("barrierWall", glm::vec3(-halfW, 0.0f, z), 90.0f, glm::vec3(5.0f, 7.0f, 5.0f));
+        spawner.addProp("barrierWall", glm::vec3( halfW, 0.0f, z), 90.0f, glm::vec3(5.0f, 7.0f, 5.0f));
     }
 
     std::cout << "[OK] [PropSpawner] Total de elementos generados: "

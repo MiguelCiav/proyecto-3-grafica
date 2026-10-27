@@ -606,7 +606,37 @@ add_custom_command(TARGET test_showroom_ui POST_BUILD
 )
 
 # ==============================================================================
-# 22. Target de Empaquetado para Entrega UCV
+# 22. Ejecutable de Pruebas: Spawner de Props y Biomas (PropSpawner)
+# ==============================================================================
+add_executable(test_prop_spawner
+    tests/test_prop_spawner.cpp
+    ${SHOWROOM_TEST_SOURCES}
+)
+
+target_include_directories(test_prop_spawner PUBLIC
+    ${PROJECT_INCLUDE_DIRS}
+)
+
+target_link_libraries(test_prop_spawner PRIVATE
+    OpenGL::GL
+    glad
+    glfw
+    glm::glm
+    ${CMAKE_DL_LIBS}
+)
+
+add_custom_command(TARGET test_prop_spawner POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
+        $<TARGET_FILE_DIR:test_prop_spawner>/shaders
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/assets
+        $<TARGET_FILE_DIR:test_prop_spawner>/assets
+    COMMENT "Copiando shaders y assets al directorio de salida de test_prop_spawner..."
+)
+
+# ==============================================================================
+# 23. Target de Empaquetado para Entrega UCV
 # ==============================================================================
 find_package(Python3 QUIET COMPONENTS Interpreter)
 if(Python3_FOUND)

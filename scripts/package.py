@@ -30,6 +30,7 @@ INCLUDED_ROOT_PATHS = [
     "vendor",
     "scripts",
     "tests",
+    "docs",
     "CMakeLists.txt",
     "README.md"
 ]
@@ -79,7 +80,11 @@ def main():
                             continue
                         file_ext = os.path.splitext(filename)[1].lower()
                         if file_ext in EXCLUDED_EXTENSIONS:
-                            continue
+                            # Los modelos 3D Wavefront (.obj) dentro de assets/ son esenciales para el juego
+                            if file_ext == ".obj" and "assets" in rel_dir.parts:
+                                pass
+                            else:
+                                continue
                         full_path = Path(dirpath) / filename
                         arcname = (rel_dir / filename).as_posix()
                         zipf.write(full_path, arcname=arcname)

@@ -33,6 +33,7 @@ zip -r -q "${ZIP_NAME}" \
     shaders/ \
     assets/ \
     vendor/ \
+    docs/ \
     CMakeLists.txt \
     README.md \
     scripts/ \
@@ -42,7 +43,6 @@ zip -r -q "${ZIP_NAME}" \
     -x "*.vs*" \
     -x "*.vscode*" \
     -x "*.idea*" \
-    -x "*.obj" \
     -x "*.exe" \
     -x "*.pdb" \
     -x "*.o" \

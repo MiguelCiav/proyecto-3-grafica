@@ -151,7 +151,7 @@ void PropArchetypeRegistry::calculateAABB(PropTypeId id, const glm::vec3& pos,
             std::swap(hx, hz);
         }
         outMin = glm::vec3(pos.x - hx, 0.0f, pos.z - hz);
-        outMax = glm::vec3(pos.x + hx, 0.55f * scale.y, pos.z + hz);
+        outMax = glm::vec3(pos.x + hx, 0.15f * scale.y, pos.z + hz);
         break;
     }
     case PropTypeId::BARRIER_RED:
@@ -159,7 +159,7 @@ void PropArchetypeRegistry::calculateAABB(PropTypeId id, const glm::vec3& pos,
         float hx = 0.32f * scale.x;
         float hz = 0.16f * scale.z;
         outMin = glm::vec3(pos.x - hx, 0.0f, pos.z - hz);
-        outMax = glm::vec3(pos.x + hx, 0.45f * scale.y, pos.z + hz);
+        outMax = glm::vec3(pos.x + hx, 0.15f * scale.y, pos.z + hz);
         break;
     }
     case PropTypeId::BOX: {

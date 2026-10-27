@@ -143,8 +143,8 @@ SubMesh ProceduralGeometry::createFacetedDome(float radius, float height, int ri
     for (int r = 0; r < rings - 1; ++r) {
         for (int s = 0; s < segments; ++s) {
             int next = (s + 1) % segments;
-            addTri(ringVerts[r][s], ringVerts[r+1][s], ringVerts[r+1][next]);
-            addTri(ringVerts[r][s], ringVerts[r+1][next], ringVerts[r][next]);
+            addTri(ringVerts[r][s], ringVerts[r][next], ringVerts[r+1][next]);
+            addTri(ringVerts[r][s], ringVerts[r+1][next], ringVerts[r+1][s]);
         }
     }
 
@@ -152,7 +152,7 @@ SubMesh ProceduralGeometry::createFacetedDome(float radius, float height, int ri
     int last = rings - 1;
     for (int s = 0; s < segments; ++s) {
         int next = (s + 1) % segments;
-        addTri(bottomCenter, ringVerts[last][next], ringVerts[last][s]);
+        addTri(bottomCenter, ringVerts[last][s], ringVerts[last][next]);
     }
 
     return mesh;
@@ -202,8 +202,8 @@ SubMesh ProceduralGeometry::createBrazier(float baseRadius, float bowlRadius, fl
     for (size_t r = 0; r < rings.size() - 1; ++r) {
         for (int s = 0; s < segments; ++s) {
             int nxt = (s + 1) % segments;
-            addTri(ringVerts[r][s], ringVerts[r][nxt], ringVerts[r+1][nxt]);
-            addTri(ringVerts[r][s], ringVerts[r+1][nxt], ringVerts[r+1][s]);
+            addTri(ringVerts[r][s], ringVerts[r+1][s], ringVerts[r+1][nxt]);
+            addTri(ringVerts[r][s], ringVerts[r+1][nxt], ringVerts[r][nxt]);
         }
     }
 
@@ -217,6 +217,13 @@ SubMesh ProceduralGeometry::createBrazier(float baseRadius, float bowlRadius, fl
     for (int s = 0; s < segments; ++s) {
         int nxt = (s + 1) % segments;
         addTri(innerCoalCenter, ringVerts.back()[nxt], ringVerts.back()[s]);
+    }
+
+    // Pared interior del cuenco para que al mirar desde arriba no sea hueco por culling
+    for (int s = 0; s < segments; ++s) {
+        int nxt = (s + 1) % segments;
+        addTri(ringVerts[3][s], ringVerts[4][nxt], ringVerts[3][nxt]);
+        addTri(ringVerts[3][s], ringVerts[4][s], ringVerts[4][nxt]);
     }
 
     return mesh;
@@ -265,8 +272,8 @@ SubMesh ProceduralGeometry::createFlame(float radius, float height, bool isCore)
         for (size_t r = 0; r < rings.size() - 1; ++r) {
             for (int s = 0; s < segments; ++s) {
                 int nxt = (s + 1) % segments;
-                addTri(ringVerts[r][s], ringVerts[r][nxt], ringVerts[r+1][nxt]);
-                addTri(ringVerts[r][s], ringVerts[r+1][nxt], ringVerts[r+1][s]);
+                addTri(ringVerts[r][s], ringVerts[r+1][s], ringVerts[r+1][nxt]);
+                addTri(ringVerts[r][s], ringVerts[r+1][nxt], ringVerts[r][nxt]);
             }
         }
 
@@ -274,7 +281,7 @@ SubMesh ProceduralGeometry::createFlame(float radius, float height, bool isCore)
         size_t last = rings.size() - 1;
         for (int s = 0; s < segments; ++s) {
             int nxt = (s + 1) % segments;
-            addTri(ringVerts[last][nxt], apex, ringVerts[last][s]);
+            addTri(apex, ringVerts[last][nxt], ringVerts[last][s]);
         }
 
         glm::vec3 bottom(0.0f, 0.0f, 0.0f);
@@ -352,15 +359,15 @@ SubMesh ProceduralGeometry::createSphere(float radius, int rings, int sectors, c
     for (size_t r = 0; r < ringVerts.size() - 1; ++r) {
         for (int s = 0; s < sectors; ++s) {
             int nxt = (s + 1) % sectors;
-            addTri(ringVerts[r][s], ringVerts[r+1][s], ringVerts[r+1][nxt]);
-            addTri(ringVerts[r][s], ringVerts[r+1][nxt], ringVerts[r][nxt]);
+            addTri(ringVerts[r][s], ringVerts[r][nxt], ringVerts[r+1][nxt]);
+            addTri(ringVerts[r][s], ringVerts[r+1][nxt], ringVerts[r+1][s]);
         }
     }
 
     size_t last = ringVerts.size() - 1;
     for (int s = 0; s < sectors; ++s) {
         int nxt = (s + 1) % sectors;
-        addTri(southPole, ringVerts[last][nxt], ringVerts[last][s]);
+        addTri(southPole, ringVerts[last][s], ringVerts[last][nxt]);
     }
 
     return mesh;
@@ -439,48 +446,55 @@ SubMesh ProceduralGeometry::createClamShell(float radius, float openAngleDeg, co
         for (int vI = 0; vI < vSegs; ++vI) {
             for (int uI = 0; uI < uSegs; ++uI) {
                 if (!isUpper) {
-                    addTri(gridOut[vI][uI], gridOut[vI+1][uI], gridOut[vI+1][uI+1]);
-                    addTri(gridOut[vI][uI], gridOut[vI+1][uI+1], gridOut[vI][uI+1]);
-                } else {
-                    addTri(gridOut[vI][uI], gridOut[vI+1][uI+1], gridOut[vI+1][uI]);
                     addTri(gridOut[vI][uI], gridOut[vI][uI+1], gridOut[vI+1][uI+1]);
-                }
-            }
-        }
+                    addTri(gridOut[vI][uI], gridOut[vI+1][uI+1], gridOut[vI+1][uI]);
 
-        for (int vI = 0; vI < vSegs; ++vI) {
-            for (int uI = 0; uI < uSegs; ++uI) {
-                if (!isUpper) {
-                    addTri(gridIn[vI][uI], gridIn[vI+1][uI+1], gridIn[vI+1][uI]);
-                    addTri(gridIn[vI][uI], gridIn[vI][uI+1], gridIn[vI+1][uI+1]);
-                } else {
                     addTri(gridIn[vI][uI], gridIn[vI+1][uI], gridIn[vI+1][uI+1]);
                     addTri(gridIn[vI][uI], gridIn[vI+1][uI+1], gridIn[vI][uI+1]);
+                } else {
+                    addTri(gridOut[vI][uI], gridOut[vI+1][uI], gridOut[vI+1][uI+1]);
+                    addTri(gridOut[vI][uI], gridOut[vI+1][uI+1], gridOut[vI][uI+1]);
+
+                    addTri(gridIn[vI][uI], gridIn[vI][uI+1], gridIn[vI+1][uI+1]);
+                    addTri(gridIn[vI][uI], gridIn[vI+1][uI+1], gridIn[vI+1][uI]);
                 }
             }
         }
 
+        // Borde exterior (labio frontal de la concha, vI = vSegs)
         for (int uI = 0; uI < uSegs; ++uI) {
             if (!isUpper) {
-                addTri(gridOut[vSegs][uI], gridIn[vSegs][uI], gridIn[vSegs][uI+1]);
-                addTri(gridOut[vSegs][uI], gridIn[vSegs][uI+1], gridOut[vSegs][uI+1]);
-            } else {
-                addTri(gridOut[vSegs][uI], gridIn[vSegs][uI+1], gridIn[vSegs][uI]);
                 addTri(gridOut[vSegs][uI], gridOut[vSegs][uI+1], gridIn[vSegs][uI+1]);
+                addTri(gridOut[vSegs][uI], gridIn[vSegs][uI+1], gridIn[vSegs][uI]);
+            } else {
+                addTri(gridIn[vSegs][uI], gridIn[vSegs][uI+1], gridOut[vSegs][uI+1]);
+                addTri(gridIn[vSegs][uI], gridOut[vSegs][uI+1], gridOut[vSegs][uI]);
             }
         }
 
+        // Borde posterior (bisagra de la concha, vI = 0)
+        for (int uI = 0; uI < uSegs; ++uI) {
+            if (!isUpper) {
+                addTri(gridIn[0][uI], gridIn[0][uI+1], gridOut[0][uI+1]);
+                addTri(gridIn[0][uI], gridOut[0][uI+1], gridOut[0][uI]);
+            } else {
+                addTri(gridOut[0][uI], gridOut[0][uI+1], gridIn[0][uI+1]);
+                addTri(gridOut[0][uI], gridIn[0][uI+1], gridIn[0][uI]);
+            }
+        }
+
+        // Bordes laterales (uI = 0 y uI = uSegs)
         for (int vI = 0; vI < vSegs; ++vI) {
             if (!isUpper) {
-                addTri(gridOut[vI][0], gridOut[vI+1][0], gridIn[vI+1][0]);
-                addTri(gridOut[vI][0], gridIn[vI+1][0], gridIn[vI][0]);
-                addTri(gridOut[vI][uSegs], gridIn[vI+1][uSegs], gridOut[vI+1][uSegs]);
-                addTri(gridOut[vI][uSegs], gridIn[vI][uSegs], gridIn[vI+1][uSegs]);
-            } else {
                 addTri(gridOut[vI][0], gridIn[vI+1][0], gridOut[vI+1][0]);
                 addTri(gridOut[vI][0], gridIn[vI][0], gridIn[vI+1][0]);
                 addTri(gridOut[vI][uSegs], gridOut[vI+1][uSegs], gridIn[vI+1][uSegs]);
                 addTri(gridOut[vI][uSegs], gridIn[vI+1][uSegs], gridIn[vI][uSegs]);
+            } else {
+                addTri(gridIn[vI][0], gridOut[vI+1][0], gridIn[vI+1][0]);
+                addTri(gridIn[vI][0], gridOut[vI][0], gridOut[vI+1][0]);
+                addTri(gridIn[vI][uSegs], gridIn[vI+1][uSegs], gridOut[vI+1][uSegs]);
+                addTri(gridIn[vI][uSegs], gridOut[vI+1][uSegs], gridOut[vI][uSegs]);
             }
         }
     }
@@ -534,15 +548,15 @@ SubMesh ProceduralGeometry::createBubbleColumn(const std::string& name) {
         for (size_t r = 0; r < ringVerts.size() - 1; ++r) {
             for (int s = 0; s < sectors; ++s) {
                 int nxt = (s + 1) % sectors;
-                addTri(ringVerts[r][s], ringVerts[r+1][s], ringVerts[r+1][nxt]);
-                addTri(ringVerts[r][s], ringVerts[r+1][nxt], ringVerts[r][nxt]);
+                addTri(ringVerts[r][s], ringVerts[r][nxt], ringVerts[r+1][nxt]);
+                addTri(ringVerts[r][s], ringVerts[r+1][nxt], ringVerts[r+1][s]);
             }
         }
 
         size_t last = ringVerts.size() - 1;
         for (int s = 0; s < sectors; ++s) {
             int nxt = (s + 1) % sectors;
-            addTri(southPole, ringVerts[last][nxt], ringVerts[last][s]);
+            addTri(southPole, ringVerts[last][s], ringVerts[last][nxt]);
         }
     };
 
