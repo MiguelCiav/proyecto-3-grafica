@@ -152,63 +152,69 @@ std::vector<TrackProfile> TrackEnvironmentRegistry::createDefaultTracks() {
     return {
         {
             "track-grand-circuit",
-            "Gran Circuito Internacional UCV (Dia)",
+            "Tierra de Nadie International GP",
             "Gran Prix ★★★",
-            "Mega circuito profesional de 112 tramos diurno con multiples chicanas, horquillas y arco monumental.",
+            "El asfalto más ilustre de la Ciudad Universitaria, con parada técnica obligatoria en la Plaza Cubierta.",
             "assets/levels/track_grand_circuit.txt",
             28, 25,
             false, // isNight
-            TrackTheme::DAY_GRASSLAND
+            TrackTheme::DAY_GRASSLAND,
+            "assets/sfx/Tierra_de_Nadie_International_Gp.mp3"
         },
         {
             "track-night-neon",
-            "Autodromo Nocturno UCV (Neon GP)",
+            "Cota Mil Midnight Circuit",
             "Nocturno ★★★",
-            "Espectacular circuito nocturno de 90 tramos iluminado con farolas, arcos de neon y balizas luminosas.",
+            "La recta nocturna por excelencia: velocidad pura, sin postes de luz y esquivando desniveles a ciegas.",
             "assets/levels/track_night_circuit.txt",
             26, 22,
             true, // isNight
-            TrackTheme::NIGHT_NEON
+            TrackTheme::NIGHT_NEON,
+            "assets/sfx/Cota_Mil_Midnight_Circuit.mp3"
         },
         {
             "track-desert",
-            "Valle del Desierto UCV (Dakar Canyon Wedge)",
+            "Médanos Grand Prix",
             "Dakar ★★★",
-            "Rally asimetrico en forma de cuña por cañones de arenisca, escalones de dunas y rectas de alta velocidad.",
+            "Mucho derrape en arena, cero tracción y brisa con chivo al fondo.",
             "assets/levels/track_desert_dunes.txt",
             26, 24,
             false, // isNight
-            TrackTheme::DESERT_DUNES
+            TrackTheme::DESERT_DUNES,
+            "assets/sfx/Medanos_grand_prix.mp3"
         },
         {
             "track-cosmic",
-            "Circuito Espacial UCV (Starfighter Orbital Wings)",
+            "Humboldt Cosmic Raceway",
             "Extremo ★★★",
-            "Nave orbital con alas solares exteriores, pasarela hiperespacial y vortices estelares suspendidos.",
+            "Inspirado en el Planetario Humboldt: correr entre galaxias sin salir de Caracas.",
             "assets/levels/track_cosmic_space.txt",
             26, 26,
             true, // isNight
-            TrackTheme::COSMIC_SPACE
+            TrackTheme::COSMIC_SPACE,
+            "assets/sfx/Humboldt_Cosmic_Raceway.mp3"
         },
         {
             "track-aquatic",
-            "Arrecife Abisal UCV (Nautilus Reef & Kelp Atoll)",
-            "Acuatico ★★★",
-            "Atolon oceanico natural con amplia laguna sur, ensenada submarina y serpentina por bosques de algas kelp.",
+            "Los Roques Reef Route",
+            "Acuático ★★★",
+            "Fondo marino de aguas cristalinas, pero con curvas cerradas entre corales y peñeros.",
             "assets/levels/track_aquatic_reef.txt",
             26, 26,
             false, // isNight
-            TrackTheme::AQUATIC_REEF
+            TrackTheme::AQUATIC_REEF,
+            "assets/sfx/Los_Roques_Reef_Route.mp3"
         },
         {
             "track-volcano",
-            "Caldera del Volcan UCV (Inferno Magma Crater)",
+            "El Volcán Hillclimb",
             "Infernal ★★★",
-            "Circuito de alta adrenalina al borde de un crater de lava con chimeneas de humo, columnas de basalto y braseros.",
+            "Alusión directa al cerro El Volcán en El Hatillo: subida empinada, asfalto caliente y frenos al límite.",
             "assets/levels/track_volcano_caldera.txt",
             26, 26,
             false, // isNight
-            TrackTheme::VOLCANO_CALDERA
+            TrackTheme::VOLCANO_CALDERA,
+            "assets/sfx/El_volcan_hillclimb.mp3"
         }
     };
 }

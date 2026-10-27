@@ -25,10 +25,19 @@ void RacingScene::resetRace() {
     m_impactAudioCooldown = 0.0f;
     m_wasBoostingLastFrame = false;
     if (m_ctx.skidmarkManager) m_ctx.skidmarkManager->clear();
+
+    const auto* track = m_ctx.getActiveTrack();
+    if (track && !track->musicPath.empty()) {
+        m_ctx.getAudio().playRaceMusic(track->musicPath, 0.55f);
+    }
 }
 
 void RacingScene::onEnter() {
     m_ctx.getAudio().setMenuMusicActive(false);
+    const auto* track = m_ctx.getActiveTrack();
+    if (track && !track->musicPath.empty()) {
+        m_ctx.getAudio().playRaceMusic(track->musicPath, 0.55f);
+    }
     m_cursorLocked = m_isPaused = false;
     m_impactAudioCooldown = 0.0f;
     m_wasBoostingLastFrame = false;
@@ -49,6 +58,7 @@ void RacingScene::onEnter() {
 
 void RacingScene::onExit() {
     m_cursorLocked = m_isPaused = false;
+    m_ctx.getAudio().stopRaceMusic();
     m_ctx.getAudio().stopAllGameplaySounds();
     m_pauseMenu.close();
     core::Input::setCursorVisible(true);
@@ -80,13 +90,15 @@ void RacingScene::handleInput(float deltaTime) {
         m_pauseMenu.handleInput(deltaTime, m_ctx.lightingController, m_ctx.lightManager, sw, sh);
 
         switch (m_pauseMenu.consumeAction()) {
-            case ui::PauseAction::RESUME: m_isPaused = false; break;
-            case ui::PauseAction::RESTART: resetRace(); m_isPaused = false; break;
+            case ui::PauseAction::RESUME: setPaused(false); break;
+            case ui::PauseAction::RESTART: resetRace(); setPaused(false); break;
             case ui::PauseAction::GO_TO_MAIN_MENU:
-                m_isPaused = false;
+                setPaused(false);
+                m_ctx.getAudio().stopRaceMusic();
                 if (m_ctx.sceneManager) m_ctx.sceneManager->changeScene(core::GameState::MAIN_MENU);
                 break;
             case ui::PauseAction::QUIT_GAME:
+                m_ctx.getAudio().stopRaceMusic();
                 if (m_ctx.window) glfwSetWindowShouldClose(m_ctx.window->getNativeWindow(), GLFW_TRUE);
                 else if (GLFWwindow* win = glfwGetCurrentContext()) glfwSetWindowShouldClose(win, GLFW_TRUE);
                 break;
@@ -96,6 +108,8 @@ void RacingScene::handleInput(float deltaTime) {
     }
 
     if (core::Input::isKeyJustPressed(GLFW_KEY_M)) {
+        m_ctx.getAudio().stopRaceMusic();
+        m_ctx.getAudio().stopAllGameplaySounds();
         if (m_ctx.sceneManager) m_ctx.sceneManager->changeScene(core::GameState::VEHICLE_SELECT);
         return;
     }

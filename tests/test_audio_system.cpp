@@ -36,6 +36,15 @@ int main() {
         assert(nullSvc.isMenuMusicPlaying());
         nullSvc.setMenuMusicActive(false);
         assert(!nullSvc.isMenuMusicPlaying());
+        assert(!nullSvc.isRaceMusicPlaying());
+        nullSvc.playRaceMusic("assets/sfx/Medanos_grand_prix.mp3", 0.5f);
+        assert(nullSvc.isRaceMusicPlaying());
+        nullSvc.pauseRaceMusic();
+        assert(!nullSvc.isRaceMusicPlaying());
+        nullSvc.resumeRaceMusic();
+        assert(nullSvc.isRaceMusicPlaying());
+        nullSvc.stopRaceMusic();
+        assert(!nullSvc.isRaceMusicPlaying());
         nullSvc.stopAllGameplaySounds();
 
         nullSvc.setMasterVolume(0.45f);
@@ -158,7 +167,32 @@ int main() {
         ctx.getAudio().setMenuMusicActive(false);
         assert(!audioMgr.isMenuMusicPlaying() && "MENU_SONG.mp3 debe detenerse con setMenuMusicActive(false)");
 
-        std::cout << "  [CHECK 4] Modulacion de ENGINE_LOOP.mp3, corte de WHEEL_DRIFT.mp3 y loop MENU_SONG.mp3 OK." << std::endl;
+        // ---------------------------------------------------------------------
+        // 4.c Streaming de musica de pista / carrera (6 canciones MP3)
+        // ---------------------------------------------------------------------
+        assert(!audioMgr.isRaceMusicPlaying());
+        assert(!audioMgr.isRaceMusicLoaded());
+
+        ctx.getAudio().playRaceMusic("assets/sfx/Medanos_grand_prix.mp3", 0.55f);
+        assert(audioMgr.isRaceMusicLoaded() && "Medanos_grand_prix.mp3 debe cargarse");
+        assert(audioMgr.isRaceMusicPlaying() && "Medanos_grand_prix.mp3 debe comenzar reproduccion");
+        assert(audioMgr.getCurrentRaceMusicPath() == "assets/sfx/Medanos_grand_prix.mp3");
+
+        ctx.getAudio().pauseRaceMusic();
+        assert(!audioMgr.isRaceMusicPlaying() && "pauseRaceMusic debe pausar el stream");
+        ctx.getAudio().resumeRaceMusic();
+        assert(audioMgr.isRaceMusicPlaying() && "resumeRaceMusic debe reanudar el stream");
+
+        // Transicion transparente a otra pista
+        ctx.getAudio().playRaceMusic("assets/sfx/Humboldt_Cosmic_Raceway.mp3", 0.55f);
+        assert(audioMgr.isRaceMusicPlaying());
+        assert(audioMgr.getCurrentRaceMusicPath() == "assets/sfx/Humboldt_Cosmic_Raceway.mp3");
+
+        ctx.getAudio().stopRaceMusic();
+        assert(!audioMgr.isRaceMusicPlaying() && "stopRaceMusic debe detener la musica");
+        assert(!audioMgr.isRaceMusicLoaded() && "stopRaceMusic debe desinicializar el sonido");
+
+        std::cout << "  [CHECK 4] Modulacion de ENGINE_LOOP.mp3, corte de WHEEL_DRIFT.mp3, loop MENU_SONG.mp3 y streaming de musica de pista OK." << std::endl;
 
         // ---------------------------------------------------------------------
         // 5. Control de Volumen Maestro y Mute
@@ -177,12 +211,15 @@ int main() {
 
         ctx.getAudio().setEngineSoundState(true, 0.6f, false);
         ctx.getAudio().setMenuMusicActive(true, 0.5f);
+        ctx.getAudio().playRaceMusic("assets/sfx/Medanos_grand_prix.mp3", 0.55f);
         assert(audioMgr.isEngineSoundPlaying());
         assert(audioMgr.isMenuMusicPlaying());
+        assert(audioMgr.isRaceMusicPlaying());
         ctx.getAudio().setMuted(true);
         assert(ctx.getAudio().isMuted());
         assert(!audioMgr.isEngineSoundPlaying() && "Mute debe detener sonidos continuos activos");
         assert(!audioMgr.isMenuMusicPlaying() && "Mute debe detener menuMusic si estaba sonando");
+        assert(!audioMgr.isRaceMusicPlaying() && "Mute debe detener raceMusic si estaba sonando");
 
         // Reproducir estando muteado no debe producir errores
         ctx.getAudio().playSound(audio::SoundEvent::UI_NAVIGATE);

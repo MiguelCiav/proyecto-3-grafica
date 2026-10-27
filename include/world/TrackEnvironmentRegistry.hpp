@@ -52,6 +52,7 @@ struct TrackProfile {
     int rows{12};
     bool isNight{false};
     TrackTheme theme{TrackTheme::DAY_GRASSLAND};
+    std::string musicPath;
 };
 
 class TrackEnvironmentRegistry {

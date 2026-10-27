@@ -240,7 +240,7 @@ void MainMenuUI::render(float screenWidth, float screenHeight) {
 void MainMenuUI::renderMainMenu(float screenWidth, float screenHeight) {
     float titleY = screenHeight * 0.16f;
     m_renderer->drawTextCenteredWithShadow(0.0f, titleY, screenWidth, 40.0f,
-                                           "MARIO KART - CGI (UCV)", 4.0f,
+                                           "Cario Kart", 4.0f,
                                            glm::vec4(1.0f, 0.86f, 0.15f, 1.0f),
                                            glm::vec4(0.0f, 0.0f, 0.0f, 0.85f), 2.0f);
 

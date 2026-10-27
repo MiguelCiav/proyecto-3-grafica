@@ -2,6 +2,7 @@
 
 #include "audio/SoundEvent.hpp"
 #include <algorithm>
+#include <string>
 
 namespace audio {
 
@@ -41,6 +42,34 @@ public:
      * @brief Indica si la música de menú está sonando actualmente.
      */
     [[nodiscard]] virtual bool isMenuMusicPlaying() const = 0;
+
+    /**
+     * @brief Inicia o cambia la música de fondo de la carrera.
+     * @param musicPath Ruta del archivo de audio de la pista.
+     * @param volume Nivel de volumen [0.0f, 1.0f].
+     * @param loop Si debe reproducirse en bucle continuo.
+     */
+    virtual void playRaceMusic(const std::string& musicPath, float volume = 0.55f, bool loop = true) = 0;
+
+    /**
+     * @brief Pausa la música de carrera actual sin reiniciar el cursor.
+     */
+    virtual void pauseRaceMusic() = 0;
+
+    /**
+     * @brief Reanuda la música de carrera pausada.
+     */
+    virtual void resumeRaceMusic() = 0;
+
+    /**
+     * @brief Detiene y descarga la música de carrera activa.
+     */
+    virtual void stopRaceMusic() = 0;
+
+    /**
+     * @brief Indica si la música de carrera está reproduciéndose actualmente.
+     */
+    [[nodiscard]] virtual bool isRaceMusicPlaying() const = 0;
 
     /**
      * @brief Detiene todos los sonidos continuos de gameplay (motor y derrape).
@@ -88,7 +117,29 @@ public:
         return m_menuMusicPlaying;
     }
 
-    void stopAllGameplaySounds() override {}
+    void playRaceMusic(const std::string& /*musicPath*/, float /*volume*/ = 0.55f, bool /*loop*/ = true) override {
+        m_raceMusicPlaying = true;
+    }
+
+    void pauseRaceMusic() override {
+        m_raceMusicPlaying = false;
+    }
+
+    void resumeRaceMusic() override {
+        m_raceMusicPlaying = true;
+    }
+
+    void stopRaceMusic() override {
+        m_raceMusicPlaying = false;
+    }
+
+    [[nodiscard]] bool isRaceMusicPlaying() const override {
+        return m_raceMusicPlaying;
+    }
+
+    void stopAllGameplaySounds() override {
+        m_raceMusicPlaying = false;
+    }
 
     void setMasterVolume(float volume) override {
         m_volume = std::clamp(volume, 0.0f, 1.0f);
@@ -110,6 +161,7 @@ private:
     float m_volume{1.0f};
     bool m_muted{false};
     bool m_menuMusicPlaying{false};
+    bool m_raceMusicPlaying{false};
 };
 
 } // namespace audio

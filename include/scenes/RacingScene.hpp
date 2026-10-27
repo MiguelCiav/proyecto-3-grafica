@@ -26,9 +26,11 @@ public:
     void setPaused(bool paused) {
         m_isPaused = paused;
         if (paused) {
+            m_ctx.getAudio().pauseRaceMusic();
             m_ctx.getAudio().stopAllGameplaySounds();
             m_pauseMenu.open();
         } else {
+            m_ctx.getAudio().resumeRaceMusic();
             m_pauseMenu.close();
         }
     }

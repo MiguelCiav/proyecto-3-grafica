@@ -56,6 +56,12 @@ struct AudioManager::Impl {
     bool menuMusicLoaded{false};
     bool menuMusicPlaying{false};
 
+    ma_sound raceMusic{};
+    bool raceMusicLoaded{false};
+    bool raceMusicPlaying{false};
+    std::string currentRaceMusicPath{};
+    float raceMusicVolume{0.55f};
+
     float masterVolume{1.0f};
     bool muted{false};
 };
@@ -226,6 +232,13 @@ void AudioManager::shutdown() {
             m_impl->menuMusicPlaying = false;
         }
 
+        if (m_impl->raceMusicLoaded) {
+            ma_sound_uninit(&m_impl->raceMusic);
+            m_impl->raceMusicLoaded = false;
+            m_impl->raceMusicPlaying = false;
+            m_impl->currentRaceMusicPath.clear();
+        }
+
         if (m_impl->engineSoundLoaded) {
             ma_sound_uninit(&m_impl->engineSound);
             m_impl->engineSoundLoaded = false;
@@ -347,6 +360,103 @@ bool AudioManager::isMenuMusicPlaying() const {
     return m_impl && m_impl->menuMusicPlaying;
 }
 
+void AudioManager::playRaceMusic(const std::string& musicPath, float volume, bool loop) {
+    if (!m_impl || !m_impl->engineInitialized || musicPath.empty()) {
+        return;
+    }
+
+    m_impl->raceMusicVolume = std::clamp(volume, 0.0f, 1.5f);
+
+    // Si ya está cargada la misma pista musical
+    if (m_impl->raceMusicLoaded && m_impl->currentRaceMusicPath == musicPath) {
+        if (!m_impl->muted) {
+            ma_sound_set_volume(&m_impl->raceMusic, m_impl->raceMusicVolume);
+        }
+        if (!m_impl->raceMusicPlaying && !m_impl->muted) {
+            ma_sound_start(&m_impl->raceMusic);
+            m_impl->raceMusicPlaying = true;
+        }
+        return;
+    }
+
+    // Si había otra pista de carrera cargada, liberarla
+    if (m_impl->raceMusicLoaded) {
+        ma_sound_uninit(&m_impl->raceMusic);
+        m_impl->raceMusicLoaded = false;
+        m_impl->raceMusicPlaying = false;
+        m_impl->currentRaceMusicPath.clear();
+    }
+
+    std::string resolved = ui::resolveAssetPath(musicPath);
+    ma_result res = ma_sound_init_from_file(
+        &m_impl->engine,
+        resolved.c_str(),
+        MA_SOUND_FLAG_NO_SPATIALIZATION,
+        nullptr,
+        nullptr,
+        &m_impl->raceMusic
+    );
+
+    if (res != MA_SUCCESS) {
+        std::cerr << "[WARN] [AudioManager] No se pudo cargar musica de carrera: " << resolved
+                  << " (codigo " << res << ")" << std::endl;
+        return;
+    }
+
+    m_impl->raceMusicLoaded = true;
+    m_impl->currentRaceMusicPath = musicPath;
+    ma_sound_set_looping(&m_impl->raceMusic, loop ? MA_TRUE : MA_FALSE);
+    ma_sound_set_volume(&m_impl->raceMusic, m_impl->muted ? 0.0f : m_impl->raceMusicVolume);
+
+    if (!m_impl->muted) {
+        ma_sound_start(&m_impl->raceMusic);
+        m_impl->raceMusicPlaying = true;
+    }
+}
+
+void AudioManager::pauseRaceMusic() {
+    if (!m_impl || !m_impl->engineInitialized || !m_impl->raceMusicLoaded) {
+        return;
+    }
+    if (m_impl->raceMusicPlaying) {
+        ma_sound_stop(&m_impl->raceMusic);
+        m_impl->raceMusicPlaying = false;
+    }
+}
+
+void AudioManager::resumeRaceMusic() {
+    if (!m_impl || !m_impl->engineInitialized || !m_impl->raceMusicLoaded) {
+        return;
+    }
+    if (!m_impl->raceMusicPlaying && !m_impl->muted) {
+        ma_sound_start(&m_impl->raceMusic);
+        m_impl->raceMusicPlaying = true;
+    }
+}
+
+void AudioManager::stopRaceMusic() {
+    if (!m_impl || !m_impl->engineInitialized || !m_impl->raceMusicLoaded) {
+        return;
+    }
+    ma_sound_uninit(&m_impl->raceMusic);
+    m_impl->raceMusicLoaded = false;
+    m_impl->raceMusicPlaying = false;
+    m_impl->currentRaceMusicPath.clear();
+}
+
+bool AudioManager::isRaceMusicPlaying() const {
+    return m_impl && m_impl->raceMusicPlaying;
+}
+
+bool AudioManager::isRaceMusicLoaded() const noexcept {
+    return m_impl && m_impl->raceMusicLoaded;
+}
+
+const std::string& AudioManager::getCurrentRaceMusicPath() const noexcept {
+    static const std::string s_empty;
+    return m_impl ? m_impl->currentRaceMusicPath : s_empty;
+}
+
 void AudioManager::stopAllGameplaySounds() {
     setEngineSoundState(false);
     setDriftSoundState(false);
@@ -378,6 +488,10 @@ void AudioManager::setMuted(bool muted) {
             if (m_impl->menuMusicPlaying) {
                 ma_sound_stop(&m_impl->menuMusic);
                 m_impl->menuMusicPlaying = false;
+            }
+            if (m_impl->raceMusicPlaying) {
+                ma_sound_stop(&m_impl->raceMusic);
+                m_impl->raceMusicPlaying = false;
             }
         }
     }

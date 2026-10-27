@@ -43,6 +43,11 @@ public:
     void setDriftSoundState(bool active, float volume = 1.0f) override;
     void setMenuMusicActive(bool active, float volume = 0.55f) override;
     [[nodiscard]] bool isMenuMusicPlaying() const override;
+    void playRaceMusic(const std::string& musicPath, float volume = 0.55f, bool loop = true) override;
+    void pauseRaceMusic() override;
+    void resumeRaceMusic() override;
+    void stopRaceMusic() override;
+    [[nodiscard]] bool isRaceMusicPlaying() const override;
     void stopAllGameplaySounds() override;
     void setMasterVolume(float volume) override;
     [[nodiscard]] float getMasterVolume() const override;
@@ -56,8 +61,10 @@ public:
     [[nodiscard]] bool isEngineSoundLoaded() const noexcept;
     [[nodiscard]] bool isDriftSoundLoaded() const noexcept;
     [[nodiscard]] bool isMenuMusicLoaded() const noexcept;
+    [[nodiscard]] bool isRaceMusicLoaded() const noexcept;
     [[nodiscard]] bool isEngineSoundPlaying() const noexcept;
     [[nodiscard]] bool isDriftSoundPlaying() const noexcept;
+    [[nodiscard]] const std::string& getCurrentRaceMusicPath() const noexcept;
     [[nodiscard]] uint64_t getPlayCount(SoundEvent event) const noexcept;
     void resetPlayCounts() noexcept;
 
