@@ -8,6 +8,10 @@ class LightingController;
 class LightManager;
 }
 
+namespace audio {
+class IAudioService;
+}
+
 namespace ui {
 
 class UIRenderer;
@@ -55,6 +59,11 @@ public:
      * @return true si la inicializacion fue exitosa.
      */
     bool init(UIRenderer* renderer);
+
+    /**
+     * @brief Inyecta el servicio de audio para efectos de sonido del menu de pausa.
+     */
+    void setAudioService(audio::IAudioService* audio) noexcept { m_audio = audio; }
 
     /**
      * @brief Abre el menu de pausa y hace visible el cursor del raton.
@@ -151,6 +160,7 @@ public:
 
 private:
     UIRenderer* m_renderer{nullptr};
+    audio::IAudioService* m_audio{nullptr};
 
     // Texturas de Kenney UI Pack y Space Expansion
     renderer::Texture m_texPauseModalFrame;

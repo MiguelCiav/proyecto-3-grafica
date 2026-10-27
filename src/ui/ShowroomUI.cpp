@@ -6,6 +6,7 @@
 #include "core/Window.hpp"
 #include "core/SceneManager.hpp"
 #include "world/TrackEnvironmentRegistry.hpp"
+#include "audio/SoundEvent.hpp"
 
 #include <GLFW/glfw3.h>
 #include <iostream>
@@ -476,8 +477,11 @@ void ShowroomUI::renderBottomBar(float screenWidth, float screenHeight) {
 
 void ShowroomUI::setActiveCategory(core::SelectionCategory category) {
     if (m_ctx) {
-        m_ctx->selectionCategory = category;
-        m_ctx->printSelectionHUD();
+        if (m_ctx->selectionCategory != category) {
+            m_ctx->selectionCategory = category;
+            m_ctx->getAudio().playSound(audio::SoundEvent::UI_TAB);
+            m_ctx->printSelectionHUD();
+        }
     }
 }
 
@@ -487,6 +491,7 @@ core::SelectionCategory ShowroomUI::getActiveCategory() const {
 
 void ShowroomUI::selectPrevious() {
     if (!m_ctx) return;
+    m_ctx->getAudio().playSound(audio::SoundEvent::UI_SWITCH);
     switch (getActiveCategory()) {
         case core::SelectionCategory::DRIVER:  setDriverIndex(m_ctx->selectedDriverIndex - 1); break;
         case core::SelectionCategory::VEHICLE: setVehicleIndex(m_ctx->selectedVehicleIndex - 1); break;
@@ -496,6 +501,7 @@ void ShowroomUI::selectPrevious() {
 
 void ShowroomUI::selectNext() {
     if (!m_ctx) return;
+    m_ctx->getAudio().playSound(audio::SoundEvent::UI_SWITCH);
     switch (getActiveCategory()) {
         case core::SelectionCategory::DRIVER:  setDriverIndex(m_ctx->selectedDriverIndex + 1); break;
         case core::SelectionCategory::VEHICLE: setVehicleIndex(m_ctx->selectedVehicleIndex + 1); break;
@@ -505,6 +511,7 @@ void ShowroomUI::selectNext() {
 
 void ShowroomUI::confirmSelection() {
     if (!m_ctx) return;
+    m_ctx->getAudio().playSound(audio::SoundEvent::UI_CONFIRM);
     if (!m_ctx->tracks.empty() && m_ctx->selectedTrackIndex < static_cast<int>(m_ctx->tracks.size())) {
         std::cout << "[SHOWROOM] Seleccion confirmada! Iniciando carrera en "
                   << m_ctx->tracks[m_ctx->selectedTrackIndex].name << "..." << std::endl;
@@ -516,6 +523,7 @@ void ShowroomUI::confirmSelection() {
 
 void ShowroomUI::returnToMenu() {
     if (!m_ctx) return;
+    m_ctx->getAudio().playSound(audio::SoundEvent::UI_BACK);
     std::cout << "[SHOWROOM] Regresando al Menu Principal..." << std::endl;
     if (m_ctx->sceneManager) {
         m_ctx->sceneManager->changeScene(core::GameState::MAIN_MENU);

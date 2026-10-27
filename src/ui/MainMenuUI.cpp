@@ -7,6 +7,7 @@
 #include "core/SceneManager.hpp"
 #include "lighting/LightManager.hpp"
 #include "lighting/LightingController.hpp"
+#include "audio/SoundEvent.hpp"
 
 #include <GLFW/glfw3.h>
 #include <iostream>
@@ -85,6 +86,8 @@ void MainMenuUI::handleInput(float deltaTime) {
     };
 
     if (!m_inSettings) {
+        const MainMenuOption prevOption = m_selectedOption;
+
         if (core::Input::isKeyJustPressed(GLFW_KEY_UP) || core::Input::isKeyJustPressed(GLFW_KEY_W)) {
             m_selectedOption = static_cast<MainMenuOption>((static_cast<int>(m_selectedOption) + 2) % 3);
         }
@@ -116,14 +119,20 @@ void MainMenuUI::handleInput(float deltaTime) {
             }
         }
 
+        if (m_selectedOption != prevOption && m_ctx) {
+            m_ctx->getAudio().playSound(audio::SoundEvent::UI_NAVIGATE);
+        }
+
         if (activate) {
             if (m_selectedOption == MainMenuOption::PLAY) {
+                if (m_ctx) m_ctx->getAudio().playSound(audio::SoundEvent::UI_CONFIRM);
                 std::cout << "[MENU] Opcion JUGAR activada -> Cambiando a VEHICLE_SELECT..." << std::endl;
                 if (m_ctx && m_ctx->sceneManager) {
                     m_ctx->selectionCategory = core::SelectionCategory::DRIVER;
                     m_ctx->sceneManager->changeScene(core::GameState::VEHICLE_SELECT);
                 }
             } else if (m_selectedOption == MainMenuOption::SETTINGS) {
+                if (m_ctx) m_ctx->getAudio().playSound(audio::SoundEvent::UI_CONFIRM);
                 std::cout << "[MENU] Opcion CONFIGURACION activada -> Abriendo panel modal..." << std::endl;
                 openSettings();
             } else if (m_selectedOption == MainMenuOption::QUIT) {
@@ -138,9 +147,12 @@ void MainMenuUI::handleInput(float deltaTime) {
         }
     } else {
         if (core::Input::isKeyJustPressed(GLFW_KEY_ESCAPE)) {
+            if (m_ctx) m_ctx->getAudio().playSound(audio::SoundEvent::UI_BACK);
             closeSettings();
             return;
         }
+
+        const SettingsOption prevSettingsOption = m_selectedSettingsOption;
 
         if (core::Input::isKeyJustPressed(GLFW_KEY_UP) || core::Input::isKeyJustPressed(GLFW_KEY_W)) {
             m_selectedSettingsOption = static_cast<SettingsOption>((static_cast<int>(m_selectedSettingsOption) + 5) % 6);
@@ -169,9 +181,14 @@ void MainMenuUI::handleInput(float deltaTime) {
             }
         }
 
+        if (m_selectedSettingsOption != prevSettingsOption && m_ctx) {
+            m_ctx->getAudio().playSound(audio::SoundEvent::UI_NAVIGATE);
+        }
+
         if (goLeft || goRight || activate) {
             switch (m_selectedSettingsOption) {
                 case SettingsOption::SHADING_MODEL:
+                    if (m_ctx) m_ctx->getAudio().playSound(audio::SoundEvent::UI_SWITCH);
                     if (m_ctx && m_ctx->lightManager) {
                         if (goLeft) {
                             int prev = (static_cast<int>(m_ctx->lightManager->getLightingModel()) + 2) % 3;
@@ -182,21 +199,26 @@ void MainMenuUI::handleInput(float deltaTime) {
                     }
                     break;
                 case SettingsOption::DAY_NIGHT:
+                    if (m_ctx) m_ctx->getAudio().playSound(audio::SoundEvent::UI_SWITCH);
                     if (m_ctx && m_ctx->lightingController) m_ctx->lightingController->toggleDayNight();
                     break;
                 case SettingsOption::HEADLIGHTS:
+                    if (m_ctx) m_ctx->getAudio().playSound(audio::SoundEvent::UI_SWITCH);
                     if (m_ctx && m_ctx->lightingController) m_ctx->lightingController->toggleHeadlights();
                     break;
                 case SettingsOption::TRACK_LIGHTS:
+                    if (m_ctx) m_ctx->getAudio().playSound(audio::SoundEvent::UI_SWITCH);
                     if (m_ctx && m_ctx->lightManager) m_ctx->lightManager->togglePointLights();
                     break;
                 case SettingsOption::INITIAL_CAMERA:
                     if (m_ctx) {
+                        m_ctx->getAudio().playSound(audio::SoundEvent::UI_SWITCH);
                         m_ctx->cameraMode = (m_ctx->cameraMode == core::CameraMode::CHASE)
                                             ? core::CameraMode::FPS : core::CameraMode::CHASE;
                     }
                     break;
                 case SettingsOption::BACK:
+                    if (m_ctx) m_ctx->getAudio().playSound(audio::SoundEvent::UI_BACK);
                     closeSettings();
                     break;
             }

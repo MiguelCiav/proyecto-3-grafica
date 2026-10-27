@@ -58,6 +58,7 @@ void Application::initContext() {
     m_gameContext.lightingController = &m_lightingController;
 
     m_gameContext.racingHud = &m_racingHud;
+    m_gameContext.audioService = m_audioManager.get();
     m_gameContext.fpsCamera = &m_fpsCamera;
     m_gameContext.chaseCamera = &m_chaseCamera;
 }
@@ -239,6 +240,11 @@ void Application::initSubsystemsAndContext() {
     m_skidmarkManager.init();
     m_racingHud.init();
 
+    if (!m_audioManager) {
+        m_audioManager = std::make_unique<audio::AudioManager>();
+    }
+    m_audioManager->init();
+
     initContext();
 }
 
@@ -318,6 +324,12 @@ void Application::close() {
         return;
     }
     m_running = false;
+
+    if (m_audioManager) {
+        m_audioManager->shutdown();
+        m_gameContext.audioService = nullptr;
+        m_audioManager.reset();
+    }
 
     // Solo liberamos recursos dependientes de OpenGL si el contexto sigue activo
     if (m_window) {

@@ -4,6 +4,7 @@
 #include "core/Time.hpp"
 #include "core/SceneManager.hpp"
 #include "core/GameContext.hpp"
+#include "audio/AudioManager.hpp"
 #include <memory>
 #include <string>
 
@@ -93,8 +94,9 @@ private:
     camera::Camera m_fpsCamera;
     camera::ChaseCamera m_chaseCamera;
 
-    // HUD y Pedestal
+    // HUD, Audio y Pedestal
     ui::RacingHud m_racingHud;
+    std::unique_ptr<audio::AudioManager> m_audioManager;
     renderer::MeshGL m_pedestalMesh;
 
     // Contexto de Juego Compartido

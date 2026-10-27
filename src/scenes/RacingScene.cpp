@@ -31,6 +31,7 @@ void RacingScene::onEnter() {
     m_ctx.cameraMode = core::CameraMode::CHASE;
     if (!m_uiRenderer.isInitialized()) m_uiRenderer.init();
     if (!m_pauseMenu.isInitialized()) m_pauseMenu.init(&m_uiRenderer);
+    m_pauseMenu.setAudioService(&m_ctx.getAudio());
     m_pauseMenu.close();
     m_pauseMenu.setSelectedOption(0);
     if (m_ctx.litShader && m_ctx.boosterShader) m_sceneRenderer.init(m_ctx.litShader, m_ctx.boosterShader, m_ctx.paletteTexture);
@@ -52,6 +53,11 @@ void RacingScene::handleInput(float deltaTime) {
         if (!m_isPaused && m_ctx.cameraMode == core::CameraMode::FPS && m_cursorLocked) {
             m_cursorLocked = false;
             core::Input::setCursorVisible(true);
+        }
+        if (m_isPaused) {
+            m_ctx.getAudio().playSound(audio::SoundEvent::UI_BACK);
+        } else {
+            m_pauseMenu.setAudioService(&m_ctx.getAudio());
         }
         setPaused(!m_isPaused);
         return;

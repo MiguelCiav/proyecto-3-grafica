@@ -25,6 +25,7 @@
 #include "vfx/KartParticleEmitter.hpp"
 #include "vfx/SkidmarkManager.hpp"
 #include "ui/RacingHud.hpp"
+#include "audio/IAudioService.hpp"
 
 namespace core {
 
@@ -75,10 +76,19 @@ struct GameContext : public SessionState {
     lighting::LightManager* lightManager{nullptr};
     lighting::LightingController* lightingController{nullptr};
 
-    // Interfaz y Cámaras
+    // Interfaz, Audio y Cámaras
     ui::RacingHud* racingHud{nullptr};
+    audio::IAudioService* audioService{nullptr};
     camera::Camera* fpsCamera{nullptr};
     camera::ChaseCamera* chaseCamera{nullptr};
+
+    [[nodiscard]] audio::IAudioService& getAudio() noexcept {
+        if (audioService) {
+            return *audioService;
+        }
+        static audio::NullAudioService s_nullAudio;
+        return s_nullAudio;
+    }
 
     [[nodiscard]] const camera::ICamera& getActiveCamera() const {
         return (cameraMode == CameraMode::CHASE)

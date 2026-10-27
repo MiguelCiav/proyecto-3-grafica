@@ -63,6 +63,20 @@ if(NOT MSVC)
     target_compile_options(glad PRIVATE -w)
 endif()
 
+# 2.5 miniaudio + stb_vorbis (Audio Engine & Ogg Vorbis Decoder en vendor/miniaudio/)
+add_library(miniaudio STATIC
+    vendor/miniaudio/miniaudio_impl.c
+)
+target_include_directories(miniaudio PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/miniaudio
+)
+if(NOT MSVC)
+    target_compile_options(miniaudio PRIVATE -w)
+endif()
+if(UNIX AND NOT APPLE)
+    target_link_libraries(miniaudio PUBLIC pthread m ${CMAKE_DL_LIBS})
+endif()
+
 # ==============================================================================
 # 3. Estructura de Inclusiones del Proyecto
 # ==============================================================================
@@ -71,6 +85,7 @@ set(PROJECT_INCLUDE_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/glad/include
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/stb
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/tinyobjloader
+    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/miniaudio
 )
 
 # ==============================================================================
@@ -94,6 +109,7 @@ target_link_libraries(mario_kart PRIVATE
     glfw
     glm::glm
     glad
+    miniaudio
     ${CMAKE_DL_LIBS}
 )
 
@@ -542,6 +558,7 @@ add_executable(test_main_menu_ui
     src/ui/MainMenuUI.cpp
     src/ui/UIWidgets.cpp
     src/ui/UIRenderer.cpp
+    src/audio/AudioManager.cpp
     src/renderer/Shader.cpp
     src/renderer/Texture.cpp
     src/lighting/LightManager.cpp
@@ -559,6 +576,7 @@ target_link_libraries(test_main_menu_ui PRIVATE
     glad
     glfw
     glm::glm
+    miniaudio
     ${CMAKE_DL_LIBS}
 )
 
@@ -592,6 +610,7 @@ target_link_libraries(test_showroom_ui PRIVATE
     glad
     glfw
     glm::glm
+    miniaudio
     ${CMAKE_DL_LIBS}
 )
 
@@ -622,6 +641,7 @@ target_link_libraries(test_prop_spawner PRIVATE
     glad
     glfw
     glm::glm
+    miniaudio
     ${CMAKE_DL_LIBS}
 )
 
@@ -636,7 +656,32 @@ add_custom_command(TARGET test_prop_spawner POST_BUILD
 )
 
 # ==============================================================================
-# 23. Target de Empaquetado para Entrega UCV
+# 23. Ejecutable de Pruebas: Subsistema de Audio (AudioManager + Kenney UI SFX)
+# ==============================================================================
+add_executable(test_audio_system
+    tests/test_audio_system.cpp
+    src/audio/AudioManager.cpp
+)
+
+target_include_directories(test_audio_system PUBLIC
+    ${PROJECT_INCLUDE_DIRS}
+)
+
+target_link_libraries(test_audio_system PRIVATE
+    glm::glm
+    miniaudio
+    ${CMAKE_DL_LIBS}
+)
+
+add_custom_command(TARGET test_audio_system POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/assets
+        $<TARGET_FILE_DIR:test_audio_system>/assets
+    COMMENT "Copiando assets al directorio de salida de test_audio_system..."
+)
+
+# ==============================================================================
+# 24. Target de Empaquetado para Entrega UCV
 # ==============================================================================
 find_package(Python3 QUIET COMPONENTS Interpreter)
 if(Python3_FOUND)

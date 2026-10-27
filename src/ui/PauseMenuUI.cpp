@@ -4,6 +4,8 @@
 #include "core/Input.hpp"
 #include "lighting/LightManager.hpp"
 #include "lighting/LightingController.hpp"
+#include "audio/IAudioService.hpp"
+#include "audio/SoundEvent.hpp"
 #include <GLFW/glfw3.h>
 #include <cmath>
 #include <iostream>
@@ -64,6 +66,9 @@ void PauseMenuUI::open() {
     m_isOpen = true;
     m_pendingAction = PauseAction::NONE;
     core::Input::setCursorVisible(true);
+    if (m_audio) {
+        m_audio->playSound(audio::SoundEvent::UI_PAUSE);
+    }
 }
 
 void PauseMenuUI::close() {
@@ -115,10 +120,15 @@ void PauseMenuUI::handleInput(float deltaTime,
 
     // Tecla ESC para cerrar pausa y continuar la carrera
     if (core::Input::isKeyJustPressed(GLFW_KEY_ESCAPE)) {
+        if (m_audio) {
+            m_audio->playSound(audio::SoundEvent::UI_BACK);
+        }
         m_pendingAction = PauseAction::RESUME;
         close();
         return;
     }
+
+    const int prevOption = m_selectedOption;
 
     // 1. Navegación por teclado vertical (W / S / Flechas Arriba/Abajo) con wrap-around cíclico
     if (core::Input::isKeyJustPressed(GLFW_KEY_UP) || core::Input::isKeyJustPressed(GLFW_KEY_W)) {
@@ -182,17 +192,23 @@ void PauseMenuUI::handleInput(float deltaTime,
         }
     }
 
+    if (m_selectedOption != prevOption && m_audio) {
+        m_audio->playSound(audio::SoundEvent::UI_NAVIGATE);
+    }
+
     // 3. Ejecución y despacho de acciones según la opción seleccionada
     if (activate || goLeft || goRight) {
         switch (m_selectedOption) {
             case 0: { // 1) CONTINUAR CARRERA (Resume)
                 if (activate) {
+                    if (m_audio) m_audio->playSound(audio::SoundEvent::UI_CONFIRM);
                     m_pendingAction = PauseAction::RESUME;
                     close();
                 }
                 break;
             }
             case 1: { // 2) MODELO DE ILUMINACIÓN (Flat / Lambert / Blinn-Phong)
+                if (m_audio) m_audio->playSound(audio::SoundEvent::UI_SWITCH);
                 if (lightMgr) {
                     if (goLeft) {
                         int prev = (static_cast<int>(lightMgr->getLightingModel()) + 2) % 3;
@@ -212,12 +228,14 @@ void PauseMenuUI::handleInput(float deltaTime,
                 break;
             }
             case 2: { // 3) CICLO DÍA / NOCHE (Toggle)
+                if (m_audio) m_audio->playSound(audio::SoundEvent::UI_SWITCH);
                 if (lightingCtrl) {
                     lightingCtrl->toggleDayNight();
                 }
                 break;
             }
             case 3: { // 4) FAROS DEL KART (ON / OFF)
+                if (m_audio) m_audio->playSound(audio::SoundEvent::UI_SWITCH);
                 if (lightingCtrl) {
                     lightingCtrl->toggleHeadlights();
                 } else if (lightMgr) {
@@ -227,6 +245,7 @@ void PauseMenuUI::handleInput(float deltaTime,
             }
             case 4: { // 5) REINICIAR CARRERA (Restart)
                 if (activate) {
+                    if (m_audio) m_audio->playSound(audio::SoundEvent::UI_CONFIRM);
                     m_pendingAction = PauseAction::RESTART;
                     close();
                 }
@@ -234,6 +253,7 @@ void PauseMenuUI::handleInput(float deltaTime,
             }
             case 5: { // 6) VOLVER AL MENÚ PRINCIPAL (Return to Main Menu)
                 if (activate) {
+                    if (m_audio) m_audio->playSound(audio::SoundEvent::UI_CONFIRM);
                     m_pendingAction = PauseAction::GO_TO_MAIN_MENU;
                     close();
                 }
@@ -241,6 +261,7 @@ void PauseMenuUI::handleInput(float deltaTime,
             }
             case 6: { // 7) SALIR AL ESCRITORIO (Quit)
                 if (activate) {
+                    if (m_audio) m_audio->playSound(audio::SoundEvent::UI_BACK);
                     m_pendingAction = PauseAction::QUIT_GAME;
                     close();
                 }
