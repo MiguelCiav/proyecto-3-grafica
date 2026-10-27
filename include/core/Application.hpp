@@ -21,13 +21,13 @@ struct AppConfig {
  */
 class Application {
 public:
-    static Application& getInstance();
-
     explicit Application(const AppConfig& config = AppConfig());
     ~Application();
 
     Application(const Application&) = delete;
     Application& operator=(const Application&) = delete;
+    Application(Application&&) = delete;
+    Application& operator=(Application&&) = delete;
 
     bool init();
     void run();
@@ -45,6 +45,9 @@ public:
     const vfx::KartParticleEmitter& getKartEmitter() const { return m_kartEmitter; }
 
 private:
+    bool initWindowAndInput();
+    bool initGraphicsResources();
+    void initSubsystemsAndContext();
     void initContext();
     void loadCatalogs();
     void createPedestalMesh();
@@ -79,7 +82,7 @@ private:
     // Física y Dinámica
     Engine::Physics::CollisionSystem m_collisionSystem;
     Engine::Physics::KartPhysics m_kartPhysics;
-    vehicle::KartEntity m_kartEntity;
+    std::unique_ptr<vehicle::KartEntity> m_kartEntity;
     animation::WheelAnimator m_wheelAnimator;
     vfx::KartParticleEmitter m_kartEmitter;
     vfx::SkidmarkManager m_skidmarkManager;

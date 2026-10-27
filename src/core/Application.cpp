@@ -13,27 +13,17 @@
 
 namespace core {
 
-static Application* s_instance = nullptr;
-
-Application& Application::getInstance() {
-    if (!s_instance) {
-        throw std::runtime_error("Application instance has not been initialized!");
-    }
-    return *s_instance;
-}
-
 Application::Application(const AppConfig& config)
     : m_config(config)
+    , m_kartEntity(std::make_unique<vehicle::KartEntity>())
     , m_lightingController(&m_lightManager)
     , m_fpsCamera(glm::vec3(0.0f, 1.5f, 0.0f))
     , m_chaseCamera(3.0f, 1.3f, 1.2f)
 {
-    s_instance = this;
 }
 
 Application::~Application() {
     close();
-    s_instance = nullptr;
 }
 
 void Application::initContext() {
@@ -59,7 +49,7 @@ void Application::initContext() {
 
     m_gameContext.collisionSystem = &m_collisionSystem;
     m_gameContext.kartPhysics = &m_kartPhysics;
-    m_gameContext.kartEntity = &m_kartEntity;
+    m_gameContext.kartEntity = m_kartEntity.get();
     m_gameContext.wheelAnimator = &m_wheelAnimator;
     m_gameContext.kartEmitter = &m_kartEmitter;
     m_gameContext.skidmarkManager = &m_skidmarkManager;
@@ -158,7 +148,7 @@ void Application::createPedestalMesh() {
     m_pedestalMesh.setup(pedestal);
 }
 
-bool Application::init() {
+bool Application::initWindowAndInput() {
     WindowProps props;
     props.title = m_config.title;
     props.width = m_config.width;
@@ -179,6 +169,10 @@ bool Application::init() {
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
 
+    return true;
+}
+
+bool Application::initGraphicsResources() {
     if (!m_litShader.loadFromFiles("shaders/lit.vert", "shaders/lit.frag")) {
         std::cerr << "[Application] Error: Fallo al compilar litShader" << std::endl;
         return false;
@@ -218,6 +212,15 @@ bool Application::init() {
         std::cerr << "[AVISO] [Application] No se pudo cargar el Skybox volcanico." << std::endl;
     }
 
+    createPedestalMesh();
+    return true;
+}
+
+void Application::initSubsystemsAndContext() {
+    if (!m_kartEntity) {
+        m_kartEntity = std::make_unique<vehicle::KartEntity>();
+    }
+
     m_lightManager.init();
     m_lightingController.init(&m_lightManager);
     m_lightingController.setOnDayNightChanged([this](bool isNight) {
@@ -236,8 +239,21 @@ bool Application::init() {
     m_skidmarkManager.init();
     m_racingHud.init();
 
-    createPedestalMesh();
     initContext();
+}
+
+bool Application::init() {
+    if (!initWindowAndInput()) {
+        std::cerr << "[Application] Error: Fallo al inicializar ventana e inputs." << std::endl;
+        return false;
+    }
+
+    if (!initGraphicsResources()) {
+        std::cerr << "[Application] Error: Fallo al compilar shaders y recursos graficos basicos." << std::endl;
+        return false;
+    }
+
+    initSubsystemsAndContext();
     loadCatalogs();
 
     // Seleccionar opciones iniciales (piloto 0, vehiculo 0, pista 0)
@@ -298,7 +314,45 @@ void Application::run() {
 }
 
 void Application::close() {
+    if (!m_running && !m_window) {
+        return;
+    }
     m_running = false;
+
+    // Solo liberamos recursos dependientes de OpenGL si el contexto sigue activo
+    if (m_window) {
+        m_sceneManager.registerScene(GameState::MAIN_MENU, nullptr);
+        m_sceneManager.registerScene(GameState::VEHICLE_SELECT, nullptr);
+        m_sceneManager.registerScene(GameState::RACING, nullptr);
+        m_sceneManager.changeScene(GameState::MAIN_MENU);
+
+        m_boosterPads.clear();
+        m_pedestalMesh.destroy();
+
+        m_skyboxDay.destroy();
+        m_skyboxNight.destroy();
+        m_skyboxDesert.destroy();
+        m_skyboxCosmic.destroy();
+        m_skyboxAquatic.destroy();
+        m_skyboxVolcano.destroy();
+
+        m_paletteTexture.destroy();
+
+        m_litShader = renderer::Shader();
+        m_boosterShader = renderer::Shader();
+        m_basicShader = renderer::Shader();
+
+        m_kartEmitter = vfx::KartParticleEmitter();
+        m_skidmarkManager = vfx::SkidmarkManager();
+        m_racingHud = ui::RacingHud();
+        m_kartEntity.reset();
+
+        m_gameContext.drivers.clear();
+        m_gameContext.vehicles.clear();
+        m_gameContext.tracks.clear();
+
+        m_window.reset();
+    }
 }
 
 } // namespace core

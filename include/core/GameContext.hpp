@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <glm/glm.hpp>
+#include "core/SessionState.hpp"
 #include "camera/Camera.hpp"
 #include "camera/ChaseCamera.hpp"
 #include "physics/CollisionSystem.hpp"
@@ -30,21 +31,12 @@ namespace core {
 class SceneManager;
 class Window;
 
-enum class CameraMode {
-    CHASE,
-    FPS
-};
-
-enum class SelectionCategory {
-    DRIVER,
-    VEHICLE,
-    TRACK
-};
-
 /**
- * @brief Contexto compartido de recursos, estado de pista y vehículo entre escenas.
+ * @brief Contexto compartido de recursos, estado de pista y vehiculo entre escenas.
+ *        Hereda el estado puro de sesion (SessionState) y delega la configuracion
+ *        ambiental del circuito en world::TrackEnvironmentConfigurator.
  */
-struct GameContext {
+struct GameContext : public SessionState {
     SceneManager* sceneManager{nullptr};
     Window* window{nullptr};
 
@@ -87,7 +79,6 @@ struct GameContext {
     ui::RacingHud* racingHud{nullptr};
     camera::Camera* fpsCamera{nullptr};
     camera::ChaseCamera* chaseCamera{nullptr};
-    CameraMode cameraMode{CameraMode::CHASE};
 
     [[nodiscard]] const camera::ICamera& getActiveCamera() const {
         return (cameraMode == CameraMode::CHASE)
@@ -95,20 +86,23 @@ struct GameContext {
             : static_cast<const camera::ICamera&>(*fpsCamera);
     }
 
-    // Catálogo y Selección
+    [[nodiscard]] SessionState& getSessionState() noexcept { return *this; }
+    [[nodiscard]] const SessionState& getSessionState() const noexcept { return *this; }
+
+    // Catálogo de Perfiles
     std::vector<world::DriverProfile> drivers;
     std::vector<world::VehicleProfile> vehicles;
     std::vector<world::TrackProfile> tracks;
-    int selectedDriverIndex{0};
-    int selectedVehicleIndex{0};
-    int selectedTrackIndex{0};
-    SelectionCategory selectionCategory{SelectionCategory::DRIVER};
 
-    // Salida inicial
-    glm::vec3 kartInitialPos{0.0f};
-    float kartInitialYaw{90.0f};
+    [[nodiscard]] const world::TrackProfile* getActiveTrack() const noexcept {
+        if (tracks.empty() || selectedTrackIndex < 0 ||
+            static_cast<size_t>(selectedTrackIndex) >= tracks.size()) {
+            return nullptr;
+        }
+        return &tracks[selectedTrackIndex];
+    }
 
-    // Operaciones de Dominio
+    // Operaciones de Coordinación de Dominio
     void applySelection();
     void selectDriver(int index);
     void selectVehicle(int index);
