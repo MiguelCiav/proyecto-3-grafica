@@ -41,9 +41,9 @@ public:
     void playSound(SoundEvent event, float volume = 1.0f, float pitch = 1.0f) override;
     void setEngineSoundState(bool active, float speedRatio = 0.0f, bool isBoosting = false) override;
     void setDriftSoundState(bool active, float volume = 1.0f) override;
-    void setMenuMusicActive(bool active, float volume = 0.55f) override;
+    void setMenuMusicActive(bool active, float volume = 0.85f) override;
     [[nodiscard]] bool isMenuMusicPlaying() const override;
-    void playRaceMusic(const std::string& musicPath, float volume = 0.55f, bool loop = true) override;
+    void playRaceMusic(const std::string& musicPath, float volume = 0.85f, bool loop = true) override;
     void pauseRaceMusic() override;
     void resumeRaceMusic() override;
     void stopRaceMusic() override;

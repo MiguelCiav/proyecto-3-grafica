@@ -60,7 +60,7 @@ struct AudioManager::Impl {
     bool raceMusicLoaded{false};
     bool raceMusicPlaying{false};
     std::string currentRaceMusicPath{};
-    float raceMusicVolume{0.55f};
+    float raceMusicVolume{0.85f};
 
     float masterVolume{1.0f};
     bool muted{false};
@@ -305,7 +305,7 @@ void AudioManager::setEngineSoundState(bool active, float speedRatio, bool isBoo
 
     const float clampedRatio = std::clamp(speedRatio, 0.0f, 1.5f);
     const float pitch = isBoosting ? 1.65f : (0.75f + clampedRatio * 0.70f);
-    const float vol   = isBoosting ? 0.95f : (0.40f + clampedRatio * 0.45f);
+    const float vol   = isBoosting ? 0.38f : (0.14f + clampedRatio * 0.18f);
 
     ma_sound_set_pitch(&m_impl->engineSound, pitch);
     ma_sound_set_volume(&m_impl->engineSound, vol);
@@ -343,7 +343,7 @@ void AudioManager::setMenuMusicActive(bool active, float volume) {
     }
 
     if (active && !m_impl->muted) {
-        ma_sound_set_volume(&m_impl->menuMusic, std::clamp(volume, 0.0f, 1.5f));
+        ma_sound_set_volume(&m_impl->menuMusic, std::clamp(volume * 1.45f, 0.0f, 2.0f));
         if (!m_impl->menuMusicPlaying) {
             ma_sound_start(&m_impl->menuMusic);
             m_impl->menuMusicPlaying = true;
@@ -365,7 +365,7 @@ void AudioManager::playRaceMusic(const std::string& musicPath, float volume, boo
         return;
     }
 
-    m_impl->raceMusicVolume = std::clamp(volume, 0.0f, 1.5f);
+    m_impl->raceMusicVolume = std::clamp(volume * 1.50f, 0.0f, 2.0f);
 
     // Si ya está cargada la misma pista musical
     if (m_impl->raceMusicLoaded && m_impl->currentRaceMusicPath == musicPath) {

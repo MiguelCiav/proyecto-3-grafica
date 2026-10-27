@@ -296,16 +296,18 @@ void PauseMenuUI::render(float screenWidth,
     float modalX = modalPos.x;
     float modalY = modalPos.y;
 
-    // Fondo solido azul profundo
-    m_renderer->drawRect(modalX + 6.0f, modalY + 6.0f, modalW - 12.0f, modalH - 12.0f,
-                         glm::vec4(0.05f, 0.08f, 0.15f, 0.96f));
-
     // Marco exterior con textura Kenney mediante 9-Slice para remaches y esquinas nitidas
     if (m_texPauseModalFrame.isLoaded()) {
         m_renderer->drawNineSlice(m_texPauseModalFrame, modalX, modalY, modalW, modalH, 28.0f, 28.0f);
     }
 
-    // Borde brillante de acento
+    // Fondo solido azul profundo dibujado encima del centro claro del 9-Slice
+    m_renderer->drawRect(modalX + 10.0f, modalY + 10.0f, modalW - 20.0f, modalH - 20.0f,
+                         glm::vec4(0.05f, 0.08f, 0.15f, 0.96f));
+    m_renderer->drawBorder(modalX + 10.0f, modalY + 10.0f, modalW - 20.0f, modalH - 20.0f,
+                           1.5f, glm::vec4(0.35f, 0.65f, 0.95f, 0.75f));
+
+    // Borde brillante de acento exterior
     m_renderer->drawBorder(modalX, modalY, modalW, modalH, 2.0f, glm::vec4(0.35f, 0.65f, 0.95f, 0.85f));
 
     // 3. Titulo de la ventana modal

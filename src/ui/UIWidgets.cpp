@@ -48,7 +48,8 @@ void UIButton::drawTinted(UIRenderer& renderer,
 
     if (!label.empty()) {
         std::string cleanLabel = sanitizeText(label);
-        if (isHovered) {
+        const bool isLightText = (textColor.r + textColor.g + textColor.b) > 1.2f;
+        if (isHovered && !isLightText) {
             renderer.drawTextCentered(rect.x, rect.y, rect.w, rect.h, cleanLabel, textScale, textColor);
         } else {
             renderer.drawTextCenteredWithShadow(rect.x, rect.y, rect.w, rect.h, cleanLabel, textScale, textColor);
@@ -91,12 +92,18 @@ void UIPanel::drawFramedPanel(UIRenderer& renderer,
                               float cornerSize,
                               const glm::vec4& bgTint,
                               const glm::vec4& borderTint) {
-    renderer.drawRect(rect.x + 2.0f, rect.y + 2.0f,
-                      std::max(0.0f, rect.w - 4.0f), std::max(0.0f, rect.h - 4.0f), bgTint);
-
     if (frameTex.isLoaded()) {
-        renderer.drawNineSlice(frameTex, rect.x, rect.y, rect.w, rect.h, cornerSize, cornerSize);
+        renderer.drawNineSlice(frameTex, rect.x, rect.y, rect.w, rect.h, cornerSize, cornerSize, borderTint);
+    } else {
+        renderer.drawRect(rect.x + 2.0f, rect.y + 2.0f,
+                          std::max(0.0f, rect.w - 4.0f), std::max(0.0f, rect.h - 4.0f), bgTint);
     }
+
+    const float inset = std::clamp(cornerSize * 0.5f, 8.0f, 12.0f);
+    const float innerW = std::max(0.0f, rect.w - 2.0f * inset);
+    const float innerH = std::max(0.0f, rect.h - 2.0f * inset);
+    renderer.drawRect(rect.x + inset, rect.y + inset, innerW, innerH, bgTint);
+    renderer.drawBorder(rect.x + inset, rect.y + inset, innerW, innerH, 1.5f, borderTint);
 
     renderer.drawBorder(rect.x, rect.y, rect.w, rect.h, 2.0f, borderTint);
 }
@@ -110,6 +117,7 @@ void UIPanel::drawBannerBox(UIRenderer& renderer,
                             const glm::vec4& borderColor,
                             const glm::vec4& innerTint,
                             float cornerSize) {
+    renderer.drawRect(rect.x, rect.y, rect.w, rect.h, glm::vec4(0.05f, 0.08f, 0.14f, 0.94f));
     if (innerTex.isLoaded()) {
         renderer.drawNineSlice(innerTex, rect.x, rect.y, rect.w, rect.h, cornerSize, cornerSize, innerTint);
     } else {
@@ -119,7 +127,7 @@ void UIPanel::drawBannerBox(UIRenderer& renderer,
         renderer.drawBorder(rect.x, rect.y, rect.w, rect.h, 1.5f, borderColor);
     }
     if (!text.empty()) {
-        renderer.drawTextCentered(rect.x, rect.y, rect.w, rect.h, sanitizeText(text), textScale, textColor);
+        renderer.drawTextCenteredWithShadow(rect.x, rect.y, rect.w, rect.h, sanitizeText(text), textScale, textColor);
     }
 }
 

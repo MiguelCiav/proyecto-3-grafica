@@ -36,7 +36,7 @@ public:
      * @param active Si es true reproduce/reanuda la música, si es false la detiene.
      * @param volume Volumen relativo de la pista.
      */
-    virtual void setMenuMusicActive(bool active, float volume = 0.55f) = 0;
+    virtual void setMenuMusicActive(bool active, float volume = 0.85f) = 0;
 
     /**
      * @brief Indica si la música de menú está sonando actualmente.
@@ -49,7 +49,7 @@ public:
      * @param volume Nivel de volumen [0.0f, 1.0f].
      * @param loop Si debe reproducirse en bucle continuo.
      */
-    virtual void playRaceMusic(const std::string& musicPath, float volume = 0.55f, bool loop = true) = 0;
+    virtual void playRaceMusic(const std::string& musicPath, float volume = 0.85f, bool loop = true) = 0;
 
     /**
      * @brief Pausa la música de carrera actual sin reiniciar el cursor.
@@ -109,7 +109,7 @@ public:
 
     void setDriftSoundState(bool /*active*/, float /*volume*/ = 1.0f) override {}
 
-    void setMenuMusicActive(bool active, float /*volume*/ = 0.55f) override {
+    void setMenuMusicActive(bool active, float /*volume*/ = 0.85f) override {
         m_menuMusicPlaying = active;
     }
 
@@ -117,7 +117,7 @@ public:
         return m_menuMusicPlaying;
     }
 
-    void playRaceMusic(const std::string& /*musicPath*/, float /*volume*/ = 0.55f, bool /*loop*/ = true) override {
+    void playRaceMusic(const std::string& /*musicPath*/, float /*volume*/ = 0.85f, bool /*loop*/ = true) override {
         m_raceMusicPlaying = true;
     }
 

@@ -28,7 +28,7 @@ void RacingScene::resetRace() {
 
     const auto* track = m_ctx.getActiveTrack();
     if (track && !track->musicPath.empty()) {
-        m_ctx.getAudio().playRaceMusic(track->musicPath, 0.55f);
+        m_ctx.getAudio().playRaceMusic(track->musicPath, 0.90f, true);
     }
 }
 
@@ -36,7 +36,7 @@ void RacingScene::onEnter() {
     m_ctx.getAudio().setMenuMusicActive(false);
     const auto* track = m_ctx.getActiveTrack();
     if (track && !track->musicPath.empty()) {
-        m_ctx.getAudio().playRaceMusic(track->musicPath, 0.55f);
+        m_ctx.getAudio().playRaceMusic(track->musicPath, 0.90f, true);
     }
     m_cursorLocked = m_isPaused = false;
     m_impactAudioCooldown = 0.0f;

@@ -158,67 +158,58 @@ void GrasslandPropSpawner::spawnProps(const TrackGrid& grid, PropSpawner& spawne
     for (const auto& tile : grid.getAllTiles()) {
         if (tile.type == TileType::EMPTY) continue;
 
-        // Curvas:
+        // Curvas (fuera de la calzada de asfalto):
         if (tile.type == TileType::ROAD_CORNER_SMALL) {
             float rot = tile.rotationDegrees;
+            float rotRad = glm::radians(rot);
             glm::vec3 cornerPos = tile.worldPos;
-
-            float xSign = (rot == 0.0f || rot == 90.0f) ? 1.0f : -1.0f;
-            float zSign = (rot == 0.0f || rot == 270.0f) ? 1.0f : -1.0f;
+            glm::vec3 outerDir(std::cos(rotRad + 0.785f), 0.0f, std::sin(rotRad + 0.785f));
 
             if (m_isNight) {
-                glm::vec3 beaconPos = cornerPos + glm::vec3(-xSign * halfTile * 0.52f, 0.0f, -zSign * halfTile * 0.52f);
+                glm::vec3 beaconPos = cornerPos - outerDir * 2.15f;
                 spawner.addProp("neonBeacon", beaconPos, 0.0f, glm::vec3(1.0f), true);
                 spawner.addProp("neonBeaconTop", beaconPos + glm::vec3(0.0f, 0.45f, 0.0f), 0.0f, glm::vec3(1.0f), false);
 
-                glm::vec3 tirePos1 = cornerPos + glm::vec3(xSign * (halfTile * 1.05f), 0.25f, zSign * (halfTile * 1.05f));
-                glm::vec3 tirePos2 = cornerPos + glm::vec3(xSign * (halfTile * 1.05f), 0.65f, zSign * (halfTile * 1.05f));
+                glm::vec3 tirePos1 = cornerPos + outerDir * 2.55f + glm::vec3(0.0f, 0.25f, 0.0f);
+                glm::vec3 tirePos2 = cornerPos + outerDir * 2.55f + glm::vec3(0.0f, 0.65f, 0.0f);
                 spawner.addProp("debris-tire", tirePos1, rot + 45.0f, glm::vec3(1.2f));
                 spawner.addProp("debris-tire", tirePos2, rot + 45.0f, glm::vec3(1.0f));
 
-                glm::vec3 barPos = cornerPos + glm::vec3(xSign * halfTile * 0.88f, 0.0f, zSign * halfTile * 0.40f);
-                spawner.addProp("barrierRed", barPos, rot + 30.0f, glm::vec3(2.5f, 3.5f, 2.5f));
+                glm::vec3 barPos = cornerPos + outerDir * 3.10f;
+                spawner.addProp("barrierRed", barPos, rot + 45.0f, glm::vec3(2.5f, 3.5f, 2.5f));
             } else {
-                glm::vec3 barrier1Pos = cornerPos + glm::vec3(xSign * halfTile * 0.88f, 0.0f, zSign * halfTile * 0.40f);
-                spawner.addProp("barrierRed", barrier1Pos, rot + 30.0f, glm::vec3(2.5f, 3.5f, 2.5f));
+                glm::vec3 apexPos = cornerPos - outerDir * 2.10f;
+                spawner.addProp("cone", apexPos, 0.0f, glm::vec3(1.0f));
 
-                glm::vec3 barrier2Pos = cornerPos + glm::vec3(xSign * halfTile * 0.40f, 0.0f, zSign * halfTile * 0.88f);
-                spawner.addProp("barrierWhite", barrier2Pos, rot + 60.0f, glm::vec3(2.5f, 3.5f, 2.5f));
-
-                glm::vec3 tirePos = cornerPos + glm::vec3(xSign * (halfTile * 1.05f), 0.25f, zSign * (halfTile * 1.05f));
+                glm::vec3 tirePos = cornerPos + outerDir * 2.50f + glm::vec3(0.0f, 0.25f, 0.0f);
                 spawner.addProp("debris-tire", tirePos, rot + 45.0f, glm::vec3(1.1f));
 
-                glm::vec3 apexPos = cornerPos + glm::vec3(-xSign * halfTile * 0.52f, 0.0f, -zSign * halfTile * 0.52f);
-                spawner.addProp("cone", apexPos, 0.0f, glm::vec3(1.0f));
+                glm::vec3 barrier1Pos = cornerPos + outerDir * 3.05f;
+                spawner.addProp("barrierRed", barrier1Pos, rot + 45.0f, glm::vec3(2.5f, 3.5f, 2.5f));
+
+                glm::vec3 barrier2Pos = cornerPos + outerDir * 3.55f;
+                spawner.addProp("barrierWhite", barrier2Pos, rot + 45.0f, glm::vec3(2.5f, 3.5f, 2.5f));
             }
         }
 
-        // Recta de Meta: Muros de boxes y cajas de equipo
-        if (tile.type == TileType::START_FINISH) {
-            bool isHorizontal = (tile.rotationDegrees == 90.0f || tile.rotationDegrees == 270.0f);
-            glm::vec3 wallOffset1 = isHorizontal ? glm::vec3(0.0f, 0.0f, -halfTile * 0.95f) : glm::vec3(-halfTile * 0.95f, 0.0f, 0.0f);
-            glm::vec3 wallOffset2 = isHorizontal ? glm::vec3(0.0f, 0.0f,  halfTile * 0.95f) : glm::vec3( halfTile * 0.95f, 0.0f, 0.0f);
-
-            spawner.addProp("barrierWall", tile.worldPos + wallOffset1, tile.rotationDegrees, glm::vec3(4.0f, 6.0f, 4.0f));
-            spawner.addProp("barrierWall", tile.worldPos + wallOffset2, tile.rotationDegrees, glm::vec3(4.0f, 6.0f, 4.0f));
-
-            glm::vec3 boxPos = tile.worldPos + wallOffset2 + (isHorizontal ? glm::vec3(1.2f, 0.0f, 0.8f) : glm::vec3(0.8f, 0.0f, 1.2f));
-            spawner.addProp("box", boxPos, 15.0f, glm::vec3(1.0f));
-        }
-
-        // Rectas del circuito: Conos y delimitadores a los lados
+        // Rectas del circuito: Conos y delimitadores a los lados fuera del asfalto
         if (tile.type == TileType::ROAD_STRAIGHT) {
+            if (startFinishTile != nullptr && glm::distance(tile.worldPos, startFinishTile->worldPos) < 9.0f) {
+                continue;
+            }
+
             bool isHorizontal = (tile.rotationDegrees == 90.0f || tile.rotationDegrees == 270.0f);
-            float lateralDist = halfTile * 0.92f;
+            float lateralDist = halfTile * 1.25f;
+            float parallelWallRot = isHorizontal ? 0.0f : 90.0f;
 
             if ((tile.col + tile.row) % 3 == 0) {
                 float side = ((propIndex++) % 2 == 0) ? 1.0f : -1.0f;
                 glm::vec3 propOffset = isHorizontal ? glm::vec3(0.0f, 0.0f, side * lateralDist) : glm::vec3(side * lateralDist, 0.0f, 0.0f);
 
                 if (propIndex % 4 == 0) {
-                    spawner.addProp("barrierRed", tile.worldPos + propOffset, tile.rotationDegrees, glm::vec3(2.5f, 3.5f, 2.5f));
+                    spawner.addProp("barrierRed", tile.worldPos + propOffset, parallelWallRot, glm::vec3(2.5f, 3.5f, 2.5f));
                 } else if (propIndex % 4 == 2) {
-                    spawner.addProp("barrierWhite", tile.worldPos + propOffset, tile.rotationDegrees, glm::vec3(2.5f, 3.5f, 2.5f));
+                    spawner.addProp("barrierWhite", tile.worldPos + propOffset, parallelWallRot, glm::vec3(2.5f, 3.5f, 2.5f));
                 } else {
                     spawner.addProp("cone", tile.worldPos + propOffset, 0.0f, glm::vec3(1.0f));
                 }

@@ -19,7 +19,7 @@ ShowroomScene::~ShowroomScene() {
 }
 
 void ShowroomScene::onEnter() {
-    m_ctx.getAudio().setMenuMusicActive(true, 0.60f);
+    m_ctx.getAudio().setMenuMusicActive(true, 0.85f);
     core::Input::setCursorVisible(true);
     m_showcaseAngle = 0.0f; // Vista frontal fija obligatoria
     m_ctx.applySelection();

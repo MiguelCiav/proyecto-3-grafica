@@ -69,9 +69,9 @@ bool ShowroomUI::init(core::GameContext* ctx, UIRenderer* externalRenderer) {
         {&m_arrowIndicator, "Yellow/Default/arrow_decorative_s.png"},
         {&m_star,           "Yellow/Default/star.png"},
         {&m_starEmpty,      "Grey/Default/star.png"},
-        {&m_btnStart,       "Green/Default/button_rectangle_depth_border.png"},
+        {&m_btnStart,       "Green/Default/button_rectangle_depth_flat.png"},
         {&m_btnStartHover,  "Green/Default/button_rectangle_depth_gradient.png"},
-        {&m_btnBack,        "Grey/Default/button_rectangle_depth_flat.png"},
+        {&m_btnBack,        "Blue/Default/button_rectangle_depth_flat.png"},
         {&m_btnBackHover,   "Red/Default/button_rectangle_depth_flat.png"},
         {&m_barBg,          "Grey/Default/slide_horizontal_grey_section_wide.png"},
         {&m_barFill,        "Yellow/Default/slide_horizontal_color_section_wide.png"},
@@ -457,14 +457,16 @@ void ShowroomUI::renderBottomBar(float screenWidth, float screenHeight) {
 
     UIRect backRect{25.0f, barY + 11.0f, 230.0f, 42.0f};
     bool hoverBack = backRect.contains(mx, my);
-    UIButton::draw(*m_renderer, backRect, m_btnBack, m_btnBackHover, "[ESC] VOLVER AL MENU", 1.6f, hoverBack,
-                   hoverBack ? glm::vec4(1.0f, 0.9f, 0.9f, 1.0f) : glm::vec4(0.9f, 0.95f, 1.0f, 1.0f), 12.0f);
+    glm::vec4 backTint = hoverBack ? glm::vec4(1.0f, 0.85f, 0.85f, 1.0f)
+                                   : glm::vec4(0.55f, 0.68f, 0.90f, 1.0f);
+    UIButton::drawTinted(*m_renderer, backRect, m_btnBack, m_btnBackHover, "[ESC] VOLVER AL MENU", 1.6f, hoverBack,
+                         glm::vec4(1.0f, 0.98f, 0.98f, 1.0f), backTint, 12.0f);
 
     UIRect startRect{screenWidth - 280.0f, barY + 11.0f, 255.0f, 42.0f};
     bool hoverStart = startRect.contains(mx, my);
     float pulse = (std::sin(m_animTimer * 5.0f) + 1.0f) * 0.5f;
-    glm::vec4 startTint = hoverStart ? glm::vec4(1.0f, 1.0f, 0.85f, 1.0f)
-                                     : glm::vec4(0.90f + 0.10f * pulse, 1.0f, 0.90f + 0.10f * pulse, 1.0f);
+    glm::vec4 startTint = hoverStart ? glm::vec4(0.85f, 1.0f, 0.85f, 1.0f)
+                                     : glm::vec4(0.65f + 0.15f * pulse, 0.95f, 0.65f + 0.15f * pulse, 1.0f);
     UIButton::drawTinted(*m_renderer, startRect, m_btnStart, m_btnStartHover, "[ENTER] INICIAR CARRERA!", 1.6f, hoverStart,
                          glm::vec4(1.0f, 1.0f, 0.95f, 1.0f), startTint, 12.0f);
 
