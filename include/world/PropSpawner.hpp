@@ -59,6 +59,11 @@ public:
                  const glm::vec4& customColor = glm::vec4(1.0f), bool useCustomColor = false);
     void clear() { m_props.clear(); m_lampPositions.clear(); m_starLights.clear(); }
 
+    void addLampPosition(const glm::vec3& pos) { m_lampPositions.push_back(pos); }
+    void addStarLight(const StarLightData& light) { m_starLights.push_back(light); }
+    void addStarLight(const glm::vec3& pos, const glm::vec3& diffuseColor) { m_starLights.push_back({pos, diffuseColor}); }
+    void clearStarLights() { m_starLights.clear(); }
+
 private:
     std::vector<PropInstance> m_props;
     std::vector<glm::vec3> m_lampPositions;
