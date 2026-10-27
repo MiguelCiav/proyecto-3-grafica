@@ -28,6 +28,7 @@ void RacingScene::resetRace() {
 }
 
 void RacingScene::onEnter() {
+    m_ctx.getAudio().setMenuMusicActive(false);
     m_cursorLocked = m_isPaused = false;
     m_impactAudioCooldown = 0.0f;
     m_wasBoostingLastFrame = false;
@@ -205,7 +206,7 @@ void RacingScene::update(float deltaTime) {
     m_ctx.getAudio().setEngineSoundState(!m_isPaused, speedRatio, boostingNow);
 
     const bool isDriftSkidAudio = m_ctx.kartPhysics->isDrifting() || (brake && curSpd > 1.5f);
-    m_ctx.getAudio().setDriftSoundState(!m_isPaused && isDriftSkidAudio, 0.80f);
+    m_ctx.getAudio().setDriftSoundState(!m_isPaused && isDriftSkidAudio, 1.20f);
     if (m_ctx.zoneManager) {
         const world::SpecialZone* hitZone = m_ctx.zoneManager->checkTrigger(m_ctx.kartPhysics->getPosition());
         if (hitZone && hitZone->type == world::ZoneType::FINISH_LINE && m_finishLineCooldown <= 0.0f &&

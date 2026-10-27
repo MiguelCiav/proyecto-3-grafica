@@ -31,6 +31,11 @@ int main() {
         nullSvc.playSound(audio::SoundEvent::KART_BOOST, 0.95f, 1.15f);
         nullSvc.setEngineSoundState(true, 0.7f, false);
         nullSvc.setDriftSoundState(true, 0.8f);
+        assert(!nullSvc.isMenuMusicPlaying());
+        nullSvc.setMenuMusicActive(true, 0.6f);
+        assert(nullSvc.isMenuMusicPlaying());
+        nullSvc.setMenuMusicActive(false);
+        assert(!nullSvc.isMenuMusicPlaying());
         nullSvc.stopAllGameplaySounds();
 
         nullSvc.setMasterVolume(0.45f);
@@ -77,11 +82,12 @@ int main() {
         assert(audioMgr.isSoundLoaded(audio::SoundEvent::KART_BOOST)       && "impactBell_heavy_001.ogg debe cargarse");
         assert(audioMgr.areAllSoundsLoaded() && "Los 9 sonidos discretos deben estar cargados");
 
-        // Verificar carga de los 2 loops de vehiculo (.mp3)
+        // Verificar carga de los 2 loops de vehiculo (.mp3) y musica de menu (.mp3)
         assert(audioMgr.isEngineSoundLoaded() && "ENGINE_LOOP.mp3 debe cargarse");
         assert(audioMgr.isDriftSoundLoaded()  && "WHEEL_DRIFT.mp3 debe cargarse");
+        assert(audioMgr.isMenuMusicLoaded()   && "MENU_SONG.mp3 debe cargarse");
 
-        std::cout << "  [CHECK 2] Carga de 9 SFX (.ogg) + ENGINE_LOOP.mp3 + WHEEL_DRIFT.mp3 OK." << std::endl;
+        std::cout << "  [CHECK 2] Carga de 9 SFX (.ogg) + ENGINE_LOOP.mp3 + WHEEL_DRIFT.mp3 + MENU_SONG.mp3 OK." << std::endl;
 
         // ---------------------------------------------------------------------
         // 3. Disparo de los 9 SoundEvent y conteo de reproducciones
@@ -129,21 +135,30 @@ int main() {
         ctx.getAudio().setEngineSoundState(false);
         assert(!audioMgr.isEngineSoundPlaying() && "El loop de motor debe detenerse con setEngineSoundState(false)");
 
-        // Activar derrape y verificar corte instantaneo al soltar el derrape
-        ctx.getAudio().setDriftSoundState(true, 0.8f);
+        // Activar derrape y verificar corte instantaneo al soltar el derrape (con volumen amplificado 1.2f)
+        ctx.getAudio().setDriftSoundState(true, 1.2f);
         assert(audioMgr.isDriftSoundPlaying() && "WHEEL_DRIFT.mp3 debe sonar mientras el derrape esta activo");
         ctx.getAudio().setDriftSoundState(false);
         assert(!audioMgr.isDriftSoundPlaying() && "WHEEL_DRIFT.mp3 debe cortarse inmediatamente al terminar el derrape");
 
         // Verificar stopAllGameplaySounds() con ambos activos
         ctx.getAudio().setEngineSoundState(true, 0.8f, false);
-        ctx.getAudio().setDriftSoundState(true, 0.8f);
+        ctx.getAudio().setDriftSoundState(true, 1.2f);
         assert(audioMgr.isEngineSoundPlaying() && audioMgr.isDriftSoundPlaying());
         ctx.getAudio().stopAllGameplaySounds();
         assert(!audioMgr.isEngineSoundPlaying() && !audioMgr.isDriftSoundPlaying() &&
                "stopAllGameplaySounds() debe detener motor y derrape simultaneamente");
 
-        std::cout << "  [CHECK 4] Modulacion de ENGINE_LOOP.mp3 y corte instantaneo de WHEEL_DRIFT.mp3 OK." << std::endl;
+        // ---------------------------------------------------------------------
+        // 4.b Reproduccion en loop de musica de menu (MENU_SONG.mp3)
+        // ---------------------------------------------------------------------
+        assert(!audioMgr.isMenuMusicPlaying());
+        ctx.getAudio().setMenuMusicActive(true, 0.5f);
+        assert(audioMgr.isMenuMusicPlaying() && "MENU_SONG.mp3 debe estar reproduciendose");
+        ctx.getAudio().setMenuMusicActive(false);
+        assert(!audioMgr.isMenuMusicPlaying() && "MENU_SONG.mp3 debe detenerse con setMenuMusicActive(false)");
+
+        std::cout << "  [CHECK 4] Modulacion de ENGINE_LOOP.mp3, corte de WHEEL_DRIFT.mp3 y loop MENU_SONG.mp3 OK." << std::endl;
 
         // ---------------------------------------------------------------------
         // 5. Control de Volumen Maestro y Mute
@@ -161,10 +176,13 @@ int main() {
         assert(!ctx.getAudio().isMuted());
 
         ctx.getAudio().setEngineSoundState(true, 0.6f, false);
+        ctx.getAudio().setMenuMusicActive(true, 0.5f);
         assert(audioMgr.isEngineSoundPlaying());
+        assert(audioMgr.isMenuMusicPlaying());
         ctx.getAudio().setMuted(true);
         assert(ctx.getAudio().isMuted());
         assert(!audioMgr.isEngineSoundPlaying() && "Mute debe detener sonidos continuos activos");
+        assert(!audioMgr.isMenuMusicPlaying() && "Mute debe detener menuMusic si estaba sonando");
 
         // Reproducir estando muteado no debe producir errores
         ctx.getAudio().playSound(audio::SoundEvent::UI_NAVIGATE);

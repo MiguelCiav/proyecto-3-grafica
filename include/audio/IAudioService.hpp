@@ -31,6 +31,18 @@ public:
     virtual void setDriftSoundState(bool active, float volume = 1.0f) = 0;
 
     /**
+     * @brief Activa o desactiva la música de fondo del menú principal y showroom.
+     * @param active Si es true reproduce/reanuda la música, si es false la detiene.
+     * @param volume Volumen relativo de la pista.
+     */
+    virtual void setMenuMusicActive(bool active, float volume = 0.55f) = 0;
+
+    /**
+     * @brief Indica si la música de menú está sonando actualmente.
+     */
+    [[nodiscard]] virtual bool isMenuMusicPlaying() const = 0;
+
+    /**
      * @brief Detiene todos los sonidos continuos de gameplay (motor y derrape).
      */
     virtual void stopAllGameplaySounds() = 0;
@@ -68,6 +80,14 @@ public:
 
     void setDriftSoundState(bool /*active*/, float /*volume*/ = 1.0f) override {}
 
+    void setMenuMusicActive(bool active, float /*volume*/ = 0.55f) override {
+        m_menuMusicPlaying = active;
+    }
+
+    [[nodiscard]] bool isMenuMusicPlaying() const override {
+        return m_menuMusicPlaying;
+    }
+
     void stopAllGameplaySounds() override {}
 
     void setMasterVolume(float volume) override {
@@ -89,6 +109,7 @@ public:
 private:
     float m_volume{1.0f};
     bool m_muted{false};
+    bool m_menuMusicPlaying{false};
 };
 
 } // namespace audio

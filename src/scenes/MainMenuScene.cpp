@@ -16,6 +16,7 @@ MainMenuScene::MainMenuScene(core::GameContext& ctx)
 }
 
 void MainMenuScene::onEnter() {
+    m_ctx.getAudio().setMenuMusicActive(true, 0.60f);
     core::Input::setCursorVisible(true);
 
     m_sceneRenderer.init(m_ctx.litShader, m_ctx.boosterShader, m_ctx.paletteTexture);

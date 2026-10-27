@@ -41,6 +41,8 @@ public:
     void playSound(SoundEvent event, float volume = 1.0f, float pitch = 1.0f) override;
     void setEngineSoundState(bool active, float speedRatio = 0.0f, bool isBoosting = false) override;
     void setDriftSoundState(bool active, float volume = 1.0f) override;
+    void setMenuMusicActive(bool active, float volume = 0.55f) override;
+    [[nodiscard]] bool isMenuMusicPlaying() const override;
     void stopAllGameplaySounds() override;
     void setMasterVolume(float volume) override;
     [[nodiscard]] float getMasterVolume() const override;
@@ -53,6 +55,7 @@ public:
     [[nodiscard]] bool areAllSoundsLoaded() const noexcept;
     [[nodiscard]] bool isEngineSoundLoaded() const noexcept;
     [[nodiscard]] bool isDriftSoundLoaded() const noexcept;
+    [[nodiscard]] bool isMenuMusicLoaded() const noexcept;
     [[nodiscard]] bool isEngineSoundPlaying() const noexcept;
     [[nodiscard]] bool isDriftSoundPlaying() const noexcept;
     [[nodiscard]] uint64_t getPlayCount(SoundEvent event) const noexcept;

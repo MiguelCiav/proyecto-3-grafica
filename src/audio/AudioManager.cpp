@@ -30,6 +30,7 @@ constexpr std::array<const char*, kSoundCount> kSoundRelativePaths = {
 
 constexpr const char* kEngineLoopRelativePath = "assets/sfx/ENGINE_LOOP.mp3";
 constexpr const char* kWheelDriftRelativePath = "assets/sfx/WHEEL_DRIFT.mp3";
+constexpr const char* kMenuMusicRelativePath = "assets/sfx/MENU_SONG.mp3";
 } // namespace
 
 struct AudioManager::Impl {
@@ -50,6 +51,10 @@ struct AudioManager::Impl {
     ma_sound driftSound{};
     bool driftSoundLoaded{false};
     bool driftSoundPlaying{false};
+
+    ma_sound menuMusic{};
+    bool menuMusicLoaded{false};
+    bool menuMusicPlaying{false};
 
     float masterVolume{1.0f};
     bool muted{false};
@@ -177,10 +182,33 @@ bool AudioManager::init() {
         }
     }
 
+    // Cargar musica de menu (MENU_SONG.mp3)
+    m_impl->menuMusicLoaded = false;
+    m_impl->menuMusicPlaying = false;
+    {
+        std::string resolvedMusic = ui::resolveAssetPath(kMenuMusicRelativePath);
+        ma_result musicRes = ma_sound_init_from_file(
+            &m_impl->engine,
+            resolvedMusic.c_str(),
+            MA_SOUND_FLAG_NO_SPATIALIZATION,
+            nullptr,
+            nullptr,
+            &m_impl->menuMusic
+        );
+        if (musicRes == MA_SUCCESS) {
+            ma_sound_set_looping(&m_impl->menuMusic, MA_TRUE);
+            m_impl->menuMusicLoaded = true;
+        } else {
+            std::cerr << "[WARN] [AudioManager] No se pudo cargar MENU_SONG.mp3: " << resolvedMusic
+                      << " (codigo " << musicRes << ")" << std::endl;
+        }
+    }
+
     std::cout << "[OK] [AudioManager] Subsistema de audio inicializado ("
               << loadedCount << "/" << kSoundCount << " SFX discretos, Motor="
               << (m_impl->engineSoundLoaded ? "OK" : "NO") << ", Drift="
-              << (m_impl->driftSoundLoaded ? "OK" : "NO") << ")." << std::endl;
+              << (m_impl->driftSoundLoaded ? "OK" : "NO") << ", MenuMusic="
+              << (m_impl->menuMusicLoaded ? "OK" : "NO") << ")." << std::endl;
     return true;
 }
 
@@ -191,6 +219,12 @@ void AudioManager::shutdown() {
 
     if (m_impl->engineInitialized) {
         stopAllGameplaySounds();
+
+        if (m_impl->menuMusicLoaded) {
+            ma_sound_uninit(&m_impl->menuMusic);
+            m_impl->menuMusicLoaded = false;
+            m_impl->menuMusicPlaying = false;
+        }
 
         if (m_impl->engineSoundLoaded) {
             ma_sound_uninit(&m_impl->engineSound);
@@ -275,7 +309,7 @@ void AudioManager::setDriftSoundState(bool active, float volume) {
     }
 
     if (active && !m_impl->muted) {
-        ma_sound_set_volume(&m_impl->driftSound, std::clamp(volume, 0.0f, 1.5f));
+        ma_sound_set_volume(&m_impl->driftSound, std::clamp(volume * 1.5f, 0.0f, 3.0f));
         if (!m_impl->driftSoundPlaying) {
             ma_sound_seek_to_pcm_frame(&m_impl->driftSound, 0);
             ma_sound_start(&m_impl->driftSound);
@@ -288,6 +322,29 @@ void AudioManager::setDriftSoundState(bool active, float volume) {
             m_impl->driftSoundPlaying = false;
         }
     }
+}
+
+void AudioManager::setMenuMusicActive(bool active, float volume) {
+    if (!m_impl || !m_impl->engineInitialized || !m_impl->menuMusicLoaded) {
+        return;
+    }
+
+    if (active && !m_impl->muted) {
+        ma_sound_set_volume(&m_impl->menuMusic, std::clamp(volume, 0.0f, 1.5f));
+        if (!m_impl->menuMusicPlaying) {
+            ma_sound_start(&m_impl->menuMusic);
+            m_impl->menuMusicPlaying = true;
+        }
+    } else {
+        if (m_impl->menuMusicPlaying) {
+            ma_sound_stop(&m_impl->menuMusic);
+            m_impl->menuMusicPlaying = false;
+        }
+    }
+}
+
+bool AudioManager::isMenuMusicPlaying() const {
+    return m_impl && m_impl->menuMusicPlaying;
 }
 
 void AudioManager::stopAllGameplaySounds() {
@@ -318,6 +375,10 @@ void AudioManager::setMuted(bool muted) {
         ma_engine_set_volume(&m_impl->engine, m_impl->muted ? 0.0f : m_impl->masterVolume);
         if (m_impl->muted) {
             stopAllGameplaySounds();
+            if (m_impl->menuMusicPlaying) {
+                ma_sound_stop(&m_impl->menuMusic);
+                m_impl->menuMusicPlaying = false;
+            }
         }
     }
 }
@@ -356,6 +417,10 @@ bool AudioManager::isEngineSoundLoaded() const noexcept {
 
 bool AudioManager::isDriftSoundLoaded() const noexcept {
     return m_impl && m_impl->driftSoundLoaded;
+}
+
+bool AudioManager::isMenuMusicLoaded() const noexcept {
+    return m_impl && m_impl->menuMusicLoaded;
 }
 
 bool AudioManager::isEngineSoundPlaying() const noexcept {
