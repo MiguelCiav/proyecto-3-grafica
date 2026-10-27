@@ -25,8 +25,12 @@ public:
     [[nodiscard]] bool isPaused() const { return m_isPaused; }
     void setPaused(bool paused) {
         m_isPaused = paused;
-        if (paused) m_pauseMenu.open();
-        else m_pauseMenu.close();
+        if (paused) {
+            m_ctx.getAudio().stopAllGameplaySounds();
+            m_pauseMenu.open();
+        } else {
+            m_pauseMenu.close();
+        }
     }
     [[nodiscard]] int getPauseSelectedOption() const { return m_pauseMenu.getSelectedOption(); }
     void setPauseSelectedOption(int opt) { m_pauseMenu.setSelectedOption(opt); }
@@ -53,6 +57,8 @@ private:
     bool m_isNewRecord{false};
 
     float m_elapsedTime{0.0f};
+    float m_impactAudioCooldown{0.0f};
+    bool m_wasBoostingLastFrame{false};
     bool m_cursorLocked{false};
 };
 

@@ -22,11 +22,15 @@ void RacingScene::resetRace() {
     if (m_ctx.chaseCamera && m_ctx.kartPhysics) m_ctx.chaseCamera->reset(m_ctx.kartInitialPos, m_ctx.kartPhysics->getForwardVector());
     m_lapsCompleted = 0;
     m_currentLapTime = m_totalRaceTime = m_lapNoticeTimer = 0.0f;
+    m_impactAudioCooldown = 0.0f;
+    m_wasBoostingLastFrame = false;
     if (m_ctx.skidmarkManager) m_ctx.skidmarkManager->clear();
 }
 
 void RacingScene::onEnter() {
     m_cursorLocked = m_isPaused = false;
+    m_impactAudioCooldown = 0.0f;
+    m_wasBoostingLastFrame = false;
     core::Input::setCursorVisible(true);
     m_ctx.cameraMode = core::CameraMode::CHASE;
     if (!m_uiRenderer.isInitialized()) m_uiRenderer.init();
@@ -44,6 +48,7 @@ void RacingScene::onEnter() {
 
 void RacingScene::onExit() {
     m_cursorLocked = m_isPaused = false;
+    m_ctx.getAudio().stopAllGameplaySounds();
     m_pauseMenu.close();
     core::Input::setCursorVisible(true);
 }
@@ -135,9 +140,14 @@ void RacingScene::handleInput(float deltaTime) {
 }
 
 void RacingScene::update(float deltaTime) {
-    if (m_isPaused) { m_pauseMenu.update(deltaTime); return; }
+    if (m_isPaused) {
+        m_ctx.getAudio().stopAllGameplaySounds();
+        m_pauseMenu.update(deltaTime);
+        return;
+    }
     m_elapsedTime += deltaTime;
     if (m_finishLineCooldown > 0.0f) m_finishLineCooldown -= deltaTime;
+    if (m_impactAudioCooldown > 0.0f) m_impactAudioCooldown -= deltaTime;
     if (!m_ctx.kartPhysics) return;
 
     bool isChase = (m_ctx.cameraMode == core::CameraMode::CHASE);
@@ -165,11 +175,37 @@ void RacingScene::update(float deltaTime) {
     m_ctx.kartPhysics->update(deltaTime, accel, brake, steer, drift);
     if (m_ctx.collisionSystem) {
         const auto hit = physics::CollisionSolver::solveSphereAgainstSystem(m_ctx.kartPhysics->getBoundingSphere(), *m_ctx.collisionSystem);
-        if (hit.collided) m_ctx.kartPhysics->onCollision(hit.mtv, 0.25f);
+        if (hit.collided) {
+            const float preImpactSpd = std::abs(m_ctx.kartPhysics->getSpeed());
+            m_ctx.kartPhysics->onCollision(hit.mtv, 0.25f);
+            const float curSpd = std::max(preImpactSpd, std::abs(m_ctx.kartPhysics->getSpeed()));
+            if (m_impactAudioCooldown <= 0.0f && curSpd > 0.8f) {
+                m_impactAudioCooldown = 0.18f;
+                const float impactVol = std::clamp(curSpd / 14.0f, 0.35f, 1.0f);
+                const float pitchJitter = 0.92f + static_cast<float>((static_cast<int>(curSpd * 100.0f) % 17)) * 0.01f;
+                const auto evt = (curSpd > 6.0f) ? audio::SoundEvent::KART_IMPACT_HARD : audio::SoundEvent::KART_IMPACT_SOFT;
+                m_ctx.getAudio().playSound(evt, impactVol, pitchJitter);
+            }
+        }
     }
     if (m_ctx.boosterPads) {
-        for (const auto& pad : *m_ctx.boosterPads) pad.onKartContact(*m_ctx.kartPhysics);
+        for (const auto& pad : *m_ctx.boosterPads) {
+            if (pad.onKartContact(*m_ctx.kartPhysics) && !m_wasBoostingLastFrame) {
+                m_ctx.getAudio().playSound(audio::SoundEvent::KART_BOOST, 0.95f, 1.15f);
+                m_wasBoostingLastFrame = true;
+            }
+        }
     }
+    m_wasBoostingLastFrame = m_ctx.kartPhysics->isBoosting();
+
+    const float maxSpd = m_ctx.kartPhysics->m_maxSpeed;
+    const float curSpd = std::abs(m_ctx.kartPhysics->getSpeed());
+    const float speedRatio = (maxSpd > 0.001f) ? (curSpd / maxSpd) : 0.0f;
+    const bool boostingNow = m_ctx.kartPhysics->isBoosting();
+    m_ctx.getAudio().setEngineSoundState(!m_isPaused, speedRatio, boostingNow);
+
+    const bool isDriftSkidAudio = m_ctx.kartPhysics->isDrifting() || (brake && curSpd > 1.5f);
+    m_ctx.getAudio().setDriftSoundState(!m_isPaused && isDriftSkidAudio, 0.80f);
     if (m_ctx.zoneManager) {
         const world::SpecialZone* hitZone = m_ctx.zoneManager->checkTrigger(m_ctx.kartPhysics->getPosition());
         if (hitZone && hitZone->type == world::ZoneType::FINISH_LINE && m_finishLineCooldown <= 0.0f &&

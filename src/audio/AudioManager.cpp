@@ -14,13 +14,22 @@ namespace {
 constexpr size_t kSoundCount = static_cast<size_t>(SoundEvent::COUNT);
 
 constexpr std::array<const char*, kSoundCount> kSoundRelativePaths = {
-    "assets/kenney_ui-pack/Sounds/tap-a.ogg",    // UI_NAVIGATE
-    "assets/kenney_ui-pack/Sounds/click-a.ogg",  // UI_CONFIRM
-    "assets/kenney_ui-pack/Sounds/click-b.ogg",  // UI_BACK
-    "assets/kenney_ui-pack/Sounds/switch-a.ogg", // UI_SWITCH
-    "assets/kenney_ui-pack/Sounds/switch-b.ogg", // UI_TAB
-    "assets/kenney_ui-pack/Sounds/tap-b.ogg"     // UI_PAUSE
+    // UI SFX (Kenney UI Pack)
+    "assets/kenney_ui-pack/Sounds/tap-a.ogg",                 // UI_NAVIGATE
+    "assets/kenney_ui-pack/Sounds/click-a.ogg",               // UI_CONFIRM
+    "assets/kenney_ui-pack/Sounds/click-b.ogg",               // UI_BACK
+    "assets/kenney_ui-pack/Sounds/switch-a.ogg",              // UI_SWITCH
+    "assets/kenney_ui-pack/Sounds/switch-b.ogg",              // UI_TAB
+    "assets/kenney_ui-pack/Sounds/tap-b.ogg",                 // UI_PAUSE
+
+    // Gameplay SFX (Impact & Boost)
+    "assets/sfx/impact_sounds/impactMetal_medium_001.ogg",    // KART_IMPACT_HARD
+    "assets/sfx/impact_sounds/impactGeneric_light_001.ogg",   // KART_IMPACT_SOFT
+    "assets/sfx/impact_sounds/impactBell_heavy_001.ogg"       // KART_BOOST
 };
+
+constexpr const char* kEngineLoopRelativePath = "assets/sfx/ENGINE_LOOP.mp3";
+constexpr const char* kWheelDriftRelativePath = "assets/sfx/WHEEL_DRIFT.mp3";
 } // namespace
 
 struct AudioManager::Impl {
@@ -33,6 +42,14 @@ struct AudioManager::Impl {
     std::array<ma_sound, kSoundCount> sounds{};
     std::array<bool, kSoundCount> soundLoaded{};
     std::array<uint64_t, kSoundCount> playCounts{};
+
+    ma_sound engineSound{};
+    bool engineSoundLoaded{false};
+    bool engineSoundPlaying{false};
+
+    ma_sound driftSound{};
+    bool driftSoundLoaded{false};
+    bool driftSoundPlaying{false};
 
     float masterVolume{1.0f};
     bool muted{false};
@@ -116,8 +133,54 @@ bool AudioManager::init() {
         }
     }
 
+    // Cargar loop del motor (ENGINE_LOOP.mp3)
+    m_impl->engineSoundLoaded = false;
+    m_impl->engineSoundPlaying = false;
+    {
+        std::string resolvedEngine = ui::resolveAssetPath(kEngineLoopRelativePath);
+        ma_result engRes = ma_sound_init_from_file(
+            &m_impl->engine,
+            resolvedEngine.c_str(),
+            soundFlags,
+            nullptr,
+            nullptr,
+            &m_impl->engineSound
+        );
+        if (engRes == MA_SUCCESS) {
+            ma_sound_set_looping(&m_impl->engineSound, MA_TRUE);
+            m_impl->engineSoundLoaded = true;
+        } else {
+            std::cerr << "[WARN] [AudioManager] No se pudo cargar ENGINE_LOOP.mp3: " << resolvedEngine
+                      << " (codigo " << engRes << ")" << std::endl;
+        }
+    }
+
+    // Cargar loop de derrape de neumaticos (WHEEL_DRIFT.mp3)
+    m_impl->driftSoundLoaded = false;
+    m_impl->driftSoundPlaying = false;
+    {
+        std::string resolvedDrift = ui::resolveAssetPath(kWheelDriftRelativePath);
+        ma_result driftRes = ma_sound_init_from_file(
+            &m_impl->engine,
+            resolvedDrift.c_str(),
+            soundFlags,
+            nullptr,
+            nullptr,
+            &m_impl->driftSound
+        );
+        if (driftRes == MA_SUCCESS) {
+            ma_sound_set_looping(&m_impl->driftSound, MA_TRUE);
+            m_impl->driftSoundLoaded = true;
+        } else {
+            std::cerr << "[WARN] [AudioManager] No se pudo cargar WHEEL_DRIFT.mp3: " << resolvedDrift
+                      << " (codigo " << driftRes << ")" << std::endl;
+        }
+    }
+
     std::cout << "[OK] [AudioManager] Subsistema de audio inicializado ("
-              << loadedCount << "/" << kSoundCount << " SFX UI cargados)." << std::endl;
+              << loadedCount << "/" << kSoundCount << " SFX discretos, Motor="
+              << (m_impl->engineSoundLoaded ? "OK" : "NO") << ", Drift="
+              << (m_impl->driftSoundLoaded ? "OK" : "NO") << ")." << std::endl;
     return true;
 }
 
@@ -127,6 +190,20 @@ void AudioManager::shutdown() {
     }
 
     if (m_impl->engineInitialized) {
+        stopAllGameplaySounds();
+
+        if (m_impl->engineSoundLoaded) {
+            ma_sound_uninit(&m_impl->engineSound);
+            m_impl->engineSoundLoaded = false;
+            m_impl->engineSoundPlaying = false;
+        }
+
+        if (m_impl->driftSoundLoaded) {
+            ma_sound_uninit(&m_impl->driftSound);
+            m_impl->driftSoundLoaded = false;
+            m_impl->driftSoundPlaying = false;
+        }
+
         for (size_t i = 0; i < kSoundCount; ++i) {
             if (m_impl->soundLoaded[i]) {
                 ma_sound_uninit(&m_impl->sounds[i]);
@@ -166,6 +243,58 @@ void AudioManager::playSound(SoundEvent event, float volume, float pitch) {
     ma_sound_start(&sound);
 }
 
+void AudioManager::setEngineSoundState(bool active, float speedRatio, bool isBoosting) {
+    if (!m_impl || !m_impl->engineInitialized || !m_impl->engineSoundLoaded) {
+        return;
+    }
+
+    if (!active || m_impl->muted) {
+        if (m_impl->engineSoundPlaying) {
+            ma_sound_stop(&m_impl->engineSound);
+            m_impl->engineSoundPlaying = false;
+        }
+        return;
+    }
+
+    const float clampedRatio = std::clamp(speedRatio, 0.0f, 1.5f);
+    const float pitch = isBoosting ? 1.65f : (0.75f + clampedRatio * 0.70f);
+    const float vol   = isBoosting ? 0.95f : (0.40f + clampedRatio * 0.45f);
+
+    ma_sound_set_pitch(&m_impl->engineSound, pitch);
+    ma_sound_set_volume(&m_impl->engineSound, vol);
+
+    if (!m_impl->engineSoundPlaying) {
+        ma_sound_start(&m_impl->engineSound);
+        m_impl->engineSoundPlaying = true;
+    }
+}
+
+void AudioManager::setDriftSoundState(bool active, float volume) {
+    if (!m_impl || !m_impl->engineInitialized || !m_impl->driftSoundLoaded) {
+        return;
+    }
+
+    if (active && !m_impl->muted) {
+        ma_sound_set_volume(&m_impl->driftSound, std::clamp(volume, 0.0f, 1.5f));
+        if (!m_impl->driftSoundPlaying) {
+            ma_sound_seek_to_pcm_frame(&m_impl->driftSound, 0);
+            ma_sound_start(&m_impl->driftSound);
+            m_impl->driftSoundPlaying = true;
+        }
+    } else {
+        if (m_impl->driftSoundPlaying) {
+            ma_sound_stop(&m_impl->driftSound);
+            ma_sound_seek_to_pcm_frame(&m_impl->driftSound, 0);
+            m_impl->driftSoundPlaying = false;
+        }
+    }
+}
+
+void AudioManager::stopAllGameplaySounds() {
+    setEngineSoundState(false);
+    setDriftSoundState(false);
+}
+
 void AudioManager::setMasterVolume(float volume) {
     if (!m_impl) {
         return;
@@ -187,6 +316,9 @@ void AudioManager::setMuted(bool muted) {
     m_impl->muted = muted;
     if (m_impl->engineInitialized) {
         ma_engine_set_volume(&m_impl->engine, m_impl->muted ? 0.0f : m_impl->masterVolume);
+        if (m_impl->muted) {
+            stopAllGameplaySounds();
+        }
     }
 }
 
@@ -216,6 +348,22 @@ bool AudioManager::areAllSoundsLoaded() const noexcept {
         }
     }
     return true;
+}
+
+bool AudioManager::isEngineSoundLoaded() const noexcept {
+    return m_impl && m_impl->engineSoundLoaded;
+}
+
+bool AudioManager::isDriftSoundLoaded() const noexcept {
+    return m_impl && m_impl->driftSoundLoaded;
+}
+
+bool AudioManager::isEngineSoundPlaying() const noexcept {
+    return m_impl && m_impl->engineSoundPlaying;
+}
+
+bool AudioManager::isDriftSoundPlaying() const noexcept {
+    return m_impl && m_impl->driftSoundPlaying;
 }
 
 uint64_t AudioManager::getPlayCount(SoundEvent event) const noexcept {

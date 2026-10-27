@@ -13,12 +13,27 @@ public:
     virtual ~IAudioService() = default;
 
     /**
-     * @brief Reproduce un efecto de sonido discreto de la interfaz.
+     * @brief Reproduce un efecto de sonido discreto (UI o colisión/boost).
      * @param event Identificador del evento sonoro.
      * @param volume Volumen relativo [0.0f, 1.0f].
      * @param pitch Tono / velocidad de reproducción (> 0.0f, por defecto 1.0f).
      */
     virtual void playSound(SoundEvent event, float volume = 1.0f, float pitch = 1.0f) = 0;
+
+    /**
+     * @brief Activa, modula (RPM/pitch y volumen según velocidad y turbo) o detiene el loop del motor.
+     */
+    virtual void setEngineSoundState(bool active, float speedRatio = 0.0f, bool isBoosting = false) = 0;
+
+    /**
+     * @brief Activa o corta instantáneamente el sonido de derrape de neumáticos (WHEEL_DRIFT.mp3).
+     */
+    virtual void setDriftSoundState(bool active, float volume = 1.0f) = 0;
+
+    /**
+     * @brief Detiene todos los sonidos continuos de gameplay (motor y derrape).
+     */
+    virtual void stopAllGameplaySounds() = 0;
 
     /**
      * @brief Ajusta el volumen maestro del motor de audio [0.0f, 1.0f].
@@ -48,6 +63,12 @@ public:
 class NullAudioService final : public IAudioService {
 public:
     void playSound(SoundEvent /*event*/, float /*volume*/ = 1.0f, float /*pitch*/ = 1.0f) override {}
+
+    void setEngineSoundState(bool /*active*/, float /*speedRatio*/ = 0.0f, bool /*isBoosting*/ = false) override {}
+
+    void setDriftSoundState(bool /*active*/, float /*volume*/ = 1.0f) override {}
+
+    void stopAllGameplaySounds() override {}
 
     void setMasterVolume(float volume) override {
         m_volume = std::clamp(volume, 0.0f, 1.0f);
