@@ -1,6 +1,6 @@
 #include "physics/CollisionSystem.hpp"
 
-namespace Engine::Physics {
+namespace physics {
 
 void CollisionSystem::addStaticBox(const BoundingBox& box) {
     m_staticBoxes.push_back(box);
@@ -64,4 +64,4 @@ glm::vec3 CollisionSystem::resolveSpherePosition(const glm::vec3& currentPos, fl
     return resolvedPos;
 }
 
-} // namespace Engine::Physics
+} // namespace physics

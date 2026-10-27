@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 
 #include "ui/UIRenderer.hpp"
+#include "ui/UIUtils.hpp"
 #include "renderer/Texture.hpp"
 
 int main() {
@@ -161,6 +162,41 @@ int main() {
         movedRenderer.destroy();
         assert(!movedRenderer.isInitialized() && "destroy() debe dejar isInitialized en false");
         std::cout << "  [CHECK 5] Semantica de movimiento RAII y destroy() validados con exito." << std::endl;
+
+        // ---------------------------------------------------------------------
+        // 8. Verificacion de UIUtils (UIAnchor, layout, sanitizacion y wrapText)
+        // ---------------------------------------------------------------------
+        {
+            // Anchors
+            glm::vec2 tl = ui::computeAnchoredPosition(ui::UIAnchor::TOP_LEFT, 100.0f, 50.0f, 1280.0f, 720.0f, 10.0f, 20.0f);
+            assert(tl.x == 10.0f && tl.y == 20.0f);
+            (void)tl;
+
+            glm::vec2 c = ui::computeAnchoredPosition(ui::UIAnchor::CENTER, 200.0f, 100.0f, 1280.0f, 720.0f);
+            assert(c.x == (1280.0f - 200.0f) * 0.5f && c.y == (720.0f - 100.0f) * 0.5f);
+            (void)c;
+
+            glm::vec2 br = ui::computeAnchoredPosition(ui::UIAnchor::BOTTOM_RIGHT, 300.0f, 150.0f, 1280.0f, 720.0f, -10.0f, -20.0f);
+            assert(br.x == 1280.0f - 300.0f - 10.0f && br.y == 720.0f - 150.0f - 20.0f);
+            (void)br;
+
+            // Sanitize text
+            std::string clean = ui::sanitizeText("Camión Rápido #1");
+            assert(clean == "CAMION RAPIDO #1");
+            (void)clean;
+
+            // Wrap text
+            auto wrapped = ui::wrapText("UN TEXTO MUY LARGO QUE DEBE AJUSTARSE", 120.0f, 1.0f);
+            assert(wrapped.size() > 1);
+            (void)wrapped;
+
+            // Resolve path
+            std::string resolved = ui::resolveAssetPath("assets/textures/colormap.png");
+            assert(!resolved.empty());
+            (void)resolved;
+
+            std::cout << "  [CHECK 6] Utilidades de UI (UIAnchor, layout, sanitizacion y wrap) validadas." << std::endl;
+        }
     }
 
     glfwDestroyWindow(window);

@@ -6,14 +6,9 @@
 #include "renderer/Shader.hpp"
 #include "renderer/Texture.hpp"
 #include "ui/UIRenderer.hpp"
+#include "ui/UIUtils.hpp"
 
 namespace ui {
-
-struct HudVertex {
-    glm::vec2 pos;
-    glm::vec2 uv;
-    glm::vec4 color;
-};
 
 struct LapTimingData {
     int currentLap{1};
@@ -83,12 +78,7 @@ public:
     bool areTexturesLoaded() const;
 
 private:
-    void flush();
-    void addQuad(float x, float y, float w, float h, const glm::vec4& color);
-    void addBorder(float x, float y, float w, float h, float thickness, const glm::vec4& color);
-
-    // Primitivas de texto y digitos digitales
-    void drawText(float x, float y, const std::string& text, float scale, const glm::vec4& color);
+    // Primitivas de visualizacion de digitos digitales
     void draw7SegmentDigit(float x, float y, int digit, float w, float h, float thickness,
                            const glm::vec4& activeColor, const glm::vec4& inactiveColor);
     void draw7SegmentTime(float x, float y, float timeSeconds, float scale, const glm::vec4& color);

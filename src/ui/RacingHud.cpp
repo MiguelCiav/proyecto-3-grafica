@@ -8,23 +8,6 @@
 
 namespace ui {
 
-namespace {
-
-// Helper para localizar rutas de assets independientemente de si el ejecutable
-// corre desde la raiz del repositorio o desde la carpeta de construccion build/
-std::string resolveAssetPath(const std::string& relativePath) {
-    std::ifstream f1(relativePath);
-    if (f1.good()) return relativePath;
-
-    std::string parentRelative = "../" + relativePath;
-    std::ifstream f2(parentRelative);
-    if (f2.good()) return parentRelative;
-
-    return relativePath;
-}
-
-} // namespace
-
 RacingHud::RacingHud() = default;
 
 RacingHud::~RacingHud() = default;
@@ -237,22 +220,6 @@ bool RacingHud::areTexturesLoaded() const {
            m_texCheckOff.isLoaded();
 }
 
-void RacingHud::flush() {
-    // Implementado directamente por m_uiRenderer
-}
-
-void RacingHud::addQuad(float x, float y, float w, float h, const glm::vec4& color) {
-    m_uiRenderer.drawRect(x, y, w, h, color);
-}
-
-void RacingHud::addBorder(float x, float y, float w, float h, float thickness, const glm::vec4& color) {
-    m_uiRenderer.drawBorder(x, y, w, h, thickness, color);
-}
-
-void RacingHud::drawText(float x, float y, const std::string& text, float scale, const glm::vec4& color) {
-    m_uiRenderer.drawText(x, y, text, scale, color);
-}
-
 void RacingHud::draw7SegmentDigit(float x, float y, int digit, float w, float h, float thickness,
                                   const glm::vec4& activeColor, const glm::vec4& inactiveColor) {
     // Mascara de 7 segmentos: a, b, c, d, e, f, g
@@ -358,8 +325,9 @@ void RacingHud::draw7SegmentTime(float x, float y, float timeSeconds, float scal
 void RacingHud::renderSpeedometer(float screenWidth, float screenHeight, const TelemetryData& t, const LapTimingData& timing) {
     float w = 320.0f;
     float h = 160.0f;
-    float x = screenWidth - w - 24.0f;
-    float y = screenHeight - h - 24.0f;
+    glm::vec2 pos = computeAnchoredPosition(UIAnchor::BOTTOM_RIGHT, w, h, screenWidth, screenHeight, -24.0f, -24.0f);
+    float x = pos.x;
+    float y = pos.y;
 
     // 1. Capa de fondo oscura ahumada para maximo contraste
     m_uiRenderer.drawRect(x + 4.0f, y + 4.0f, w - 8.0f, h - 8.0f, glm::vec4(0.02f, 0.04f, 0.08f, 0.90f));
@@ -513,8 +481,9 @@ void RacingHud::renderLapTimer(float screenWidth, float screenHeight, const LapT
     // Posicion en la esquina superior derecha
     float w = 320.0f;
     float h = 160.0f;
-    float x = screenWidth - w - 24.0f;
-    float y = 24.0f;
+    glm::vec2 pos = computeAnchoredPosition(UIAnchor::TOP_RIGHT, w, h, screenWidth, screenHeight, -24.0f, 24.0f);
+    float x = pos.x;
+    float y = pos.y;
 
     // 1. Placa de fondo transparente ahumada para legibilidad
     m_uiRenderer.drawRect(x + 4.0f, y + 4.0f, w - 8.0f, h - 8.0f, glm::vec4(0.02f, 0.04f, 0.08f, 0.90f));
@@ -572,8 +541,9 @@ void RacingHud::renderLapNotice(float screenWidth, float screenHeight, const Lap
 
     float w = 500.0f;
     float h = 76.0f;
-    float x = (screenWidth - w) * 0.5f;
-    float y = screenHeight * 0.16f;
+    glm::vec2 pos = computeAnchoredPosition(UIAnchor::TOP_CENTER, w, h, screenWidth, screenHeight, 0.0f, screenHeight * 0.16f);
+    float x = pos.x;
+    float y = pos.y;
 
     float alpha = std::clamp(timing.lapNoticeTimer / 0.5f, 0.0f, 1.0f);
 
@@ -617,8 +587,9 @@ void RacingHud::renderPauseModal(float screenWidth, float screenHeight, const Pa
     // 2. Cuadro de diálogo modal centrado
     float modalW = 680.0f;
     float modalH = 500.0f;
-    float modalX = (screenWidth - modalW) * 0.5f;
-    float modalY = (screenHeight - modalH) * 0.5f;
+    glm::vec2 modalPos = computeAnchoredPosition(UIAnchor::CENTER, modalW, modalH, screenWidth, screenHeight);
+    float modalX = modalPos.x;
+    float modalY = modalPos.y;
 
     // Fondo solido azul profundo
     m_uiRenderer.drawRect(modalX + 6.0f, modalY + 6.0f, modalW - 12.0f, modalH - 12.0f, glm::vec4(0.05f, 0.08f, 0.15f, 0.96f));
@@ -666,8 +637,7 @@ void RacingHud::renderPauseModal(float screenWidth, float screenHeight, const Pa
             }
             case 1: { // 2) MODELO DE ILUMINACIÓN (Flat / Lambert / Blinn-Phong)
                 m_uiRenderer.drawText(rowX + 20.0f, rowY + 11.0f, "MODELO DE ILUMINACION", 1.8f, textColor);
-                std::string modelStr = "< " + data.lightingModel + " >";
-                for (auto& c : modelStr) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+                std::string modelStr = "< " + sanitizeText(data.lightingModel) + " >";
                 m_uiRenderer.drawText(rowX + rowW - 250.0f, rowY + 11.0f, modelStr, 1.8f,
                                       isSelected ? glm::vec4(0.10f, 0.35f, 0.15f, 1.0f)
                                                  : glm::vec4(0.35f, 1.0f, 0.65f, 1.0f));

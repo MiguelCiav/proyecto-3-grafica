@@ -1,9 +1,16 @@
 #include "world/BoosterPad.hpp"
 #include <glad/glad.h>
+#include <GLFW/glfw3.h>
 #include <cmath>
 #include <algorithm>
 
 namespace world {
+
+// Definición de miembros estáticos para la malla unitaria compartida
+unsigned int BoosterPad::s_sharedVAO = 0;
+unsigned int BoosterPad::s_sharedVBO = 0;
+bool BoosterPad::s_sharedMeshInitialized = false;
+int BoosterPad::s_instanceCount = 0;
 
 namespace {
 
@@ -20,7 +27,10 @@ const float quadVertices[] = {
 
 } // namespace
 
-BoosterPad::BoosterPad() {
+BoosterPad::BoosterPad()
+    : m_alive(true)
+{
+    ++s_instanceCount;
     updateTriggerZone();
 }
 
@@ -29,7 +39,9 @@ BoosterPad::BoosterPad(const glm::vec3& position, float yawDegrees, float width,
     , m_yawDegrees(yawDegrees)
     , m_width(width)
     , m_length(length)
+    , m_alive(true)
 {
+    ++s_instanceCount;
     updateTriggerZone();
 }
 
@@ -47,13 +59,9 @@ BoosterPad::BoosterPad(BoosterPad&& other) noexcept
     , m_boostDuration(other.m_boostDuration)
     , m_instantImpulse(other.m_instantImpulse)
     , m_triggerZone(other.m_triggerZone)
-    , m_vao(other.m_vao)
-    , m_vbo(other.m_vbo)
-    , m_meshInitialized(other.m_meshInitialized)
+    , m_alive(other.m_alive)
 {
-    other.m_vao = 0;
-    other.m_vbo = 0;
-    other.m_meshInitialized = false;
+    other.m_alive = false;
 }
 
 BoosterPad& BoosterPad::operator=(BoosterPad&& other) noexcept {
@@ -68,13 +76,9 @@ BoosterPad& BoosterPad::operator=(BoosterPad&& other) noexcept {
         m_boostDuration = other.m_boostDuration;
         m_instantImpulse = other.m_instantImpulse;
         m_triggerZone = other.m_triggerZone;
-        m_vao = other.m_vao;
-        m_vbo = other.m_vbo;
-        m_meshInitialized = other.m_meshInitialized;
+        m_alive = other.m_alive;
 
-        other.m_vao = 0;
-        other.m_vbo = 0;
-        other.m_meshInitialized = false;
+        other.m_alive = false;
     }
     return *this;
 }
@@ -121,14 +125,15 @@ void BoosterPad::registerTrigger(ZoneTriggerManager& manager) const {
     manager.addZone(m_triggerZone);
 }
 
-void BoosterPad::initMesh() {
-    if (m_meshInitialized) return;
+void BoosterPad::initSharedMesh() {
+    if (s_sharedMeshInitialized) return;
+    if (!glad_glGenVertexArrays) return;
 
-    glGenVertexArrays(1, &m_vao);
-    glGenBuffers(1, &m_vbo);
+    glGenVertexArrays(1, &s_sharedVAO);
+    glGenBuffers(1, &s_sharedVBO);
 
-    glBindVertexArray(m_vao);
-    glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
+    glBindVertexArray(s_sharedVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, s_sharedVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
 
     // Posición (Location 0)
@@ -146,7 +151,26 @@ void BoosterPad::initMesh() {
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    m_meshInitialized = true;
+    s_sharedMeshInitialized = true;
+}
+
+void BoosterPad::destroySharedMesh() {
+    if (!s_sharedMeshInitialized && s_sharedVAO == 0 && s_sharedVBO == 0) {
+        return;
+    }
+
+    if (glfwGetCurrentContext() != nullptr) {
+        if (s_sharedVAO != 0) {
+            glDeleteVertexArrays(1, &s_sharedVAO);
+        }
+        if (s_sharedVBO != 0) {
+            glDeleteBuffers(1, &s_sharedVBO);
+        }
+    }
+
+    s_sharedVAO = 0;
+    s_sharedVBO = 0;
+    s_sharedMeshInitialized = false;
 }
 
 void BoosterPad::updateTriggerZone() {
@@ -188,10 +212,12 @@ void BoosterPad::updateTriggerZone() {
 }
 
 void BoosterPad::draw(const renderer::Shader& proceduralShader, float currentTime) const {
-    if (!m_meshInitialized) {
-        const_cast<BoosterPad*>(this)->initMesh();
+    if (!m_alive) return;
+
+    if (!s_sharedMeshInitialized) {
+        initSharedMesh();
     }
-    if (!m_meshInitialized || m_vao == 0 || !proceduralShader.isValid()) return;
+    if (!s_sharedMeshInitialized || s_sharedVAO == 0 || !proceduralShader.isValid()) return;
 
     glm::mat4 model = glm::translate(glm::mat4(1.0f), m_position + glm::vec3(0.0f, m_elevationOffset, 0.0f));
     model = glm::rotate(model, glm::radians(m_yawDegrees), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -201,21 +227,21 @@ void BoosterPad::draw(const renderer::Shader& proceduralShader, float currentTim
     proceduralShader.setMat4("u_Model", model);
     proceduralShader.setFloat("u_Time", currentTime);
 
-    glBindVertexArray(m_vao);
+    glBindVertexArray(s_sharedVAO);
     glDrawArrays(GL_TRIANGLES, 0, 6);
     glBindVertexArray(0);
 }
 
 void BoosterPad::destroy() {
-    if (m_vao != 0) {
-        glDeleteVertexArrays(1, &m_vao);
-        m_vao = 0;
+    if (m_alive) {
+        m_alive = false;
+        if (s_instanceCount > 0) {
+            --s_instanceCount;
+            if (s_instanceCount == 0) {
+                destroySharedMesh();
+            }
+        }
     }
-    if (m_vbo != 0) {
-        glDeleteBuffers(1, &m_vbo);
-        m_vbo = 0;
-    }
-    m_meshInitialized = false;
 }
 
 } // namespace world

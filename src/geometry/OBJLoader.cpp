@@ -14,8 +14,37 @@
 #endif
 
 #include <iostream>
-#include <map>
-#include <tuple>
+#include <unordered_map>
+#include <cstddef>
+
+namespace {
+
+struct VertexKey {
+    int p{-1};
+    int n{-1};
+    int t{-1};
+    int m{-1};
+
+    bool operator==(const VertexKey& other) const noexcept {
+        return p == other.p && n == other.n && t == other.t && m == other.m;
+    }
+};
+
+struct VertexKeyHash {
+    std::size_t operator()(const VertexKey& k) const noexcept {
+        std::size_t seed = 0;
+        auto combine = [&seed](int val) {
+            seed ^= std::hash<int>{}(val) + 0x9e3779b97f4a7c15ULL + (seed << 6) + (seed >> 2);
+        };
+        combine(k.p);
+        combine(k.n);
+        combine(k.t);
+        combine(k.m);
+        return seed;
+    }
+};
+
+} // namespace
 
 namespace geometry {
 
@@ -48,10 +77,13 @@ bool OBJLoader::load(const std::string& filePath, ModelData& outModelData) {
         SubMesh submesh;
         submesh.name = shape.name;
 
-        // Clave de deduplicacion: vertex, normal, texcoord y material_id
-        // para garantizar que limites entre materiales distintos (ej. asfalto y bordillo)
-        // generen vertices independientes con sus respectivos colores difusos.
-        std::map<std::tuple<int, int, int, int>, uint32_t> uniqueVertices;
+        // Clave de deduplicacion O(1) con std::unordered_map:
+        // vertex, normal, texcoord y material_id para garantizar que limites
+        // entre materiales distintos generen vertices independientes con sus respectivos colores.
+        std::unordered_map<VertexKey, uint32_t, VertexKeyHash> uniqueVertices;
+        uniqueVertices.reserve(shape.mesh.indices.size());
+        submesh.vertices.reserve(shape.mesh.indices.size() / 2);
+        submesh.indices.reserve(shape.mesh.indices.size());
 
         size_t indexOffset = 0;
         size_t faceCount = shape.mesh.num_face_vertices.size();
@@ -68,9 +100,10 @@ bool OBJLoader::load(const std::string& filePath, ModelData& outModelData) {
 
             for (size_t v = 0; v < fv; ++v) {
                 tinyobj::index_t index = shape.mesh.indices[indexOffset + v];
-                auto key = std::make_tuple(index.vertex_index, index.normal_index, index.texcoord_index, matId);
+                VertexKey key{index.vertex_index, index.normal_index, index.texcoord_index, matId};
 
-                if (uniqueVertices.find(key) == uniqueVertices.end()) {
+                auto it = uniqueVertices.find(key);
+                if (it == uniqueVertices.end()) {
                     Vertex vertex;
 
                     if (index.vertex_index >= 0) {
@@ -87,6 +120,8 @@ bool OBJLoader::load(const std::string& filePath, ModelData& outModelData) {
                             attrib.normals[3 * index.normal_index + 1],
                             attrib.normals[3 * index.normal_index + 2]
                         );
+                    } else {
+                        vertex.normal = glm::vec3(0.0f);
                     }
 
                     if (index.texcoord_index >= 0 && !attrib.texcoords.empty()) {
@@ -99,16 +134,18 @@ bool OBJLoader::load(const std::string& filePath, ModelData& outModelData) {
                     vertex.color = faceColor;
 
                     uint32_t newIndex = static_cast<uint32_t>(submesh.vertices.size());
-                    uniqueVertices[key] = newIndex;
+                    uniqueVertices.emplace(key, newIndex);
                     submesh.vertices.push_back(vertex);
+                    submesh.indices.push_back(newIndex);
+                } else {
+                    submesh.indices.push_back(it->second);
                 }
-
-                submesh.indices.push_back(uniqueVertices[key]);
             }
 
             indexOffset += fv;
         }
 
+        MeshProcessor::generateNormalsIfNeeded(submesh);
         MeshProcessor::updateSubMeshAABB(submesh);
         outModelData.submeshes.push_back(std::move(submesh));
     }

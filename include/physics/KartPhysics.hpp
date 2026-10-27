@@ -6,7 +6,18 @@
 #include <cmath>
 #include <algorithm>
 
-namespace Engine::Physics {
+namespace physics {
+
+struct VehicleDynamicsConfig {
+    float maxSpeed{20.0f};
+    float acceleration{15.0f};
+    float turnSpeed{220.0f};
+    float drag{5.0f};
+    float brakingRate{22.0f};
+    float maxReverseSpeed{4.5f};
+    float surfaceFriction{1.0f};
+    float maxSteerAngle{28.0f};
+};
 
 /**
  * @brief Controlador dinamico y cinematico del kart estilo arcade (Mario Kart).
@@ -14,6 +25,9 @@ namespace Engine::Physics {
 class KartPhysics {
 public:
     KartPhysics();
+
+    void setDynamicsConfig(const VehicleDynamicsConfig& config);
+    [[nodiscard]] const VehicleDynamicsConfig& getDynamicsConfig() const;
 
     void update(float deltaTime, bool accelerate, bool brake, float steerInput, bool drift = false);
 
@@ -75,6 +89,16 @@ private:
     float m_surfaceFriction{1.0f};
     float m_boostTimer{0.0f};
     float m_boostMultiplier{1.28f};
+
+    mutable VehicleDynamicsConfig m_config;
 };
 
-} // namespace Engine::Physics
+} // namespace physics
+
+namespace Engine::Physics {
+    class KartPhysics : public ::physics::KartPhysics {
+    public:
+        using ::physics::KartPhysics::KartPhysics;
+        using ::physics::KartPhysics::operator=;
+    };
+}

@@ -1,9 +1,42 @@
 #include "physics/KartPhysics.hpp"
 
-namespace Engine::Physics {
+namespace physics {
 
 KartPhysics::KartPhysics()
-    : m_position(0.0f), m_yawDegrees(0.0f), m_currentSpeed(0.0f), m_steeringAngle(0.0f) {}
+    : m_position(0.0f), m_yawDegrees(0.0f), m_currentSpeed(0.0f), m_steeringAngle(0.0f) {
+    m_config.maxSpeed = m_maxSpeed;
+    m_config.acceleration = m_acceleration;
+    m_config.turnSpeed = m_turnSpeed;
+    m_config.drag = m_drag;
+    m_config.brakingRate = m_brakingRate;
+    m_config.maxReverseSpeed = m_maxReverseSpeed;
+    m_config.surfaceFriction = m_surfaceFriction;
+    m_config.maxSteerAngle = m_maxSteerAngle;
+}
+
+void KartPhysics::setDynamicsConfig(const VehicleDynamicsConfig& config) {
+    m_config = config;
+    m_maxSpeed = config.maxSpeed;
+    m_acceleration = config.acceleration;
+    m_turnSpeed = config.turnSpeed;
+    m_drag = config.drag;
+    m_brakingRate = config.brakingRate;
+    m_maxReverseSpeed = config.maxReverseSpeed;
+    m_surfaceFriction = config.surfaceFriction;
+    m_maxSteerAngle = config.maxSteerAngle;
+}
+
+const VehicleDynamicsConfig& KartPhysics::getDynamicsConfig() const {
+    m_config.maxSpeed = m_maxSpeed;
+    m_config.acceleration = m_acceleration;
+    m_config.turnSpeed = m_turnSpeed;
+    m_config.drag = m_drag;
+    m_config.brakingRate = m_brakingRate;
+    m_config.maxReverseSpeed = m_maxReverseSpeed;
+    m_config.surfaceFriction = m_surfaceFriction;
+    m_config.maxSteerAngle = m_maxSteerAngle;
+    return m_config;
+}
 
 glm::vec3 KartPhysics::getForwardVector() const {
     float rad = glm::radians(m_yawDegrees);
@@ -156,4 +189,4 @@ void KartPhysics::onCollision(const glm::vec3& mtv, float reboundFactor) {
     }
 }
 
-} // namespace Engine::Physics
+} // namespace physics

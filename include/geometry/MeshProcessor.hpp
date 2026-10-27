@@ -31,6 +31,10 @@ public:
     // 3. Resta el centroide a cada vértice (v.position -= centroid)
     // 4. Actualiza minBounds y maxBounds para que queden centrados en (0,0,0)
     static void recenterMeshToOrigin(SubMesh& submesh);
+
+    // Revisa si una submalla tiene normales nulas o inexistentes, y en ese caso
+    // calcula automáticamente normales planas para cada triángulo promediando el producto cruz de sus aristas y normalizándolo
+    static void generateNormalsIfNeeded(SubMesh& submesh);
 };
 
 } // namespace geometry

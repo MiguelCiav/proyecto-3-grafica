@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace Engine::Physics {
+namespace physics {
 
 /**
  * @brief Caja alineada con los ejes (Axis-Aligned Bounding Box).
@@ -172,4 +172,9 @@ struct BoundingSphere {
     }
 };
 
-} // namespace Engine::Physics
+} // namespace physics
+
+namespace Engine::Physics {
+    using BoundingBox = ::physics::BoundingBox;
+    using BoundingSphere = ::physics::BoundingSphere;
+}

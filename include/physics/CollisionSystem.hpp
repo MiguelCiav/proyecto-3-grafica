@@ -3,7 +3,7 @@
 #include "physics/Collider.hpp"
 #include <vector>
 
-namespace Engine::Physics {
+namespace physics {
 
 /**
  * @brief Sistema de registro de obstaculos y resolucion de colisiones del mundo.
@@ -44,4 +44,11 @@ private:
     std::vector<BoundingBox> m_staticBoxes;
 };
 
-} // namespace Engine::Physics
+} // namespace physics
+
+namespace Engine::Physics {
+    class CollisionSystem : public ::physics::CollisionSystem {
+    public:
+        using ::physics::CollisionSystem::CollisionSystem;
+    };
+}

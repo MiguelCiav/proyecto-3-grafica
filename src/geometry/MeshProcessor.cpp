@@ -1,6 +1,7 @@
 #include "geometry/MeshProcessor.hpp"
 #include <limits>
 #include <algorithm>
+#include <glm/geometric.hpp>
 
 namespace geometry {
 
@@ -85,6 +86,81 @@ void MeshProcessor::recenterMeshToOrigin(SubMesh& submesh) {
 
     // Actualizar AABB local centrada en (0,0,0)
     updateSubMeshAABB(submesh);
+}
+
+void MeshProcessor::generateNormalsIfNeeded(SubMesh& submesh) {
+    if (submesh.vertices.empty()) {
+        return;
+    }
+
+    // Verificar si la submalla carece de normales o si son nulas (longitud cercana a cero)
+    bool hasMissingNormals = false;
+    for (const auto& v : submesh.vertices) {
+        if (glm::dot(v.normal, v.normal) < 1e-6f) {
+            hasMissingNormals = true;
+            break;
+        }
+    }
+
+    if (!hasMissingNormals) {
+        return;
+    }
+
+    // Reiniciar todas las normales a cero antes de acumular
+    for (auto& v : submesh.vertices) {
+        v.normal = glm::vec3(0.0f);
+    }
+
+    // Calcular el producto cruz de las aristas de cada triángulo y promediar/acumular
+    if (!submesh.indices.empty()) {
+        const size_t indexCount = submesh.indices.size();
+        for (size_t i = 0; i + 2 < indexCount; i += 3) {
+            uint32_t i0 = submesh.indices[i];
+            uint32_t i1 = submesh.indices[i + 1];
+            uint32_t i2 = submesh.indices[i + 2];
+
+            if (i0 >= submesh.vertices.size() || i1 >= submesh.vertices.size() || i2 >= submesh.vertices.size()) {
+                continue;
+            }
+
+            const glm::vec3& p0 = submesh.vertices[i0].position;
+            const glm::vec3& p1 = submesh.vertices[i1].position;
+            const glm::vec3& p2 = submesh.vertices[i2].position;
+
+            glm::vec3 edge1 = p1 - p0;
+            glm::vec3 edge2 = p2 - p0;
+            glm::vec3 normal = glm::cross(edge1, edge2);
+
+            submesh.vertices[i0].normal += normal;
+            submesh.vertices[i1].normal += normal;
+            submesh.vertices[i2].normal += normal;
+        }
+    } else {
+        const size_t vertexCount = submesh.vertices.size();
+        for (size_t i = 0; i + 2 < vertexCount; i += 3) {
+            const glm::vec3& p0 = submesh.vertices[i].position;
+            const glm::vec3& p1 = submesh.vertices[i + 1].position;
+            const glm::vec3& p2 = submesh.vertices[i + 2].position;
+
+            glm::vec3 edge1 = p1 - p0;
+            glm::vec3 edge2 = p2 - p0;
+            glm::vec3 normal = glm::cross(edge1, edge2);
+
+            submesh.vertices[i].normal += normal;
+            submesh.vertices[i + 1].normal += normal;
+            submesh.vertices[i + 2].normal += normal;
+        }
+    }
+
+    // Normalizar las normales calculadas
+    for (auto& v : submesh.vertices) {
+        float len2 = glm::dot(v.normal, v.normal);
+        if (len2 > 1e-6f) {
+            v.normal = glm::normalize(v.normal);
+        } else {
+            v.normal = glm::vec3(0.0f, 1.0f, 0.0f);
+        }
+    }
 }
 
 } // namespace geometry

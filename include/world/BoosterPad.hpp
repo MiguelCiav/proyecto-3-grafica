@@ -49,8 +49,15 @@ public:
 
     void destroy();
 
+    // Gestión de malla compartida (Zero Blender - Unit Quad en GPU)
+    static void initSharedMesh();
+    static void destroySharedMesh();
+    static bool isSharedMeshInitialized() { return s_sharedMeshInitialized; }
+    static unsigned int getSharedVAO() { return s_sharedVAO; }
+    static unsigned int getSharedVBO() { return s_sharedVBO; }
+    static int getInstanceCount() { return s_instanceCount; }
+
 private:
-    void initMesh();
     void updateTriggerZone();
 
     glm::vec3 m_position{0.0f};
@@ -65,9 +72,13 @@ private:
 
     SpecialZone m_triggerZone;
 
-    unsigned int m_vao{0};
-    unsigned int m_vbo{0};
-    bool m_meshInitialized{false};
+    bool m_alive{true};
+
+    // Recursos de malla compartida estática
+    static unsigned int s_sharedVAO;
+    static unsigned int s_sharedVBO;
+    static bool s_sharedMeshInitialized;
+    static int s_instanceCount;
 };
 
 } // namespace world
