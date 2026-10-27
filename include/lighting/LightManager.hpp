@@ -4,12 +4,28 @@
 #include <glm/glm.hpp>
 #include <vector>
 #include <string>
+#include <array>
 
 namespace renderer {
     class Shader;
 }
 
 namespace lighting {
+
+/**
+ * @brief Nombres precalculados de uniforms para una fuente puntual en GPU.
+ * Evita la reconstrucción y alocaciones de heap de std::string en cada frame a 60 FPS.
+ */
+struct PointLightUniformNames {
+    std::string enabled;
+    std::string position;
+    std::string ambient;
+    std::string diffuse;
+    std::string specular;
+    std::string constant;
+    std::string linear;
+    std::string quadratic;
+};
 
 /**
  * @brief Gestor central de iluminacion para la escena.
@@ -79,6 +95,9 @@ public:
     // -------------------------------------------------------------
     // Envía todos los structs de luces y arreglos a los uniforms del shader activo
     void applyToShader(const renderer::Shader& shader, const glm::vec3& viewPos) const;
+
+    // Nombres precalculados de uniforms para evitar alocaciones en applyToShader
+    static const std::array<PointLightUniformNames, MAX_POINT_LIGHTS>& getPointLightUniformNames();
 
 private:
     DirectionalLight m_dirLight;

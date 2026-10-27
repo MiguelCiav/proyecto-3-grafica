@@ -3,9 +3,61 @@
 #include <iostream>
 #include <sstream>
 #include <cassert>
+#include <array>
 #include <glm/geometric.hpp>
 
 namespace lighting {
+
+namespace {
+
+// Cadenas estáticas constantes para eliminar alocaciones temporales de std::string en cada frame
+const std::string s_uLightingModel = "u_LightingModel";
+const std::string s_uViewPos       = "u_ViewPos";
+
+const std::string s_uDirLightEnabled   = "u_DirLight.enabled";
+const std::string s_uDirLightDirection = "u_DirLight.direction";
+const std::string s_uDirLightAmbient   = "u_DirLight.ambient";
+const std::string s_uDirLightDiffuse   = "u_DirLight.diffuse";
+const std::string s_uDirLightSpecular  = "u_DirLight.specular";
+
+const std::string s_uNumPointLights = "u_NumPointLights";
+
+const std::string s_uSpotLightEnabled    = "u_SpotLight.enabled";
+const std::string s_uSpotLightPosition   = "u_SpotLight.position";
+const std::string s_uSpotLightDirection  = "u_SpotLight.direction";
+const std::string s_uSpotLightAmbient    = "u_SpotLight.ambient";
+const std::string s_uSpotLightDiffuse    = "u_SpotLight.diffuse";
+const std::string s_uSpotLightSpecular   = "u_SpotLight.specular";
+const std::string s_uSpotLightCutOff     = "u_SpotLight.cutOff";
+const std::string s_uSpotLightOuterCutOff = "u_SpotLight.outerCutOff";
+const std::string s_uSpotLightConstant   = "u_SpotLight.constant";
+const std::string s_uSpotLightLinear     = "u_SpotLight.linear";
+const std::string s_uSpotLightQuadratic  = "u_SpotLight.quadratic";
+
+const std::string s_uMaterialShininess = "u_Material.shininess";
+
+// Precalculado de nombres de uniforms para luces puntuales (0 .. MAX_POINT_LIGHTS - 1)
+const std::array<PointLightUniformNames, LightManager::MAX_POINT_LIGHTS> s_pointLightUniforms = []() {
+    std::array<PointLightUniformNames, LightManager::MAX_POINT_LIGHTS> names;
+    for (size_t i = 0; i < LightManager::MAX_POINT_LIGHTS; ++i) {
+        std::string pfx = "u_PointLights[" + std::to_string(i) + "].";
+        names[i].enabled   = pfx + "enabled";
+        names[i].position  = pfx + "position";
+        names[i].ambient   = pfx + "ambient";
+        names[i].diffuse   = pfx + "diffuse";
+        names[i].specular  = pfx + "specular";
+        names[i].constant  = pfx + "constant";
+        names[i].linear    = pfx + "linear";
+        names[i].quadratic = pfx + "quadratic";
+    }
+    return names;
+}();
+
+} // anonymous namespace
+
+const std::array<PointLightUniformNames, LightManager::MAX_POINT_LIGHTS>& LightManager::getPointLightUniformNames() {
+    return s_pointLightUniforms;
+}
 
 LightManager::LightManager() {
     init();
@@ -157,56 +209,56 @@ void LightManager::applyToShader(const renderer::Shader& shader, const glm::vec3
     if (!shader.isValid()) return;
 
     // 0 = Flat, 1 = Lambert, 2 = Blinn-Phong
-    shader.setInt("u_LightingModel", static_cast<int>(m_currentModel));
-    shader.setVec3("u_ViewPos", viewPos);
+    shader.setInt(s_uLightingModel, static_cast<int>(m_currentModel));
+    shader.setVec3(s_uViewPos, viewPos);
 
     // -------------------------------------------------------------
     // 1. Luz Direccional (Sol)
     // -------------------------------------------------------------
-    shader.setBool("u_DirLight.enabled", m_dirLight.enabled);
-    shader.setVec3("u_DirLight.direction", m_dirLight.direction);
-    shader.setVec3("u_DirLight.ambient", m_dirLight.ambient);
-    shader.setVec3("u_DirLight.diffuse", m_dirLight.diffuse);
-    shader.setVec3("u_DirLight.specular", m_dirLight.specular);
+    shader.setBool(s_uDirLightEnabled, m_dirLight.enabled);
+    shader.setVec3(s_uDirLightDirection, m_dirLight.direction);
+    shader.setVec3(s_uDirLightAmbient, m_dirLight.ambient);
+    shader.setVec3(s_uDirLightDiffuse, m_dirLight.diffuse);
+    shader.setVec3(s_uDirLightSpecular, m_dirLight.specular);
 
     // -------------------------------------------------------------
     // 2. Múltiples Luces Puntuales (Farolas de circuito con atenuación calculada)
     // -------------------------------------------------------------
     int numPoints = static_cast<int>(std::min(m_pointLights.size(), MAX_POINT_LIGHTS));
-    shader.setInt("u_NumPointLights", numPoints);
+    shader.setInt(s_uNumPointLights, numPoints);
 
     for (int i = 0; i < numPoints; ++i) {
         const auto& pt = m_pointLights[i];
-        std::string uPfx = "u_PointLights[" + std::to_string(i) + "].";
-        shader.setBool(uPfx + "enabled", pt.enabled);
-        shader.setVec3(uPfx + "position", pt.position);
-        shader.setVec3(uPfx + "ambient", pt.ambient);
-        shader.setVec3(uPfx + "diffuse", pt.diffuse);
-        shader.setVec3(uPfx + "specular", pt.specular);
-        shader.setFloat(uPfx + "constant", pt.constant);
-        shader.setFloat(uPfx + "linear", pt.linear);
-        shader.setFloat(uPfx + "quadratic", pt.quadratic);
+        const auto& u = s_pointLightUniforms[i];
+        shader.setBool(u.enabled, pt.enabled);
+        shader.setVec3(u.position, pt.position);
+        shader.setVec3(u.ambient, pt.ambient);
+        shader.setVec3(u.diffuse, pt.diffuse);
+        shader.setVec3(u.specular, pt.specular);
+        shader.setFloat(u.constant, pt.constant);
+        shader.setFloat(u.linear, pt.linear);
+        shader.setFloat(u.quadratic, pt.quadratic);
     }
 
     // -------------------------------------------------------------
     // 3. Luz Focal / Spotlight (Faros del kart)
     // -------------------------------------------------------------
-    shader.setBool("u_SpotLight.enabled", m_spotLight.enabled);
-    shader.setVec3("u_SpotLight.position", m_spotLight.position);
-    shader.setVec3("u_SpotLight.direction", m_spotLight.direction);
-    shader.setVec3("u_SpotLight.ambient", m_spotLight.ambient);
-    shader.setVec3("u_SpotLight.diffuse", m_spotLight.diffuse);
-    shader.setVec3("u_SpotLight.specular", m_spotLight.specular);
-    shader.setFloat("u_SpotLight.cutOff", m_spotLight.cutOff);
-    shader.setFloat("u_SpotLight.outerCutOff", m_spotLight.outerCutOff);
-    shader.setFloat("u_SpotLight.constant", m_spotLight.constant);
-    shader.setFloat("u_SpotLight.linear", m_spotLight.linear);
-    shader.setFloat("u_SpotLight.quadratic", m_spotLight.quadratic);
+    shader.setBool(s_uSpotLightEnabled, m_spotLight.enabled);
+    shader.setVec3(s_uSpotLightPosition, m_spotLight.position);
+    shader.setVec3(s_uSpotLightDirection, m_spotLight.direction);
+    shader.setVec3(s_uSpotLightAmbient, m_spotLight.ambient);
+    shader.setVec3(s_uSpotLightDiffuse, m_spotLight.diffuse);
+    shader.setVec3(s_uSpotLightSpecular, m_spotLight.specular);
+    shader.setFloat(s_uSpotLightCutOff, m_spotLight.cutOff);
+    shader.setFloat(s_uSpotLightOuterCutOff, m_spotLight.outerCutOff);
+    shader.setFloat(s_uSpotLightConstant, m_spotLight.constant);
+    shader.setFloat(s_uSpotLightLinear, m_spotLight.linear);
+    shader.setFloat(s_uSpotLightQuadratic, m_spotLight.quadratic);
 
     // -------------------------------------------------------------
     // Material
     // -------------------------------------------------------------
-    shader.setFloat("u_Material.shininess", m_defaultMaterial.shininess);
+    shader.setFloat(s_uMaterialShininess, m_defaultMaterial.shininess);
 }
 
 } // namespace lighting

@@ -41,7 +41,7 @@ bool TrackRenderer::init(const std::string& trackAssetsDir) {
 
     geometry::ModelData straightData;
     if (geometry::OBJLoader::load(straightPath, straightData) && !straightData.submeshes.empty()) {
-        m_submeshStraight = straightData.submeshes[0];
+        m_meshStraight.setup(straightData.submeshes[0]);
     } else {
         std::cerr << "[ERROR] [TrackRenderer] No se pudo cargar: " << straightPath << std::endl;
         return false;
@@ -49,7 +49,7 @@ bool TrackRenderer::init(const std::string& trackAssetsDir) {
 
     geometry::ModelData cornerSmallData;
     if (geometry::OBJLoader::load(cornerSmallPath, cornerSmallData) && !cornerSmallData.submeshes.empty()) {
-        m_submeshCornerSmall = cornerSmallData.submeshes[0];
+        m_meshCornerSmall.setup(cornerSmallData.submeshes[0]);
     } else {
         std::cerr << "[ERROR] [TrackRenderer] No se pudo cargar: " << cornerSmallPath << std::endl;
         return false;
@@ -57,11 +57,10 @@ bool TrackRenderer::init(const std::string& trackAssetsDir) {
 
     geometry::ModelData cornerLargeData;
     if (geometry::OBJLoader::load(cornerLargePath, cornerLargeData) && !cornerLargeData.submeshes.empty()) {
-        m_submeshCornerLarge = cornerLargeData.submeshes[0];
+        m_meshCornerLarge.setup(cornerLargeData.submeshes[0]);
     }
 
     createGroundPlane();
-    updateTrackMeshes();
 
     m_initialized = true;
     std::cout << "[OK] [TrackRenderer] Mallas modulares de pista cargadas exitosamente a la GPU." << std::endl;
@@ -70,34 +69,6 @@ bool TrackRenderer::init(const std::string& trackAssetsDir) {
 
 void TrackRenderer::setGroundColor(const glm::vec4& color) {
     m_groundColor = color;
-    updateTrackMeshes();
-}
-
-void TrackRenderer::updateTrackMeshes() {
-    if (m_submeshStraight.vertices.empty()) return;
-
-    auto adaptGrass = [this](geometry::SubMesh submesh) {
-        for (auto& v : submesh.vertices) {
-            // Adaptar los vértices de césped nativo de Kenney (grass) para que
-            // armonicen exactamente con el bioma y color de terreno del circuito activo
-            if (std::abs(v.color.r - 0.3019608f) < 0.02f &&
-                std::abs(v.color.g - 0.5607843f) < 0.02f &&
-                std::abs(v.color.b - 0.4313726f) < 0.02f) {
-                v.color = m_groundColor;
-            }
-        }
-        return submesh;
-    };
-
-    if (!m_submeshStraight.vertices.empty()) {
-        m_meshStraight.setup(adaptGrass(m_submeshStraight));
-    }
-    if (!m_submeshCornerSmall.vertices.empty()) {
-        m_meshCornerSmall.setup(adaptGrass(m_submeshCornerSmall));
-    }
-    if (!m_submeshCornerLarge.vertices.empty()) {
-        m_meshCornerLarge.setup(adaptGrass(m_submeshCornerLarge));
-    }
 }
 
 void TrackRenderer::render(const world::TrackGrid& grid, const Shader& shader) const {
@@ -116,6 +87,9 @@ void TrackRenderer::render(const world::TrackGrid& grid, const Shader& shader) c
     shader.setBool("u_UseTexture", false);
     shader.setBool("u_UseVertexColor", true);
     shader.setVec4("u_Color", glm::vec4(1.0f));
+
+    shader.setBool("u_ReplaceKenneyGrass", true);
+    shader.setVec4("u_GrassReplacementColor", m_groundColor);
 
     for (const auto& tile : grid.getAllTiles()) {
         if (tile.type == world::TileType::EMPTY) continue;
@@ -147,6 +121,8 @@ void TrackRenderer::render(const world::TrackGrid& grid, const Shader& shader) c
                 break;
         }
     }
+
+    shader.setBool("u_ReplaceKenneyGrass", false);
 }
 
 } // namespace renderer

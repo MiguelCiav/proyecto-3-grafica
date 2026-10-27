@@ -87,6 +87,23 @@ int main() {
     assert(lightManager.getPointLight(0).enabled == true);
     std::cout << "  [CHECK 3.3] Toggle global de fuentes puntuales verificado." << std::endl;
 
+    // Verificación de nombres de uniformes precalculados (Cero alocaciones en hot-path)
+    const auto& uniformNames = lighting::LightManager::getPointLightUniformNames();
+    assert(uniformNames.size() == lighting::LightManager::MAX_POINT_LIGHTS);
+    for (size_t i = 0; i < lighting::LightManager::MAX_POINT_LIGHTS; ++i) {
+        std::string expectedPrefix = "u_PointLights[" + std::to_string(i) + "].";
+        assert(uniformNames[i].enabled == expectedPrefix + "enabled");
+        assert(uniformNames[i].position == expectedPrefix + "position");
+        assert(uniformNames[i].ambient == expectedPrefix + "ambient");
+        assert(uniformNames[i].diffuse == expectedPrefix + "diffuse");
+        assert(uniformNames[i].specular == expectedPrefix + "specular");
+        assert(uniformNames[i].constant == expectedPrefix + "constant");
+        assert(uniformNames[i].linear == expectedPrefix + "linear");
+        assert(uniformNames[i].quadratic == expectedPrefix + "quadratic");
+    }
+    std::cout << "  [CHECK 3.4] Nombres estáticos de uniforms precalculados para "
+              << lighting::LightManager::MAX_POINT_LIGHTS << " fuentes puntuales (cero alocaciones)." << std::endl;
+
     std::cout << "\n==========================================================" << std::endl;
     std::cout << "  [SUCCESS] Pruebas de LightManager superadas con exito!   " << std::endl;
     std::cout << "==========================================================" << std::endl;

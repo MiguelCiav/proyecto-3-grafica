@@ -74,6 +74,10 @@ uniform bool u_UseTexture;
 uniform bool u_UseVertexColor;
 uniform vec4 u_Color;
 
+// Sustitución dinámica de césped nativo de Kenney para armonización de biomas
+uniform bool u_ReplaceKenneyGrass;
+uniform vec4 u_GrassReplacementColor;
+
 // -------------------------------------------------------------
 // Funciones de Cálculo Fotométrico
 // -------------------------------------------------------------
@@ -170,6 +174,16 @@ void main() {
     } else {
         texColor = u_Color;
     }
+
+    if (u_ReplaceKenneyGrass) {
+        vec3 c = u_UseVertexColor ? v_Color.rgb : texColor.rgb;
+        if (abs(c.r - 0.30196) < 0.03 &&
+            abs(c.g - 0.56078) < 0.03 &&
+            abs(c.b - 0.43137) < 0.03) {
+            texColor = u_GrassReplacementColor;
+        }
+    }
+
     if (texColor.a < 0.05) discard;
 
     vec3 baseColor = texColor.rgb;
