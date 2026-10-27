@@ -540,6 +540,7 @@ add_custom_command(TARGET test_ui_renderer POST_BUILD
 add_executable(test_main_menu_ui
     tests/test_main_menu_ui.cpp
     src/ui/MainMenuUI.cpp
+    src/ui/UIWidgets.cpp
     src/ui/UIRenderer.cpp
     src/renderer/Shader.cpp
     src/renderer/Texture.cpp

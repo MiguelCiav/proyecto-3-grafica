@@ -23,6 +23,8 @@ void ShowroomScene::onEnter() {
     m_showcaseAngle = 0.0f; // Vista frontal fija obligatoria
     m_ctx.applySelection();
 
+    m_sceneRenderer.init(m_ctx.litShader, m_ctx.boosterShader, m_ctx.paletteTexture);
+
     if (!m_showroomUI.isInitialized()) {
         m_showroomUI.init(&m_ctx);
     }
@@ -84,59 +86,49 @@ void ShowroomScene::update(float deltaTime) {
 }
 
 void ShowroomScene::render(int windowWidth, int windowHeight) {
+    float w = static_cast<float>(windowWidth);
+    float h = static_cast<float>(windowHeight);
+
     // -----------------------------------------------------------------
     // 1. Pase de Renderizado 3D: Pedestal, Iluminación y Kart en tiempo real
     // -----------------------------------------------------------------
-    glClearColor(0.12f, 0.15f, 0.24f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glEnable(GL_DEPTH_TEST);
+    m_sceneRenderer.beginFrame(w, h, glm::vec4(0.12f, 0.15f, 0.24f, 1.0f));
 
-    if (m_ctx.litShader && m_ctx.litShader->isValid()) {
-        renderer::Shader& shader = *m_ctx.litShader;
-        shader.use();
+    float aspect = w / (h > 0.0f ? h : 1.0f);
+    // Desplazamiento sutil de la cámara (0.28f) para encuadrar perfectamente el kart
+    // a la izquierda del panel lateral de estadísticas
+    glm::vec3 camPos(0.28f, 0.85f, 2.1f);
+    glm::mat4 view = glm::lookAt(camPos, glm::vec3(0.28f, 0.25f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 proj = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
 
-        float aspect = static_cast<float>(windowWidth) / static_cast<float>(windowHeight > 0 ? windowHeight : 1);
-        // Desplazamiento sutil de la cámara (0.28f) para encuadrar perfectamente el kart
-        // a la izquierda del panel lateral de estadísticas
-        glm::vec3 camPos(0.28f, 0.85f, 2.1f);
-        glm::mat4 view = glm::lookAt(camPos, glm::vec3(0.28f, 0.25f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        glm::mat4 proj = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
+    renderer::RenderSceneDesc desc;
+    desc.viewMatrix = view;
+    desc.projectionMatrix = proj;
+    desc.cameraPosition = camPos;
+    desc.kartEntity = m_ctx.kartEntity;
+    desc.pedestalMesh = m_ctx.pedestalMesh;
+    desc.pedestalTransform = glm::rotate(glm::mat4(1.0f), glm::radians(m_showcaseAngle), glm::vec3(0.0f, 1.0f, 0.0f));
+    desc.pedestalColor = glm::vec4(0.20f, 0.22f, 0.28f, 1.0f);
+    desc.paletteTexture = m_ctx.paletteTexture;
 
-        if (m_ctx.lightManager) {
-            m_ctx.lightManager->applyToShader(shader, camPos);
-        }
+    desc.renderGround = false;
+    desc.renderProps = false;
+    desc.renderBoosters = false;
+    desc.renderParticles = false;
+    desc.renderSkidmarks = false;
+    desc.renderSkybox = false;
 
-        shader.setMat4("u_View", view);
-        shader.setMat4("u_Projection", proj);
-        shader.setInt("u_Texture", 0);
-
-        if (m_ctx.paletteTexture && m_ctx.paletteTexture->isLoaded()) {
-            m_ctx.paletteTexture->bind(0);
-        }
-
-        // 1.1 Dibujar el Pedestal bajo el kart
-        if (m_ctx.pedestalMesh) {
-            shader.setBool("u_UseTexture", false);
-            shader.setBool("u_UseVertexColor", false);
-            glm::mat4 pedMat = glm::rotate(glm::mat4(1.0f), glm::radians(m_showcaseAngle), glm::vec3(0.0f, 1.0f, 0.0f));
-            shader.setMat4("u_Model", pedMat);
-            shader.setVec4("u_Color", glm::vec4(0.20f, 0.22f, 0.28f, 1.0f));
-            m_ctx.pedestalMesh->draw();
-        }
-
-        // 1.2 Dibujar el Kart y Piloto DE FRENTE con sus texturas
-        if (m_ctx.kartEntity) {
-            shader.setBool("u_UseTexture", true);
-            shader.setBool("u_UseVertexColor", false);
-            shader.setVec4("u_Color", glm::vec4(1.0f));
-            m_ctx.kartEntity->draw(shader);
-        }
+    if (m_ctx.lightManager) {
+        m_sceneRenderer.renderScene(desc, *m_ctx.lightManager);
+    } else {
+        m_sceneRenderer.renderScene(desc, nullptr);
     }
+    m_sceneRenderer.endFrame();
 
     // -----------------------------------------------------------------
     // 2. Pase de Renderizado 2D: Interfaz gráfica ShowroomUI
     // -----------------------------------------------------------------
-    m_showroomUI.render(static_cast<float>(windowWidth), static_cast<float>(windowHeight));
+    m_showroomUI.render(w, h);
 }
 
 } // namespace scenes

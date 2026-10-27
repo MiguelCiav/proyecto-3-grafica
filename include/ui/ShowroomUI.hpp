@@ -74,36 +74,28 @@ private:
     void renderVehicleInfo(float x, float y, float w, float h);
     void renderTrackInfo(float x, float y, float w, float h);
 
-    // Barra de estadística 3-slice progresiva con ticks estilo Mario Kart
-    void renderStatBar(float x, float y, float w, float h,
-                       const std::string& label, const std::string& valueStr,
-                       float ratio, const glm::vec4& fillColor);
-
-    [[nodiscard]] std::vector<std::string> wrapText(const std::string& text, float maxWidth, float scale) const;
-    [[nodiscard]] std::string sanitizeText(const std::string& text) const;
-
     core::GameContext* m_ctx{nullptr};
     UIRenderer* m_renderer{nullptr};
     std::unique_ptr<UIRenderer> m_ownedRenderer;
 
     // Texturas de Kenney UI Pack
-    renderer::Texture m_tabIdle;          // Blue/Double/button_rectangle_depth_flat.png
-    renderer::Texture m_tabActive;        // Yellow/Double/button_rectangle_depth_gradient.png
-    renderer::Texture m_tabHover;         // Yellow/Double/button_rectangle_depth_flat.png
-    renderer::Texture m_panelFrame;       // Blue/Double/button_square_border.png
-    renderer::Texture m_panelInner;       // Grey/Double/button_square_depth_flat.png
-    renderer::Texture m_arrowLeft;        // Yellow/Double/arrow_decorative_w.png
-    renderer::Texture m_arrowRight;       // Yellow/Double/arrow_decorative_e.png
-    renderer::Texture m_arrowIndicator;   // Yellow/Double/arrow_decorative_s.png
-    renderer::Texture m_star;             // Yellow/Double/star.png
-    renderer::Texture m_starEmpty;        // Grey/Double/star.png
-    renderer::Texture m_btnStart;         // Green/Double/button_rectangle_depth_border.png
-    renderer::Texture m_btnStartHover;    // Green/Double/button_rectangle_depth_gradient.png
-    renderer::Texture m_btnBack;          // Grey/Double/button_rectangle_depth_flat.png
-    renderer::Texture m_btnBackHover;     // Red/Double/button_rectangle_depth_flat.png
-    renderer::Texture m_barBg;            // Grey/Double/slide_horizontal_grey_section_wide.png
-    renderer::Texture m_barFill;          // Yellow/Double/slide_horizontal_color_section_wide.png
-    renderer::Texture m_barFillGreen;     // Green/Double/slide_horizontal_color_section_wide.png
+    renderer::Texture m_tabIdle;
+    renderer::Texture m_tabActive;
+    renderer::Texture m_tabHover;
+    renderer::Texture m_panelFrame;
+    renderer::Texture m_panelInner;
+    renderer::Texture m_arrowLeft;
+    renderer::Texture m_arrowRight;
+    renderer::Texture m_arrowIndicator;
+    renderer::Texture m_star;
+    renderer::Texture m_starEmpty;
+    renderer::Texture m_btnStart;
+    renderer::Texture m_btnStartHover;
+    renderer::Texture m_btnBack;
+    renderer::Texture m_btnBackHover;
+    renderer::Texture m_barBg;
+    renderer::Texture m_barFill;
+    renderer::Texture m_barFillGreen;
 
     float m_animTimer{0.0f};
     bool m_initialized{false};

@@ -2,6 +2,7 @@
 
 #include "core/IScene.hpp"
 #include "core/GameContext.hpp"
+#include "renderer/SceneRenderer.hpp"
 #include "ui/ShowroomUI.hpp"
 
 namespace scenes {
@@ -22,6 +23,7 @@ public:
 
 private:
     core::GameContext& m_ctx;
+    renderer::SceneRenderer m_sceneRenderer;
     ui::ShowroomUI m_showroomUI;
     float m_showcaseAngle{0.0f};
     float m_titleTimer{0.0f};

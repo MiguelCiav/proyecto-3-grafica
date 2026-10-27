@@ -2,6 +2,7 @@
 
 #include "core/IScene.hpp"
 #include "core/GameContext.hpp"
+#include "renderer/SceneRenderer.hpp"
 #include "ui/UIRenderer.hpp"
 #include "ui/MainMenuUI.hpp"
 
@@ -20,6 +21,7 @@ public:
 
 private:
     core::GameContext& m_ctx;
+    renderer::SceneRenderer m_sceneRenderer;
     ui::UIRenderer m_uiRenderer;
     ui::MainMenuUI m_menuUI;
 

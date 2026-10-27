@@ -2,6 +2,9 @@
 
 #include "core/IScene.hpp"
 #include "core/GameContext.hpp"
+#include "renderer/SceneRenderer.hpp"
+#include "ui/UIRenderer.hpp"
+#include "ui/PauseMenuUI.hpp"
 
 namespace scenes {
 
@@ -20,17 +23,23 @@ public:
     [[nodiscard]] float getCurrentLapTime() const { return m_currentLapTime; }
     [[nodiscard]] float getBestLapTime() const { return m_bestLapTime; }
     [[nodiscard]] bool isPaused() const { return m_isPaused; }
-    void setPaused(bool paused) { m_isPaused = paused; }
-    [[nodiscard]] int getPauseSelectedOption() const { return m_pauseSelectedOption; }
-    void setPauseSelectedOption(int opt) { m_pauseSelectedOption = opt; }
+    void setPaused(bool paused) {
+        m_isPaused = paused;
+        if (paused) m_pauseMenu.open();
+        else m_pauseMenu.close();
+    }
+    [[nodiscard]] int getPauseSelectedOption() const { return m_pauseMenu.getSelectedOption(); }
+    void setPauseSelectedOption(int opt) { m_pauseMenu.setSelectedOption(opt); }
 
 private:
-    core::GameContext& m_ctx;
+    void resetRace();
 
-    // Estado de pausa interactiva y modal de configuración
+    core::GameContext& m_ctx;
+    renderer::SceneRenderer m_sceneRenderer;
+    ui::UIRenderer m_uiRenderer;
+    ui::PauseMenuUI m_pauseMenu;
+
     bool m_isPaused{false};
-    int m_pauseSelectedOption{0};
-    float m_pauseAnimTimer{0.0f};
 
     // Telemetría y vueltas
     float m_finishLineCooldown{8.0f};
@@ -44,7 +53,6 @@ private:
     bool m_isNewRecord{false};
 
     float m_elapsedTime{0.0f};
-    float m_titleTimer{0.0f};
     bool m_cursorLocked{false};
 };
 

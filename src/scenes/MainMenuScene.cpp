@@ -18,6 +18,8 @@ MainMenuScene::MainMenuScene(core::GameContext& ctx)
 void MainMenuScene::onEnter() {
     core::Input::setCursorVisible(true);
 
+    m_sceneRenderer.init(m_ctx.litShader, m_ctx.boosterShader, m_ctx.paletteTexture);
+
     if (!m_uiRenderer.isInitialized()) {
         m_uiRenderer.init();
     }
@@ -49,41 +51,14 @@ void MainMenuScene::update(float deltaTime) {
 }
 
 void MainMenuScene::render(int windowWidth, int windowHeight) {
+    world::TrackTheme theme = (!m_ctx.tracks.empty() && m_ctx.selectedTrackIndex >= 0 &&
+                               static_cast<size_t>(m_ctx.selectedTrackIndex) < m_ctx.tracks.size())
+                                  ? m_ctx.tracks[m_ctx.selectedTrackIndex].theme
+                                  : world::TrackTheme::DAY_GRASSLAND;
     bool isNight = m_ctx.lightingController ? m_ctx.lightingController->isNight() : false;
-    bool isSpace = (!m_ctx.tracks.empty() && m_ctx.selectedTrackIndex >= 0 &&
-                    static_cast<size_t>(m_ctx.selectedTrackIndex) < m_ctx.tracks.size())
-                    ? (m_ctx.tracks[m_ctx.selectedTrackIndex].theme == world::TrackTheme::COSMIC_SPACE) : false;
-    bool isDesert = (!m_ctx.tracks.empty() && m_ctx.selectedTrackIndex >= 0 &&
-                     static_cast<size_t>(m_ctx.selectedTrackIndex) < m_ctx.tracks.size())
-                     ? (m_ctx.tracks[m_ctx.selectedTrackIndex].theme == world::TrackTheme::DESERT_DUNES) : false;
-    bool isAquatic = (!m_ctx.tracks.empty() && m_ctx.selectedTrackIndex >= 0 &&
-                      static_cast<size_t>(m_ctx.selectedTrackIndex) < m_ctx.tracks.size())
-                      ? (m_ctx.tracks[m_ctx.selectedTrackIndex].theme == world::TrackTheme::AQUATIC_REEF) : false;
-    bool isVolcano = (!m_ctx.tracks.empty() && m_ctx.selectedTrackIndex >= 0 &&
-                      static_cast<size_t>(m_ctx.selectedTrackIndex) < m_ctx.tracks.size())
-                      ? (m_ctx.tracks[m_ctx.selectedTrackIndex].theme == world::TrackTheme::VOLCANO_CALDERA) : false;
+    glm::vec4 clearColor = renderer::SceneRenderer::calculateClearColor(theme, isNight);
 
-    if (isVolcano) {
-        if (isNight) glClearColor(0.04f, 0.02f, 0.02f, 1.0f);
-        else         glClearColor(0.16f, 0.07f, 0.04f, 1.0f);
-    } else if (isSpace) {
-        glClearColor(0.006f, 0.004f, 0.012f, 1.0f);
-    } else if (isAquatic) {
-        if (isNight) glClearColor(0.01f, 0.04f, 0.07f, 1.0f);
-        else         glClearColor(0.03f, 0.20f, 0.30f, 1.0f);
-    } else if (isDesert) {
-        if (isNight) glClearColor(0.02f, 0.03f, 0.06f, 1.0f);
-        else         glClearColor(0.50f, 0.72f, 0.95f, 1.0f);
-    } else {
-        if (isNight) glClearColor(0.04f, 0.05f, 0.09f, 1.0f);
-        else         glClearColor(0.40f, 0.68f, 0.95f, 1.0f);
-    }
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    renderer::Shader& shader = (m_ctx.litShader && m_ctx.litShader->isValid()) ? *m_ctx.litShader : *m_ctx.litShader;
-    if (!shader.isValid()) return;
-
-    shader.use();
+    m_sceneRenderer.beginFrame(static_cast<float>(windowWidth), static_cast<float>(windowHeight), clearColor);
 
     float aspect = static_cast<float>(windowWidth) / static_cast<float>(windowHeight > 0 ? windowHeight : 1);
     float rad = glm::radians(m_menuOrbitAngle);
@@ -93,58 +68,28 @@ void MainMenuScene::render(int windowWidth, int windowHeight) {
     glm::mat4 view = glm::lookAt(camPos, glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 proj = glm::perspective(glm::radians(55.0f), aspect, 0.1f, 1000.0f);
 
+    renderer::RenderSceneDesc desc;
+    desc.viewMatrix = view;
+    desc.projectionMatrix = proj;
+    desc.cameraPosition = camPos;
+    desc.elapsedTime = m_elapsedTime;
+    desc.trackGrid = m_ctx.trackGrid;
+    desc.trackRenderer = m_ctx.trackRenderer;
+    desc.propSpawner = m_ctx.propSpawner;
+    desc.kartEntity = m_ctx.kartEntity;
+    desc.boosterPads = m_ctx.boosterPads;
+    desc.kartEmitter = m_ctx.kartEmitter;
+    desc.skybox = &m_ctx.getCurrentSkybox();
+    desc.paletteTexture = m_ctx.paletteTexture;
+    desc.isNight = isNight;
+    desc.renderSkidmarks = false;
+
     if (m_ctx.lightManager) {
-        m_ctx.lightManager->applyToShader(shader, camPos);
+        m_sceneRenderer.renderScene(desc, *m_ctx.lightManager);
+    } else {
+        m_sceneRenderer.renderScene(desc, nullptr);
     }
-
-    shader.setMat4("u_View", view);
-    shader.setMat4("u_Projection", proj);
-    shader.setInt("u_Texture", 0);
-
-    if (m_ctx.paletteTexture && m_ctx.paletteTexture->isLoaded()) {
-        m_ctx.paletteTexture->bind(0);
-    }
-
-    if (m_ctx.trackRenderer && m_ctx.trackGrid) {
-        m_ctx.trackRenderer->render(*m_ctx.trackGrid, shader);
-    }
-    if (m_ctx.propSpawner) {
-        m_ctx.propSpawner->render(shader);
-    }
-
-    if (m_ctx.kartEntity) {
-        shader.setBool("u_UseTexture", true);
-        shader.setBool("u_UseVertexColor", false);
-        shader.setVec4("u_Color", glm::vec4(1.0f));
-        m_ctx.kartEntity->draw(shader);
-    }
-
-    if (m_ctx.boosterShader && m_ctx.boosterShader->isValid() && m_ctx.boosterPads) {
-        m_ctx.boosterShader->use();
-        m_ctx.boosterShader->setMat4("u_View", view);
-        m_ctx.boosterShader->setMat4("u_Projection", proj);
-        m_ctx.boosterShader->setVec3("u_BaseColor", glm::vec3(0.08f, 0.08f, 0.10f));
-        m_ctx.boosterShader->setVec3("u_EnergyColor", glm::vec3(1.0f, 0.55f, 0.0f));
-        m_ctx.boosterShader->setVec3("u_CoreColor", glm::vec3(1.0f, 1.0f, 0.85f));
-        m_ctx.boosterShader->setFloat("u_EmissionIntensity", 3.0f);
-        m_ctx.boosterShader->setFloat("u_Speed", 3.5f);
-        m_ctx.boosterShader->setFloat("u_Repetitions", 3.0f);
-        m_ctx.boosterShader->setFloat("u_ArrowThickness", 0.22f);
-        m_ctx.boosterShader->setFloat("u_PulseSpeed", 5.0f);
-
-        for (const auto& pad : *m_ctx.boosterPads) {
-            pad.draw(*m_ctx.boosterShader, m_elapsedTime);
-        }
-    }
-
-    if (m_ctx.kartEmitter) {
-        m_ctx.kartEmitter->render(view, proj);
-    }
-
-    const auto& skybox = m_ctx.getCurrentSkybox();
-    if (skybox.isLoaded()) {
-        skybox.draw(view, proj);
-    }
+    m_sceneRenderer.endFrame();
 
     // -------------------------------------------------------------
     // Capa de Interfaz Grafica 2D (Kenney UI Pack)
