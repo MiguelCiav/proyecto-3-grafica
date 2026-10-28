@@ -13,6 +13,17 @@
 #include "lighting/LightingController.hpp"
 #include "world/TrackEnvironmentRegistry.hpp"
 
+namespace {
+class DummyScene : public core::IScene {
+public:
+    void onEnter() override {}
+    void onExit() override {}
+    void handleInput(float) override {}
+    void update(float) override {}
+    void render(int, int) override {}
+};
+}
+
 int main() {
     std::cout << "==========================================================" << std::endl;
     std::cout << "  TEST: Validacion de Interfaz Grafica ShowroomUI (2D/3D)  " << std::endl;
@@ -63,6 +74,8 @@ int main() {
         lighting::LightingController lightingController(&lightManager);
 
         core::SceneManager sceneManager;
+        sceneManager.registerScene(core::GameState::RACING, std::make_shared<DummyScene>());
+        sceneManager.registerScene(core::GameState::MAIN_MENU, std::make_shared<DummyScene>());
 
         core::GameContext ctx;
         ctx.lightManager = &lightManager;

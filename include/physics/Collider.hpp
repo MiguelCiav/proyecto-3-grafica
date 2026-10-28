@@ -25,6 +25,7 @@ struct BoundingBox {
         return (min + max) * 0.5f;
     }
 
+    [[nodiscard]] glm::vec3 getHalfExtents() const { return (max - min) * 0.5f; }
     [[nodiscard]] glm::vec3 getSize() const {
         return max - min;
     }
