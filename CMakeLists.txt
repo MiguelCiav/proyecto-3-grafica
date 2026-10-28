@@ -117,16 +117,17 @@ if(MINGW)
     target_link_options(mario_kart PRIVATE -static -static-libgcc -static-libstdc++)
 endif()
 
-# Copia de shaders y assets al directorio de ejecución
-add_custom_command(TARGET mario_kart POST_BUILD
+# Sincronización Centralizada de Recursos (Shaders y Assets)
+add_custom_target(copy_resources ALL
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
-        $<TARGET_FILE_DIR:mario_kart>/shaders
+        "${CMAKE_CURRENT_SOURCE_DIR}/shaders"
+        "${CMAKE_BINARY_DIR}/shaders"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/assets
-        $<TARGET_FILE_DIR:mario_kart>/assets
-    COMMENT "Copiando shaders y assets al directorio de salida binaria..."
+        "${CMAKE_CURRENT_SOURCE_DIR}/assets"
+        "${CMAKE_BINARY_DIR}/assets"
+    COMMENT "Sincronizando shaders y assets al directorio de salida binaria..."
 )
+add_dependencies(mario_kart copy_resources)
 
 # ==============================================================================
 # 6. Ejecutable de Pruebas Unitarias / Preprocesamiento (Fase 2 - Issue #8)
@@ -147,12 +148,7 @@ target_link_libraries(test_mesh_preprocessing PRIVATE
     glm::glm
 )
 
-add_custom_command(TARGET test_mesh_preprocessing POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/assets
-        $<TARGET_FILE_DIR:test_mesh_preprocessing>/assets
-    COMMENT "Copiando assets al directorio de salida de tests..."
-)
+add_dependencies(test_mesh_preprocessing copy_resources)
 
 # ==============================================================================
 # 7. Ejecutable de Pruebas Unitarias - Sistema de Iluminación
@@ -175,6 +171,8 @@ target_link_libraries(test_light_manager PRIVATE
     ${CMAKE_DL_LIBS}
 )
 
+add_dependencies(test_light_manager copy_resources)
+
 # ==============================================================================
 # 8. Ejecutable de Pruebas Unitarias - Compilación de Shaders de Iluminación
 # ==============================================================================
@@ -196,12 +194,7 @@ target_link_libraries(test_shader_lighting PRIVATE
     ${CMAKE_DL_LIBS}
 )
 
-add_custom_command(TARGET test_shader_lighting POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
-        $<TARGET_FILE_DIR:test_shader_lighting>/shaders
-    COMMENT "Copiando shaders al directorio de salida de test_shader_lighting..."
-)
+add_dependencies(test_shader_lighting copy_resources)
 
 # ==============================================================================
 # 9. Ejecutable de Pruebas Unitarias - Controlador de Iluminación
@@ -225,6 +218,8 @@ target_link_libraries(test_lighting_controller PRIVATE
     glm::glm
     ${CMAKE_DL_LIBS}
 )
+
+add_dependencies(test_lighting_controller copy_resources)
 
 # ==============================================================================
 # 10. Ejecutable de Pruebas Unitarias - Integración de Iluminación en Escena
@@ -251,15 +246,7 @@ target_link_libraries(test_scene_lighting_integration PRIVATE
     ${CMAKE_DL_LIBS}
 )
 
-add_custom_command(TARGET test_scene_lighting_integration POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
-        $<TARGET_FILE_DIR:test_scene_lighting_integration>/shaders
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/assets
-        $<TARGET_FILE_DIR:test_scene_lighting_integration>/assets
-    COMMENT "Copiando shaders y assets al directorio de salida de test_scene_lighting_integration..."
-)
+add_dependencies(test_scene_lighting_integration copy_resources)
 
 # ==============================================================================
 # 11. Ejecutable de Pruebas Unitarias - Skybox con Cubemap 3D
@@ -283,12 +270,7 @@ target_link_libraries(test_skybox PRIVATE
     ${CMAKE_DL_LIBS}
 )
 
-add_custom_command(TARGET test_skybox POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
-        $<TARGET_FILE_DIR:test_skybox>/shaders
-    COMMENT "Copiando shaders al directorio de salida de test_skybox..."
-)
+add_dependencies(test_skybox copy_resources)
 
 # ==============================================================================
 # 12. Ejecutable de Pruebas Unitarias - Shader Procedural de Boosters
@@ -310,12 +292,7 @@ target_link_libraries(test_shader_booster_procedural PRIVATE
     ${CMAKE_DL_LIBS}
 )
 
-add_custom_command(TARGET test_shader_booster_procedural POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
-        $<TARGET_FILE_DIR:test_shader_booster_procedural>/shaders
-    COMMENT "Copiando shaders al directorio de salida de test_shader_booster_procedural..."
-)
+add_dependencies(test_shader_booster_procedural copy_resources)
 
 # ==============================================================================
 # 13. Ejecutable de Pruebas Unitarias - Entidad BoosterPad
@@ -340,12 +317,7 @@ target_link_libraries(test_booster_pad PRIVATE
     ${CMAKE_DL_LIBS}
 )
 
-add_custom_command(TARGET test_booster_pad POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
-        $<TARGET_FILE_DIR:test_booster_pad>/shaders
-    COMMENT "Copiando shaders al directorio de salida de test_booster_pad..."
-)
+add_dependencies(test_booster_pad copy_resources)
 
 # ==============================================================================
 # 14. Ejecutable de Pruebas Unitarias - Integración Skybox y Boosters en Circuito
@@ -374,12 +346,7 @@ target_link_libraries(test_skybox_booster_integration PRIVATE
     ${CMAKE_DL_LIBS}
 )
 
-add_custom_command(TARGET test_skybox_booster_integration POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
-        $<TARGET_FILE_DIR:test_skybox_booster_integration>/shaders
-    COMMENT "Copiando shaders al directorio de salida de test_skybox_booster_integration..."
-)
+add_dependencies(test_skybox_booster_integration copy_resources)
 
 # ==============================================================================
 # 15. Ejecutable de Pruebas Unitarias - Sistema de Partículas 3D
@@ -402,12 +369,7 @@ target_link_libraries(test_particle_system PRIVATE
     ${CMAKE_DL_LIBS}
 )
 
-add_custom_command(TARGET test_particle_system POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
-        $<TARGET_FILE_DIR:test_particle_system>/shaders
-    COMMENT "Copiando shaders al directorio de salida de test_particle_system..."
-)
+add_dependencies(test_particle_system copy_resources)
 
 # ==============================================================================
 # 16. Ejecutable de Pruebas Unitarias - Emisores de Partículas del Kart
@@ -432,12 +394,7 @@ target_link_libraries(test_kart_particle_emitter PRIVATE
     ${CMAKE_DL_LIBS}
 )
 
-add_custom_command(TARGET test_kart_particle_emitter POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
-        $<TARGET_FILE_DIR:test_kart_particle_emitter>/shaders
-    COMMENT "Copiando shaders al directorio de salida de test_kart_particle_emitter..."
-)
+add_dependencies(test_kart_particle_emitter copy_resources)
 
 # ==============================================================================
 # 17. Ejecutable de Pruebas Unitarias - Integración Final Mario Kart 20/20
@@ -475,12 +432,7 @@ target_link_libraries(test_final_integration PRIVATE
     ${CMAKE_DL_LIBS}
 )
 
-add_custom_command(TARGET test_final_integration POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
-        $<TARGET_FILE_DIR:test_final_integration>/shaders
-    COMMENT "Copiando shaders al directorio de salida de test_final_integration..."
-)
+add_dependencies(test_final_integration copy_resources)
 
 # ==============================================================================
 # 18. Ejecutable de Pruebas: Giro de Ruedas, Skidmarks y HUD de Carreras
@@ -508,15 +460,7 @@ target_link_libraries(test_hud_and_skidmarks PRIVATE
     ${CMAKE_DL_LIBS}
 )
 
-add_custom_command(TARGET test_hud_and_skidmarks POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
-        $<TARGET_FILE_DIR:test_hud_and_skidmarks>/shaders
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/assets
-        $<TARGET_FILE_DIR:test_hud_and_skidmarks>/assets
-    COMMENT "Copiando shaders y assets al directorio de salida de test_hud_and_skidmarks..."
-)
+add_dependencies(test_hud_and_skidmarks copy_resources)
 
 # ==============================================================================
 # 19. Ejecutable de Pruebas: Renderizador 2D de UI por Lotes (UIRenderer)
@@ -540,15 +484,7 @@ target_link_libraries(test_ui_renderer PRIVATE
     ${CMAKE_DL_LIBS}
 )
 
-add_custom_command(TARGET test_ui_renderer POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
-        $<TARGET_FILE_DIR:test_ui_renderer>/shaders
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/assets
-        $<TARGET_FILE_DIR:test_ui_renderer>/assets
-    COMMENT "Copiando shaders y assets al directorio de salida de test_ui_renderer..."
-)
+add_dependencies(test_ui_renderer copy_resources)
 
 # ==============================================================================
 # 20. Ejecutable de Pruebas: Menu Principal y Configuracion GUI (MainMenuUI)
@@ -580,15 +516,7 @@ target_link_libraries(test_main_menu_ui PRIVATE
     ${CMAKE_DL_LIBS}
 )
 
-add_custom_command(TARGET test_main_menu_ui POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
-        $<TARGET_FILE_DIR:test_main_menu_ui>/shaders
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/assets
-        $<TARGET_FILE_DIR:test_main_menu_ui>/assets
-    COMMENT "Copiando shaders y assets al directorio de salida de test_main_menu_ui..."
-)
+add_dependencies(test_main_menu_ui copy_resources)
 
 # ==============================================================================
 # 21. Ejecutable de Pruebas: Showroom UI y Selección de Piloto/Auto/Pista (ShowroomUI)
@@ -614,15 +542,7 @@ target_link_libraries(test_showroom_ui PRIVATE
     ${CMAKE_DL_LIBS}
 )
 
-add_custom_command(TARGET test_showroom_ui POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
-        $<TARGET_FILE_DIR:test_showroom_ui>/shaders
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/assets
-        $<TARGET_FILE_DIR:test_showroom_ui>/assets
-    COMMENT "Copiando shaders y assets al directorio de salida de test_showroom_ui..."
-)
+add_dependencies(test_showroom_ui copy_resources)
 
 # ==============================================================================
 # 22. Ejecutable de Pruebas: Spawner de Props y Biomas (PropSpawner)
@@ -645,15 +565,7 @@ target_link_libraries(test_prop_spawner PRIVATE
     ${CMAKE_DL_LIBS}
 )
 
-add_custom_command(TARGET test_prop_spawner POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/shaders
-        $<TARGET_FILE_DIR:test_prop_spawner>/shaders
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/assets
-        $<TARGET_FILE_DIR:test_prop_spawner>/assets
-    COMMENT "Copiando shaders y assets al directorio de salida de test_prop_spawner..."
-)
+add_dependencies(test_prop_spawner copy_resources)
 
 # ==============================================================================
 # 23. Ejecutable de Pruebas: Subsistema de Audio (AudioManager + Kenney UI SFX)
@@ -673,12 +585,7 @@ target_link_libraries(test_audio_system PRIVATE
     ${CMAKE_DL_LIBS}
 )
 
-add_custom_command(TARGET test_audio_system POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/assets
-        $<TARGET_FILE_DIR:test_audio_system>/assets
-    COMMENT "Copiando assets al directorio de salida de test_audio_system..."
-)
+add_dependencies(test_audio_system copy_resources)
 
 # ==============================================================================
 # 24. Target de Empaquetado para Entrega UCV

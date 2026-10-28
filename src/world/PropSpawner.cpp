@@ -23,7 +23,7 @@ bool PropSpawner::init(const std::string& obstaclesDir) {
     };
 
     for (const auto& file : modelFiles) {
-        std::string fullPath = (fs::path(obstaclesDir) / file).string();
+        std::string fullPath = (fs::path(obstaclesDir) / file).generic_string();
         geometry::ModelData data;
         if (geometry::OBJLoader::load(fullPath, data) && !data.submeshes.empty()) {
             std::string key = fs::path(file).stem().string();
